@@ -26,11 +26,11 @@ export default function Lobby({ onClose, returnFocusRef }) {
   const players = s.room?.players || []
   const self = players.find(player => player.id === s.sessionId)
   const canReady = s.status === 'connected' && players.length === 2 && players.every(player => player.connected)
+  const close = () => { void lobby.leave(); onClose() }
 
-  useEffect(() => () => { void lobby.leave() },[])
   useEffect(() => {
     const previous = returnFocusRef.current
-    const key = event => { if (event.key === 'Escape' && !lobby.get().room?.arenaActive) { event.preventDefault(); onClose() } }
+    const key = event => { if (event.key === 'Escape' && !lobby.get().room?.arenaActive) { event.preventDefault(); void lobby.leave(); onClose() } }
     document.addEventListener('keydown',key)
     return () => { document.removeEventListener('keydown',key); previous?.focus() }
   },[onClose,returnFocusRef])
@@ -83,7 +83,7 @@ export default function Lobby({ onClose, returnFocusRef }) {
           <button type="submit" disabled={busy || account.loading}>JOIN ROOM</button>
         </form>
       </>}
-      <button className="lobby-back" onClick={onClose}>{connected ? 'LEAVE ROOM' : busy ? 'CANCEL / BACK' : 'BACK'}</button>
+      <button className="lobby-back" onClick={close}>{connected ? 'LEAVE ROOM' : busy ? 'CANCEL / BACK' : 'BACK'}</button>
     </section>
   </div>
 }

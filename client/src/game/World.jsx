@@ -28,7 +28,7 @@ export default function World({ online = false, arenaEpoch = 0 }) {
   const captured = useLobby(s => s.captured)
   const mapId = useLobby(s => s.room?.mapId || 'facility')
   const dpr = { Low: 1, Medium: 1.25, High: 1.75 }[settings.quality]
-  return <RenderBoundary><Canvas frameloop={online ? captured ? 'always' : 'demand' : mode === 'menu' ? 'demand' : 'always'} dpr={[1,dpr]} camera={{ position:[27,22,30], fov:70, near:0.05, far:130 }} gl={{ antialias:true, powerPreference:'high-performance' }}>
+  return <RenderBoundary><Canvas frameloop={online ? captured ? 'always' : 'demand' : mode === 'playing' ? 'always' : 'demand'} dpr={[1,dpr]} camera={{ position:[27,22,30], fov:70, near:0.05, far:130 }} gl={{ antialias:settings.quality!=='Low', powerPreference:'high-performance' }}>
     <Suspense fallback={null}>
       {!online && <PreviewCamera />}
       <Physics timeStep={1/60} paused={online || mode !== 'playing'}>

@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { memo, useRef } from 'react'
 import { MathUtils, Quaternion } from 'three'
 import { RigidBody, CuboidCollider, useBeforePhysicsStep } from '@react-three/rapier'
 import { TARGETS, HAZARD } from './config.js'
@@ -23,15 +23,14 @@ function TargetBody({ down, height, children }) {
   })
   return <RigidBody ref={body} type="kinematicPosition" colliders={false} position={[0,height,0]}>{ROBOT_PARTS.map(part => <CuboidCollider key={part.id} args={part.size.map(n => n/2)} position={[-part.position[0],part.position[1],-part.position[2]]} />)}{children}</RigidBody>
 }
-export default function Arena({ training = true,mapId = 'facility' }) {
-  const { targets, time, settings, hazards, generation } = useGame()
+const ArenaLayout = memo(function ArenaLayout({ training,mapId,quality }) {
   const map = getMap(mapId)
   return <>
     <color attach="background" args={[map.background]} />
     <fog attach="fog" args={[map.background, 25, 80]} />
     <ambientLight intensity={0.65} /><hemisphereLight args={['#a8dfff', '#111827', 1.8]} />
     <directionalLight position={[8, 18, 10]} intensity={2.8} color="#b6d9ff" />
-    {settings.quality !== 'Low' && <pointLight position={[0, 5, -10]} color="#7c3aed" intensity={65} distance={28} />}
+    {quality !== 'Low' && <pointLight position={[0, 5, -10]} color="#7c3aed" intensity={65} distance={28} />}
     {map.solids.map((solid,index) => <Box key={index} {...solid} solid />)}
     <gridHelper args={[40, 20, map.accent, '#243c4e']} position={[0, 0.012, 0]} />
     {[-20, 20].map(v => <group key={v}>
@@ -51,12 +50,17 @@ export default function Arena({ training = true,mapId = 'facility' }) {
     {!training && <Box position={[0,0.025,-15]} size={[5,0.03,4]} color="#49351c" />}
     <Box position={[0,0.025,15]} size={[5,0.03,4]} color="#17404d" />
     {[-2.5,2.5].map(x => <Box key={x} position={[x,0.05,15]} size={[0.06,0.03,4]} color="#00d9ff" glow />)}
-    {/* Marked hazard pads deal damage only while standing on the visible amber field. */}
-    {training && HAZARD.centers.map((x,index) => {
+  </>
+})
+
+function TrainingTargets() {
+  const { targets,time,hazards,generation } = useGame()
+  return <>
+    {HAZARD.centers.map((x,index) => {
       const disabled = time<hazards[index].disabledUntil
       return <group key={`${index}-${disabled}`}><Box position={[x,0.035,HAZARD.z]} size={[HAZARD.halfSize*2,0.04,HAZARD.halfSize*2]} color={disabled ? '#123d49' : '#8b4d12'} /><gridHelper position={[x,0.065,HAZARD.z]} args={[HAZARD.halfSize*2,6,disabled ? '#55dbe1' : '#ffb52b',disabled ? '#55dbe1' : '#ffb52b']} /></group>
     })}
-    {training && TARGETS.map(([x,y,z], id) => {
+    {TARGETS.map(([x,y,z], id) => {
       const target = targets[id]
       const down = target.hp === 0
       const flash = time - target.hit < 0.13
@@ -71,5 +75,10 @@ export default function Arena({ training = true,mapId = 'facility' }) {
       </group>
     })}
   </>
+}
+
+export default function Arena({ training = true,mapId = 'facility' }) {
+  const quality = useGame(s => s.settings.quality)
+  return <><ArenaLayout training={training} mapId={mapId} quality={quality} />{training && <TrainingTargets />}</>
 }
 

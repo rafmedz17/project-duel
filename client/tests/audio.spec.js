@@ -8,7 +8,13 @@ const sound=page => page.evaluate(async () => {
   const url=performance.getEntriesByType('resource').find(e => new URL(e.name).pathname===path)?.name || path
   return (await import(url)).audio.diagnostics()
 })
-const fire=async page => { await page.mouse.down(); await page.mouse.up() }
+const fire=async (page,waitForReady = true) => {
+  if (waitForReady) await expect.poll(async () => {
+    const s = await state(page)
+    return s.mode==='playing' && !s.reloading && s.time>=s.attackReadyAt
+  }).toBe(true)
+  await page.mouse.down(); await page.mouse.up()
+}
 async function start(page) {
   await page.goto('/')
   await page.getByRole('button',{ name:/SETTINGS/ }).click()
@@ -73,7 +79,7 @@ test('training plays all weapon, reload, hit, ability and footstep cues; pausing
   await pause(page)
   const paused=await sound(page)
   expect(paused.voices).toBe(0)
-  await fire(page); await page.keyboard.press('KeyE'); await page.waitForTimeout(400)
+  await fire(page,false); await page.keyboard.press('KeyE'); await page.waitForTimeout(400)
   expect((await sound(page)).played).toBe(paused.played)
   expect((await sound(page)).rms).toBe(0)
   expect(errors).toEqual([])

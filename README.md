@@ -63,7 +63,7 @@ npm.cmd run lint:server
 npm.cmd run test:server
 ```
 
-There are 38 local combat/audio/geometry/physics tests and 54 backend cases, including actual PostgreSQL RLS and result transactions. The 31 browser scenarios cover gameplay, actual audio output and lifecycle, new maps, guest equipment and fixture-backed account flows. They use actual mouse capture and inputs for regional hits, reloads, online combat, complete matches, collision and connection lifecycle. See the account guide for the distinction between local database tests, mocked provider responses and a live Supabase smoke check. Test-only fixtures never supply gameplay hit results.
+There are 38 local combat/audio/geometry/physics tests and 59 backend cases, including actual PostgreSQL RLS, result transactions, delayed-network prediction and production HTTP/WebSocket hosting. The 34 browser scenarios cover gameplay, audio, maps, account fixtures, refresh recovery and paused rendering. They use actual mouse capture and inputs for regional hits, reloads, online combat, complete matches, collision and connection lifecycle. See the account guide for local/mock/live-cloud test boundaries. Test-only fixtures never supply gameplay hit results.
 
 Browser tests start both services if needed. Install Chromium with `npx.cmd playwright install chromium`, or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to an installed browser. Restart an older running backend after updating code.
 
@@ -98,9 +98,9 @@ All visual assets are procedural geometry and system fonts. Accounts use the pin
 
 ## Known limits
 
-- Online poses use smoothed server snapshots and 100 ms remote interpolation. There is no movement prediction or hit rewind yet; latency can affect aiming at moving players.
-- Hands-on balancing and integrated-GPU performance testing remain. The production engine/WASM bundle retains its large-chunk warning; Low render quality reduces GPU work.
-- Multiplayer offers private Best of Three and Free Play. Cloud accounts, persistent history and Elo require a configured Supabase project. Public matchmaking, arena-session recovery across page reloads and public hosting remain future work. Audio has distance/direction but no wall muffling or background music.
+- Local online movement uses prediction and server reconciliation; opponents retain 100 ms interpolation. Hit rewind remains future work, so latency can affect aiming at moving players.
+- Static scenery avoids combat clock updates, paused training renders on demand, and engine downloads have separate cached chunks. The initial app chunk is about 299 KB raw / 95 KB gzip; large physics/Three.js chunks and target-laptop profiling remain. See [network and performance](docs/NETWORK_AND_PERFORMANCE.md).
+- Refresh restores the same reserved seat within 15 seconds. Server restarts discard rooms. Public hosting is prepared with a combined game/server Dockerfile; deployment awaits a connected host. See [deployment](docs/DEPLOYMENT.md). Public matchmaking remains future work. Audio has distance/direction but no wall muffling or background music.
 - The existing four moderate development-only ESLint/minimatch advisories remain; they are unrelated to account gameplay.
 
 See the [design](docs/GAME_DESIGN.md) and [roadmap](docs/DEVELOPMENT_ROADMAP.md).

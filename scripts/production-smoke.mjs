@@ -1,0 +1,50 @@
+import assert from 'node:assert/strict'
+import { createRequire } from 'node:module'
+
+const clientRequire = createRequire(new URL('../client/package.json',import.meta.url))
+const serverRequire = createRequire(new URL('../server/package.json',import.meta.url))
+const { chromium,expect } = clientRequire('@playwright/test')
+const { Client } = serverRequire('@colyseus/sdk')
+const endpoint = process.argv[2] || 'http://127.0.0.1:2568'
+assert.equal((await (await fetch(`${endpoint}/health`)).json()).status,'ok')
+const browser = await chromium.launch({ executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined,args:['--enable-unsafe-swiftshader'] })
+let peer
+try {
+  const page = await browser.newPage({ viewport:{ width:1280,height:800 } }), errors = []
+  page.on('pageerror',error => { errors.push(error.message); console.error('Browser error:',error.message) })
+  page.on('requestfailed',request => console.error('Request failed:',new URL(request.url()).pathname,request.failure()?.errorText))
+  await page.goto(endpoint)
+  await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
+  await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
+  await page.waitForFunction(() => Boolean(document.pointerLockElement))
+  await page.keyboard.down('KeyW'); await page.waitForTimeout(300); await page.keyboard.up('KeyW')
+  await page.evaluate(() => document.exitPointerLock())
+  await page.getByRole('button',{ name:'RETURN TO MAIN MENU',exact:true }).click()
+  await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
+  await page.getByLabel('YOUR CALLSIGN').fill('Production Pilot')
+  await page.getByRole('button',{ name:'CREATE PRIVATE ROOM' }).click()
+  await expect(page.getByTestId('invite-code')).toHaveText(/^[A-HJ-NP-Z2-9]{6}$/)
+  peer = await new Client(endpoint).joinById(await page.getByTestId('invite-code').textContent(),{ name:'Production Peer' })
+  await page.getByLabel('Match format').selectOption('freeplay')
+  peer.send('ready',{ ready:true })
+  await page.getByRole('button',{ name:'READY UP',exact:true }).click()
+  await page.getByRole('button',{ name:'START SHARED ARENA' }).click()
+  await page.getByRole('button',{ name:'ENTER ARENA',exact:true }).click()
+  await page.waitForFunction(() => Boolean(document.pointerLockElement))
+  await page.mouse.click(640,400)
+  await expect(page.getByTestId('online-ammo')).toHaveText('11 / 12')
+  await page.reload()
+  await expect(page.getByTestId('online-ammo')).toHaveText('11 / 12')
+  await page.getByRole('button',{ name:'ENTER ARENA',exact:true }).click()
+  await page.waitForFunction(() => Boolean(document.pointerLockElement))
+  await page.mouse.click(640,400)
+  await expect(page.getByTestId('online-ammo')).toHaveText('10 / 12')
+  assert.deepEqual(errors,[])
+  const script = await page.locator('script[type="module"]').getAttribute('src')
+  const asset = await fetch(new URL(script,endpoint),{ headers:{ 'accept-encoding':'br' } })
+  assert.equal(asset.headers.get('content-encoding'),'br')
+  console.log('Production smoke passed: compiled engine/training, same-origin HTTP/WebSocket arena, refresh recovery and Brotli assets.')
+} finally {
+  if (peer) await peer.leave().catch(() => {})
+  await browser.close()
+}

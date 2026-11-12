@@ -3,20 +3,22 @@ import { canPlayArena } from '../../../shared/match.js'
 import { ONLINE } from '../../../shared/arena.js'
 import { clearPoses, recordPoses, latestPose } from './poses.js'
 import { accounts } from '../accounts/store.js'
+import { readRecovery, saveRecovery, clearRecovery } from './recovery.js'
 
-const empty = { status:'idle',room:null,sessionId:'',error:'',notice:'',captured:false,captureError:'' }
+const empty = { status:'idle',room:null,sessionId:'',error:'',notice:'',captured:false,captureError:'',arenaReady:false }
 let snapshot = empty
 let activeRoom = null
 let attempt = 0
 let timeoutId
 let sequence = 0
 let combatSequence = 0
+let lastTicketWrite = 0
 const listeners = new Set()
 function update(patch) { snapshot = { ...snapshot,...patch }; listeners.forEach(listener => listener()) }
 function endpoint() {
   if (import.meta.env.VITE_MULTIPLAYER_URL) return import.meta.env.VITE_MULTIPLAYER_URL
   const url = new URL(location.origin)
-  url.port = '2567'
+  if (import.meta.env.DEV) url.port = '2567'
   return url.origin
 }
 function connectionError(error) {
@@ -28,6 +30,12 @@ function connectionError(error) {
 function sync(room) {
   if (activeRoom !== room || !room.state?.players) return
   const state = room.state
+  const self = state.players.get(room.sessionId)
+  if (self) {
+    sequence = Math.max(sequence,self.inputSequence+1)
+    combatSequence = Math.max(combatSequence,self.combatSequence+1)
+  }
+  if (performance.now()-lastTicketWrite>5000) { saveRecovery(endpoint(),room.reconnectionToken); lastTicketWrite = performance.now() }
   recordPoses(state)
   const metadata = { mapId:state.mapId,ranked:state.ranked,saveStatus:state.saveStatus,resultRanked:state.resultRanked }
   const next = { format:state.format,matchPhase:state.matchPhase,roundNumber:state.roundNumber,roundId:state.roundId,roundRemaining:state.roundRemaining,phaseRemaining:state.phaseRemaining,roundWinnerId:state.roundWinnerId,winnerId:state.winnerId,matchReason:state.matchReason,roundResults:[...state.roundResults].map(r => ({ number:r.number,winnerId:r.winnerId,reason:r.reason })),results:[...state.results].map(r => ({ id:r.id,name:r.name,slot:r.slot,roundWins:r.roundWins,kills:r.kills,deaths:r.deaths })),code:state.code,hostId:state.hostId,phase:state.phase,arenaActive:state.arenaActive,arenaEpoch:state.arenaEpoch,countdown:state.countdown,note:state.note,time:state.tick/ONLINE.tickRate,
@@ -43,9 +51,71 @@ function sync(room) {
   if (JSON.stringify(next) !== JSON.stringify(snapshot.room)) update({ room:next })
 }
 
+function attach(room,notice = '') {
+  activeRoom = room
+  sequence = 0; combatSequence = 0
+  Object.assign(room.reconnection,{ minUptime:0,maxRetries:10,minDelay:250,maxDelay:2000,maxEnqueuedMessages:0 })
+  saveRecovery(endpoint(),room.reconnectionToken)
+  room.onStateChange(() => sync(room))
+  room.onDrop(() => { if (activeRoom===room) update({ status:'reconnecting',captured:false,notice:'Connection interrupted. Reconnecting…' }) })
+  room.onReconnect(() => {
+    if (activeRoom!==room) return
+    saveRecovery(endpoint(),room.reconnectionToken)
+    update({ status:'connected',notice:'Connection restored. Select Enter Arena to resume.' })
+    sync(room)
+  })
+  room.onError(() => { if (activeRoom===room) update({ notice:'The connection encountered a problem. Reconnecting if needed.' }) })
+  room.onLeave(() => {
+    if (activeRoom!==room) return
+    activeRoom = null
+    clearRecovery(); clearPoses(); document.exitPointerLock?.()
+    update({ ...empty,status:'error',error:'You were disconnected from the room. Create or join a room to try again.' })
+  })
+  update({ status:'connected',sessionId:room.sessionId,error:'',notice })
+  sync(room)
+}
+
+// A reload is an unexpected disconnect; an explicit Leave still forfeits.
+window.addEventListener('pagehide',() => {
+  if (!activeRoom) return
+  const room = activeRoom
+  saveRecovery(endpoint(),room.reconnectionToken)
+  activeRoom = null
+  room.reconnection.maxRetries = 0
+  void room.leave(false)
+})
+window.addEventListener('pageshow',event => {
+  if (!event.persisted || activeRoom) return
+  update({ ...empty,status:'idle' })
+  void lobby.restore()
+})
+
 export const lobby = {
   get: () => snapshot,
   subscribe:fn => { listeners.add(fn); return () => listeners.delete(fn) },
+  hasRecovery:() => Boolean(readRecovery(endpoint())),
+  async restore() {
+    if (snapshot.status!=='idle') return
+    const saved = readRecovery(endpoint())
+    if (!saved) return
+    const operationId = ++attempt
+    update({ ...empty,status:'connecting',notice:'Restoring your reserved seat…' })
+    let timer
+    try {
+      const { Client } = await import('@colyseus/sdk')
+      if (operationId!==attempt) return
+      const request = new Client(endpoint()).reconnect(saved.token)
+      request.then(room => { if (operationId!==attempt) void room.leave() }).catch(() => {})
+      const room = await Promise.race([request,new Promise((_,reject) => { timer = setTimeout(() => reject(new Error('Recovery timed out')),10000); timeoutId = timer })])
+      clearTimeout(timer)
+      if (operationId===attempt) attach(room,'Your seat was restored. Select Enter Arena when ready.')
+    } catch {
+      clearTimeout(timer)
+      if (operationId!==attempt) return
+      attempt++; clearRecovery()
+      update({ ...empty,status:'error',error:'Your reserved seat expired or the server restarted. Create or join a room to play again.' })
+    }
+  },
   async connect(kind, name, code = '') {
     if (['connecting','connected','reconnecting'].includes(snapshot.status)) return
     const callsign = name.trim().replace(/\s+/g,' ')
@@ -75,23 +145,7 @@ export const lobby = {
       })])
       clearTimeout(timer)
       if (operationId !== attempt) return
-      activeRoom = room
-      sequence = 0
-      combatSequence = 0
-      Object.assign(room.reconnection,{ minUptime:0,maxRetries:10,minDelay:250,maxDelay:2000,maxEnqueuedMessages:0 })
-      room.onStateChange(() => sync(room))
-      room.onDrop(() => { if (activeRoom === room) update({ status:'reconnecting',notice:'Connection interrupted. Reconnecting…' }) })
-      room.onReconnect(() => { if (activeRoom === room) { update({ status:'connected',notice:'Connection restored. Ready up again when both players are here.' }); sync(room) } })
-      room.onError(() => { if (activeRoom === room) update({ notice:'The connection encountered a problem. If it drops, we’ll try to reconnect.' }) })
-      room.onLeave(() => {
-        if (activeRoom !== room) return
-        activeRoom = null
-        clearPoses()
-        document.exitPointerLock?.()
-        update({ ...empty,status:'error',error:'You were disconnected from the room. Create or join a room to try again.' })
-      })
-      update({ status:'connected',sessionId:room.sessionId,error:'',notice:'' })
-      sync(room)
+      attach(room)
       try { localStorage.setItem('duel-callsign',callsign) } catch { /* Storage may be disabled. */ }
     } catch (error) {
       clearTimeout(timer)
@@ -122,6 +176,7 @@ export const lobby = {
   },
   self() { return snapshot.room?.players.find(player => player.id===snapshot.sessionId)?.combat },
   setCaptured(captured) { update({ captured,captureError:'' }) },
+  setArenaReady(arenaReady) { if (snapshot.arenaReady!==arenaReady) update({ arenaReady }) },
   async capture() {
     try {
       const canvas = document.querySelector('canvas')
@@ -131,6 +186,7 @@ export const lobby = {
   },
   leave() {
     attempt++
+    clearRecovery()
     clearTimeout(timeoutId)
     const room = activeRoom
     activeRoom = null

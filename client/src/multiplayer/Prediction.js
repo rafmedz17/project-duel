@@ -1,4 +1,3 @@
-import { ONLINE } from '../../../shared/arena.js'
 import { getMap } from '../../../shared/maps.js'
 import { createMovementWorld, createCharacter, stepCharacter } from '../../../shared/movement.js'
 
@@ -49,7 +48,9 @@ export class Prediction {
     this.restore(pose)
     const start = this.commands.get(pose.inputSequence)
     // Acknowledgements describe simulated ticks, never merely received packets.
-    const replay = start===undefined ? [] : this.frames.filter(frame => frame.index>=start+pose.inputSteps)
+    const replay = start===undefined
+      ? pose.inputSequence<(this.commands.keys().next().value ?? -1) ? this.frames : []
+      : this.frames.filter(frame => frame.index>=start+pose.inputSteps)
     this.frames = replay.slice(-60)
     for (const frame of this.frames) this.simulate(frame.input,frame.jump)
     this.pose = pose

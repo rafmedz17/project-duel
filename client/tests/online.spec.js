@@ -314,17 +314,25 @@ test('online shield absorbs weapon hits; EMP removes shield, damages and jams ab
     expect((await observedFeedback(host)).damage).toBe(0)
     await host.keyboard.press('KeyV')
     await expect.poll(async () => (await selfCombat(guest)).hp).toBe(60)
-    expect((await selfCombat(guest)).shieldCharge).toBe(0)
-    expect((await selfCombat(guest)).abilities.scanner.activeUntil).toBe(0)
-    expect((await selfCombat(host)).hitDamage).toBe(40)
+    const victim = await selfCombat(guest), attacker = await selfCombat(host)
+    expect(victim.shieldCharge).toBe(0)
+    expect(victim.abilities.scanner.activeUntil).toBe(0)
+    expect(attacker.hitDamage).toBe(40)
     await host.keyboard.press('KeyV')
-    expect((await selfCombat(host)).abilities.emp.uses).toBe(1)
     await host.evaluate(() => document.exitPointerLock()); await enter(guest)
     await expect(guest.getByTestId('ability-dash')).toContainText('JAMMED')
-    await expect(guest.getByTestId('online-scan-opponent')).toHaveCSS('opacity','0')
-    const before = (await selfCombat(guest)).abilities
-    for (const key of ['KeyE','KeyF','KeyC','KeyV']) await guest.keyboard.press(key)
+    const before = victim.abilities
+    // Send the rejected controls in one browser task while the short jam is
+    // active; separate automation round trips can outlast it on a slow GPU.
+    await guest.evaluate(() => {
+      for (const code of ['KeyE','KeyF','KeyC','KeyV']) {
+        document.dispatchEvent(new KeyboardEvent('keydown',{ code,bubbles:true }))
+        document.dispatchEvent(new KeyboardEvent('keyup',{ code,bubbles:true }))
+      }
+    })
     for (const id of Object.keys(before)) expect((await selfCombat(guest)).abilities[id].uses).toBe(before[id].uses)
+    expect((await selfCombat(host)).abilities.emp.uses).toBe(1)
+    await expect(guest.getByTestId('online-scan-opponent')).toHaveCSS('opacity','0')
     await guest.screenshot({ path:'online-emp-preview.png' })
     await expect(guest.getByTestId('ability-dash')).toContainText('READY',{ timeout:7000 })
     await guest.keyboard.press('KeyE')

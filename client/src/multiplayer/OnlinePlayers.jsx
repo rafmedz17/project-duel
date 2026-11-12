@@ -92,7 +92,11 @@ function LocalCamera({ id }) {
     document.addEventListener('pointerlockchange',lock); document.addEventListener('pointerlockerror',error)
     window.addEventListener('blur',blur); document.addEventListener('visibilitychange',visibility)
     const interval = setInterval(send,1000/ONLINE.inputRate)
+    const pose = latestPose(id)
+    if (pose && !look.current) look.current = { yaw:pose.yaw,pitch:pose.pitch }
+    lobby.setArenaReady(true)
     return () => {
+      lobby.setArenaReady(false)
       clearInterval(interval); clear()
       document.removeEventListener('mousedown',fire); document.removeEventListener('mouseup',release)
       document.removeEventListener('keydown',down); document.removeEventListener('keyup',up); document.removeEventListener('mousemove',move)
@@ -130,7 +134,7 @@ function LocalCamera({ id }) {
       }
     }
     const engine = prediction.current
-    const predicting = !dead && document.pointerLockElement===gl.domElement && lobby.get().status==='connected' && canPlayArena(lobby.get().room)
+    const predicting = !dead && performance.now()-pose.time<ONLINE.inputTimeoutMs+100 && document.pointerLockElement===gl.domElement && lobby.get().status==='connected' && canPlayArena(lobby.get().room)
     if (engine) {
       if (reset || !predicting) {
         engine.reset(pose); accumulator.current = 0; correction.current = [0,0,0]

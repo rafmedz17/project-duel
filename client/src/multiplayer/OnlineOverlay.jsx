@@ -43,7 +43,8 @@ export default function OnlineOverlay({ onLeave }) {
       <h2 id="online-title">{interrupted ? 'CONNECTION INTERRUPTED' : 'SHARED ARENA'}</h2>
       <p>{interrupted ? 'Combat and movement are paused while the connection recovers.' : duel ? 'First to two round wins. Each elimination ends the round. Fresh spawns and loadouts follow the countdown. Higher health wins at the 90-second limit; equal health replays the round.' : 'Capture your mouse to move, aim and fire. Headshots deal double damage; foot hits deal half. Eliminated players respawn after three seconds.'}</p>
       {s.captureError && <p className="error" role="alert">{s.captureError}</p>}
-      {!finished && <button className="primary" disabled={interrupted || !live} onClick={() => lobby.capture()}>ENTER ARENA</button>}
+      {!finished && <button className="primary" disabled={interrupted || !live || !s.arenaReady} onClick={() => lobby.capture()}>ENTER ARENA</button>}
+      {!s.arenaReady && <p role="status">Loading arena controls…</p>}
       <button disabled={s.status!=='connected'} onClick={() => duel && !finished ? lobby.forfeit() : lobby.backToLobby()}>{duel && !finished ? 'FORFEIT MATCH' : 'RETURN TO LOBBY'}</button>
       <button onClick={onLeave}>LEAVE ROOM</button>
       <p className="muted">E Dash · F Shield · C Scanner · V EMP · {duel ? 'Forfeiting awards the match to your opponent.' : 'Free Play · Unlimited practice.'}</p>

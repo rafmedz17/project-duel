@@ -45,9 +45,9 @@ This is private-room ranking, without public matchmaking, seasonal ranks or comp
 
 ## Verification
 
-`npm.cmd run test:server` runs 54 cases, including actual PostgreSQL grants/RLS/result transactions, token verification behavior, durable retries, new map physics, loadout enforcement and real WebSocket rooms. PostgreSQL tests bootstrap Auth roles and UID claims locally; they do not replace a live Supabase Auth test.
+`npm.cmd run test:server` runs 59 cases, including actual PostgreSQL grants/RLS/result transactions, token verification, durable retries, map physics, loadout enforcement, movement prediction and production HTTP/WebSocket serving. PostgreSQL tests bootstrap Auth roles and UID claims locally; they do not replace a live Supabase Auth test.
 
-The 26 browser scenarios include account forms, confirmation/errors/recovery, restored sessions, cross-browser loadout restoration, history/leaderboard, guest equipment and both new maps. Account HTTP responses in those tests are fixtures on a separate Vite instance at port 5174, keeping real credentials out of those tests. Normal gameplay tests use fresh guest contexts on port 5173 and do not write cloud stats. The hosted smoke check in step 5 is required after connecting a new project.
+The 34 browser scenarios include account forms, confirmation/errors/recovery, restored sessions, cross-browser loadouts, history/leaderboard, guest equipment, audio, maps, arena refresh recovery and paused rendering. Account HTTP responses use fixtures on a separate Vite instance at port 5174. Normal gameplay tests use fresh guest contexts on port 5173 and do not write cloud stats. The hosted smoke check in step 5 is required after connecting a new project.
 
 The opt-in live check can also be repeated from `server` while the frontend and backend are running:
 

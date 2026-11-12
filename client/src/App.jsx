@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import World from './game/World.jsx'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { game, useGame } from './game/store.js'
 import Hud from './game/hud/Hud.jsx'
 import Lobby from './multiplayer/Lobby.jsx'
@@ -10,6 +9,8 @@ import { accounts, useAccount } from './accounts/store.js'
 import { useGameAudio } from './audio/useGameAudio.js'
 import { audio } from './audio/synth.js'
 import './App.css'
+
+const World = lazy(() => import('./game/World.jsx'))
 
 const controls = [['W A S D','Move'],['MOUSE','Look around'],['LEFT CLICK','Fire / swing equipped weapon'],['HOLD LEFT CLICK','Automatic rifle fire'],['1 / 2 / 3 / 4','Pistol / Blade / Rifle / Shotgun'],['Q','Cycle weapons'],['E','Dash toward movement / aim'],['F','Energy Shield'],['C','Scan for training targets'],['V','EMP blast'],['SPACE','Jump'],['SHIFT','Sprint'],['R','Reload equipped firearm'],['ESC','Pause / release mouse']]
 function Settings() {
@@ -30,10 +31,11 @@ export default function App() {
   useGameAudio()
   const mode = useGame(s => s.mode), ready = useGame(s => s.ready), error = useGame(s => s.error)
   const s = { mode, ready, error, time:game.get().time }
-  const [panel,setPanel] = useState(null)
+  const [panel,setPanel] = useState(() => lobby.hasRecovery() ? 'multiplayer' : null)
   const recovery = useAccount(s => s.recovery)
   const accountLoading = useAccount(s => s.loading)
   useEffect(() => { void accounts.init() },[])
+  useEffect(() => { void lobby.restore() },[])
   const multiplayerButton = useRef(null)
   const online = useLobby(s => Boolean(s.room?.arenaActive))
   const arenaEpoch = useLobby(s => s.room?.arenaEpoch || 0)
@@ -46,7 +48,7 @@ export default function App() {
   }
   const menu = () => { document.exitPointerLock(); game.set({ mode:'menu', ready:false }); setPanel(null) }
   return <main>
-    <World online={online} arenaEpoch={arenaEpoch} />
+    <Suspense fallback={<div className="engine-loading" role="status">LOADING COMBAT SYSTEMS…</div>}><World online={online} arenaEpoch={arenaEpoch} /></Suspense>
     {online ? <OnlineOverlay onLeave={() => { void lobby.leave(); setPanel(null) }} /> : <>
     {s.mode !== 'menu' && <Hud />}
     {s.mode === 'menu' ? <div className="menu-shell">

@@ -19,7 +19,7 @@ The host chooses Best of Three or Free Play. Training targets and hazard pads ar
 
 ## Connection behavior
 
-A socket drop freezes the shared simulation and displays **Connection Interrupted**. Movement, reloads, ability/cooldown durations, and respawn clocks stop. Both clients clear held inputs. Reconnection within 15 seconds preserves the current arena; recapture the mouse to continue. Permanent departure/expiration awards a forfeit in Best of Three, preserving both scoreboard rows on the results screen; Free Play returns the remaining player to the lobby. Page reload does not restore a session yet.
+A socket drop freezes the shared simulation and displays **Connection Interrupted**. Movement, reloads, ability/cooldown durations, and respawn clocks stop. Both clients clear held inputs. Reconnection within 15 seconds preserves the current arena; recapture the mouse to continue. Page refresh restores that reserved seat using a per-tab session token, preserving combat and scores. Explicit Leave clears recovery. Expired seats show a lobby error; server restarts discard rooms. Permanent departure/expiration awards a forfeit in Best of Three, preserving both scoreboard rows on the results screen; Free Play returns the remaining player to the lobby.
 
 Releasing only your own mouse stops your controls without pausing the shared world. A 250 ms movement deadman clears stale held movement/jumps. Fire uses individual intents rather than a persistent server-side trigger, so a stopped stream cannot keep firing.
 
@@ -36,9 +36,9 @@ Releasing only your own mouse stops your controls without pausing the shared wor
 
 ## Rendering and limits
 
-Server patches arrive at 20 Hz. Local camera look responds immediately; position smoothly approaches the authoritative pose. Other players interpolate across a 100 ms history. Position histories stay outside React, while the combat HUD receives server snapshots. First-person models and shared hit/reload feedback use those snapshots and do not edit the offline store. Released arena views render on invalidation to reduce background GPU work.
+Server patches arrive at 20 Hz. Local look and movement respond immediately. The client predicts capsule movement at 60 Hz using the shared server controller, then restores acknowledged state and replays pending steps. Small corrections smooth out; large corrections snap. Other players interpolate across a 100 ms history. Position histories stay outside React, while the combat HUD receives authoritative snapshots. Released arena views render on invalidation. See [movement/recovery/performance details](NETWORK_AND_PERFORMANCE.md).
 
-There is no movement prediction or lag compensation/hit rewind yet. The server tests opponents at their current authoritative pose, so high latency and remote interpolation can affect shots against moving players. Hands-on balancing and laptop performance checks remain. [Combat audio](AUDIO_SYSTEM.md) follows confirmed state, with spatial opponent sounds. [Accounts and persistent results](ACCOUNTS_AND_RANKINGS.md) are optional through Supabase.
+There is no lag compensation/hit rewind yet. The server tests opponents at their current authoritative pose, so high latency and remote interpolation can affect shots against moving players. Hands-on balancing and laptop performance checks remain. [Combat audio](AUDIO_SYSTEM.md) follows confirmed state, with spatial opponent sounds. [Accounts and persistent results](ACCOUNTS_AND_RANKINGS.md) are optional through Supabase.
 
 ## Verification
 
