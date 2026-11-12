@@ -1,0 +1,37 @@
+.online-hud { position:absolute; inset:0; pointer-events:none; background:linear-gradient(0deg,#080e1caa,transparent 18%,transparent 80%,#080e1caa); }
+.online-hud.damage { box-shadow:inset 0 0 110px #ff3e5470; }
+.online-hud .ability-bar { bottom:95px; }
+.ability.jammed { color:#d1a6ff; border-color:#8d63bc; }
+.online-jam { color:#d1a6ff; }
+.match-strip { position:absolute; top:95px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:22px; pointer-events:none; text-align:center; background:#0c1829df; border:1px solid #34506a; padding:10px 22px; }
+.match-strip>strong { font:600 30px Consolas,monospace; color:#76e9ff; }
+.match-strip>strong:last-child { color:#ffbb6f; }
+.match-strip span { display:block; font:11px Consolas,monospace; letter-spacing:2px; }
+.match-strip small { display:block; margin-top:6px; color:#9ab2ca; font:9px Consolas,monospace; }
+.match-live-scoreboard { position:absolute; top:177px; left:3vw; width:285px; pointer-events:none; }
+.match-scoreboard { width:100%; border-collapse:collapse; font:11px Consolas,monospace; background:#0b1728e8; margin:12px 0 20px; }
+.match-scoreboard th,.match-scoreboard td { padding:10px 12px; border-bottom:1px solid #304458; text-align:right; }
+.match-scoreboard th { color:#8ca4bd; font-size:9px; }
+.match-scoreboard th:first-child,.match-scoreboard td:first-child { text-align:left; }
+.match-scoreboard .self { color:#9deeff; }
+.match-scoreboard small { font-size:8px; color:#8ca4bd; }
+.round-banner { position:absolute; left:50%; top:35%; transform:translateX(-50%); text-align:center; padding:20px 35px; background:#0c1829ed; border:1px solid #627897; pointer-events:none; }
+.round-banner strong { display:block; margin:12px 0; font-size:30px; letter-spacing:3px; color:#ffbb8c; }
+.round-banner.won strong { color:#8ceaff; }
+.round-banner>span:not(.eyebrow),.round-banner>small { display:block; font:10px Consolas,monospace; color:#a4bdd5; margin-top:10px; }
+.match-results .dialog { width:min(520px,90vw); }
+.online-vitals { position:absolute; bottom:65px; left:3vw; right:3vw; display:flex; justify-content:space-between; align-items:end; gap:20px; }
+.online-respawn { position:absolute; top:38%; left:50%; transform:translate(-50%,-50%); text-align:center; color:#ffb59b; }
+.online-respawn strong { display:block; font-size:24px; letter-spacing:4px; }
+.online-respawn span { display:block; margin-top:14px; font:12px Consolas,monospace; }
+.online-top { display:flex; justify-content:space-between; align-items:start; gap:16px; padding:28px 3vw; }
+.online-top>strong { text-align:center; font-size:14px; letter-spacing:3px; }
+.online-top strong small { display:block; color:#92a8c4; font:9px Consolas,monospace; letter-spacing:2px; margin-top:8px; }
+.online-link { color:#8de8c3; font:10px Consolas,monospace; }
+.online-names { position:absolute; top:105px; left:3vw; right:3vw; display:flex; justify-content:space-between; gap:15px; }
+.online-names>span { padding:9px 12px; border-left:2px solid #76e9ff; background:#102034c9; font-size:13px; }
+.online-names>span:last-child { border-color:#ffbb6f; }
+.online-names small { display:block; margin-top:5px; font:8px Consolas,monospace; color:#8ba8c2; letter-spacing:1.4px; }
+.online-aim { position:absolute; top:50%; left:50%; width:4px; height:4px; transform:translate(-50%,-50%); border-radius:50%; background:#e4faff; box-shadow:0 0 4px #06101f; }
+.online-bottom { position:absolute; bottom:28px; left:3vw; right:3vw; display:flex; justify-content:space-between; gap:20px; color:#8faac2; font:9px Consolas,monospace; letter-spacing:1px; }
+@media(max-width:850px) { .online-top { flex-wrap:wrap; } .online-top>strong { font-size:11px; } .online-link { font-size:8px; } .online-bottom { font-size:8px; } }

@@ -1,0 +1,23 @@
+{
+  "name": "project-duel-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "dependencies": {
+    "@colyseus/core": "0.18.28",
+    "@colyseus/schema": "^5.0.8",
+    "@colyseus/ws-transport": "0.18.5",
+    "@dimforge/rapier3d-compat": "^0.19.2"
+  },
+  "devDependencies": {
+    "@colyseus/sdk": "0.18.10"
+  }
+}

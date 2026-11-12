@@ -1,0 +1,11 @@
+﻿# Development roadmap
+
+1. **Playable training prototype — implemented:** procedural facility, Rapier movement, resettable targets, health/hazards, scoring, HUD, menus, pause and saved settings.
+2. **Enhanced combat — implemented:** pistol, blade, rifle, shotgun, independent magazines, recoil/reload/melee/equip animations, auto reload, hit feedback, Dash, Shield, Scanner and EMP. The drone/Sparring entry has now been removed; practice uses multiplayer-shaped robot targets with head/body/limb/foot damage. Hands-on balancing and target-laptop performance testing remain.
+3. **Private 1v1 multiplayer — core gameplay implemented:** private rooms, invite codes, ready/countdown, opposite spawns, server-owned movement/collision, remote interpolation, all four weapons, validated regional hits/cover/range, cooldown/ammo/reload enforcement, confirmed HUD feedback, kills/deaths, three-second respawns, reconnect freezing and arena disposal/re-entry. All four online abilities now have server validation, cooldowns, collision-safe dash, shield absorption, scanner reveal, EMP disruption and synchronized effects. Best-of-three matches now include host-selected format, first-to-two wins, timed rounds/draw replay, intermission/countdowns, fresh round loadouts, scoreboard, forfeit handling, results and rematches. Free Play remains selectable. See [lobby setup](PRIVATE_LOBBIES.md) and [online combat](ONLINE_ARENA.md).
+4. **Accounts/loadouts:** Supabase Auth/PostgreSQL, profiles, equipment/statistics and Row Level Security. Keep privileged credentials on the server.
+5. **Maps:** Neon District, Orbital Station, tactical routes, selection and optional hazards.
+6. **Competitive features:** verified results, history, wins/losses, rating, leaderboards, abuse safeguards and casual/rated games.
+7. **Deployment:** persistent multiplayer hosting, HTTPS/WSS, configuration, security and measured performance. Persistent servers may require paid hosting.
+
+Next milestone: player profiles, accounts and loadouts, with persistent storage and authentication when configured. Movement prediction and hit rewind can improve latency while preserving server authority. Local robot training stays available without a backend. Page-reload session recovery, audio, hands-on balancing and laptop profiling remain outstanding.

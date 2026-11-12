@@ -1,0 +1,16 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:client": "npm --prefix client run dev",
+    "dev:server": "npm --prefix server run dev",
+    "test:server": "npm --prefix server test",
+    "lint:server": "node client/node_modules/eslint/bin/eslint.js --config client/eslint.config.js server shared"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
+    "@react-three/rapier": "^2.2.0",
+    "three": "^0.187.0"
+  }
+}
