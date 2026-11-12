@@ -4,8 +4,9 @@ import { ArenaCombat } from './ArenaCombat.js'
 import { RoundResult, MatchResultPlayer } from '../rooms/LobbyState.js'
 
 export class DuelMatch {
-  constructor(state,simulation) {
+  constructor(state,simulation,onFinish = () => {}) {
     this.state = state; this.simulation = simulation
+    this.onFinish = onFinish
     this.combat = new ArenaCombat(state.players,simulation,state.arenaEpoch,{ respawn:false,round:1 })
     this.roundTicks = MATCH.roundSeconds*ONLINE.tickRate
     this.phaseTicks = 0
@@ -66,6 +67,7 @@ export class DuelMatch {
       s.results.push(result)
       player.ready = false
     }
+    this.onFinish()
     return true
   }
   forfeit(id) {

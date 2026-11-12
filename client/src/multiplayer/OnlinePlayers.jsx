@@ -46,7 +46,10 @@ function LocalCamera({ id }) {
         if (event.repeat) return
         held.current = false
         if (event.code==='KeyR') lobby.combat('reload')
-        else lobby.combat('switch',{ weapon:weapon || WEAPON_IDS[(WEAPON_IDS.indexOf(lobby.self().weapon)+1)%WEAPON_IDS.length] })
+        else {
+          const equipped = lobby.self().loadout.weapons
+          lobby.combat('switch',{ weapon:weapon || equipped[(equipped.indexOf(lobby.self().weapon)+1)%equipped.length] })
+        }
         return
       }
       if (!['KeyW','KeyA','KeyS','KeyD','Space','ShiftLeft','ShiftRight'].includes(event.code)) return

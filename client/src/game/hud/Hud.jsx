@@ -26,7 +26,7 @@ export default function Hud() {
       <span className="hint">1–4 SELECT · Q CYCLE · R RELOAD · ESC PAUSE</span>
       <div className={`ammo ${melee ? 'blade-status' : s.weapon === 'rifle' ? 'rifle-status' : s.weapon === 'shotgun' ? 'shotgun-status' : ''}`}>
         <div className="weapon-slots" aria-label="Weapon selection">
-          {Object.entries(WEAPONS).map(([id,item]) => <span key={id} className={s.weapon === id ? 'selected' : ''}>{item.slot} {item.shortName}</span>)}
+          {Object.entries(WEAPONS).map(([id,item]) => <span key={id} className={!s.loadout.weapons.includes(id) ? 'unequipped' : s.weapon === id ? 'selected' : ''}>{item.slot} {item.shortName}</span>)}
         </div>
         <span className="eyebrow">{weapon.slot} / {weapon.name}</span>
         {melee ? <><strong>{status}</strong><div className="blade-cooldown"><i style={{ width:`${Math.max(0,1-remaining/BLADE.cooldown)*100}%` }} /></div><span>{BLADE.range} M REACH · {BLADE.damage} DAMAGE · NO AMMO</span></> : <><strong>{String(ammo).padStart(2,'0')}<small> / {weapon.magazine}</small></strong><span>{equipping ? 'EQUIPPING…' : s.reloading ? 'RELOADING ENERGY CELL…' : ammo === 0 ? 'AUTO RELOAD PENDING…' : weapon.fireMode === 'auto' ? 'FULL AUTO · HOLD LEFT CLICK' : 'SEMI AUTO · UNLIMITED RESERVE'}</span></>}

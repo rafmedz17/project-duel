@@ -27,7 +27,7 @@ export function useCombatInput(camera, canvas, scene, look) {
       event.preventDefault()
       heldWeapon.current = null
       if (event.code === 'KeyR') game.reload()
-      else game.switchWeapon(selection || WEAPON_IDS[(WEAPON_IDS.indexOf(game.get().weapon)+1)%WEAPON_IDS.length])
+      else game.switchWeapon(selection || game.get().loadout.weapons[(game.get().loadout.weapons.indexOf(game.get().weapon)+1)%game.get().loadout.weapons.length])
     }
     const shoot = () => {
       if (!active() || !game.canAttack()) return

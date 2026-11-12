@@ -6,6 +6,7 @@ export const AbilityState = schema({
 },'AbilityState')
 
 export const LobbyPlayer = schema({
+  authenticated:t.boolean().default(false),startingWeapon:t.string().default(''),allowedWeapons:t.array('string'),allowedAbilities:t.array('string'),
   roundWins:t.number().default(0),
   abilities:t.map(AbilityState),disabledUntil:t.number(),shieldCharge:t.number(),shieldHit:t.number().default(-10),hitShieldDamage:t.number(),
   hp:t.number().default(100),weapon:t.string().default('pistol'),
@@ -26,6 +27,7 @@ export const RoundResult = schema({ number:t.number(),winnerId:t.string(),reason
 export const MatchResultPlayer = schema({ id:t.string(),name:t.string(),slot:t.number(),roundWins:t.number(),kills:t.number(),deaths:t.number() },'MatchResultPlayer')
 
 export const LobbyState = schema({
+  mapId:t.string().default('facility'),ranked:t.boolean().default(false),saveStatus:t.string().default(''),resultRanked:t.boolean().default(false),
   format:t.string().default('duel'),matchPhase:t.string().default('idle'),
   roundNumber:t.number().default(0),roundId:t.number().default(0),roundRemaining:t.number().default(0),phaseRemaining:t.number().default(0),
   roundWinnerId:t.string().default(''),winnerId:t.string().default(''),matchReason:t.string().default(''),

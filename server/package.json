@@ -15,9 +15,11 @@
     "@colyseus/core": "0.18.28",
     "@colyseus/schema": "^5.0.8",
     "@colyseus/ws-transport": "0.18.5",
-    "@dimforge/rapier3d-compat": "^0.19.2"
+    "@dimforge/rapier3d-compat": "^0.19.2",
+    "@supabase/supabase-js": "2.119.0"
   },
   "devDependencies": {
-    "@colyseus/sdk": "0.18.10"
+    "@colyseus/sdk": "0.18.10",
+    "@electric-sql/pglite": "0.5.16"
   }
 }

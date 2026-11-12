@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { FORMATS } from '../../../shared/match.js'
+import { MAPS } from '../../../shared/maps.js'
+import { useAccount } from '../accounts/store.js'
 import { lobby, useLobby } from './lobby.js'
 import './lobby.css'
 
@@ -14,7 +16,9 @@ function trapFocus(event) {
 
 export default function Lobby({ onClose, returnFocusRef }) {
   const s = useLobby()
+  const account = useAccount()
   const [name,setName] = useState(savedName)
+  const callsign = account.profile?.callsign || name
   const [code,setCode] = useState('')
   const [copyStatus,setCopyStatus] = useState({ code:'',message:'' })
   const busy = s.status === 'connecting'
@@ -52,12 +56,14 @@ export default function Lobby({ onClose, returnFocusRef }) {
             const player = players.find(item => item.slot === slot)
             return <div key={slot} className={`lobby-player ${player?.ready ? 'is-ready' : ''}`} data-testid={`lobby-slot-${slot}`}>
               <span className="player-avatar" aria-hidden="true">{slot === 0 ? '01' : '02'}</span>
-              <div><strong>{player ? player.name : 'OPEN SLOT'} {player?.id === s.sessionId && <small>YOU</small>}</strong><span>{player ? player.id === s.room.hostId ? 'ROOM HOST' : 'CHALLENGER' : 'Waiting for your friend'}</span></div>
+              <div><strong>{player ? player.name : 'OPEN SLOT'} {player?.id === s.sessionId && <small>YOU</small>}</strong><span>{player ? `${player.id === s.room.hostId ? 'ROOM HOST' : 'CHALLENGER'} · ${player.authenticated ? 'SIGNED IN' : 'GUEST'}` : 'Waiting for your friend'}</span></div>
               <span className="player-ready">{!player ? '—' : !player.connected ? 'RECONNECTING' : player.ready ? 'READY' : 'NOT READY'}</span>
             </div>
           })}
         </div>
         <label className="lobby-label">MATCH FORMAT<select aria-label="Match format" value={s.room.format} disabled={s.room.hostId!==s.sessionId || s.status!=='connected' || s.room.phase==='countdown'} onChange={event => lobby.format(event.target.value)}>{Object.entries(FORMATS).map(([id,name]) => <option key={id} value={id}>{name}</option>)}</select></label>
+        <label className="lobby-label">ARENA MAP<select aria-label="Arena map" value={s.room.mapId} disabled={s.room.hostId!==s.sessionId || s.status!=='connected' || s.room.phase==='countdown'} onChange={e => lobby.map(e.target.value)}>{Object.entries(MAPS).map(([id,map]) => <option key={id} value={id}>{map.name}</option>)}</select></label><p className="muted">{MAPS[s.room.mapId]?.description} Changing maps resets readiness.</p>
+        <label className="lobby-label">MATCH TYPE<select aria-label="Match type" value={s.room.ranked ? 'ranked' : 'casual'} disabled={s.room.hostId!==s.sessionId || s.status!=='connected' || s.room.phase==='countdown'} onChange={e => lobby.ranked(e.target.value==='ranked')}><option value="casual">CASUAL</option><option value="ranked" disabled={s.room.format!=='duel' || players.length!==2 || players.some(p => !p.authenticated)}>RANKED</option></select></label><p className="muted">Ranked requires two different signed-in accounts. Short matches and repeated pairings may save without changing Elo.</p>
         <p className="muted">{s.room.format==='duel' ? 'First to two round wins. Elimination or highest HP after 90 seconds wins the round. Draws replay. Changing format resets readiness.' : 'Unlimited practice with three-second respawns.'}</p>
         <div className={`lobby-state ${s.status === 'connected' && s.room?.phase === 'ready' ? 'all-ready' : ''}`} role="status">
           <strong>{s.status === 'reconnecting' ? 'RESTORING CONNECTION' : s.room?.phase === 'countdown' ? `ENTERING ARENA IN ${s.room.countdown}` : s.room?.phase === 'ready' ? 'BOTH PLAYERS READY' : s.room?.phase === 'reconnecting' ? 'HOLDING YOUR FRIEND’S SEAT' : players.length < 2 ? 'WAITING FOR A CHALLENGER' : 'WAITING FOR READY CHECKS'}</strong>
@@ -68,12 +74,13 @@ export default function Lobby({ onClose, returnFocusRef }) {
         {s.room?.hostId === s.sessionId && s.room?.phase === 'ready' && <button className="primary" onClick={() => lobby.start()}>START SHARED ARENA</button>}
         <button className="primary" disabled={!canReady} onClick={() => lobby.ready(!self?.ready)}>{self?.ready ? 'CANCEL READY' : 'READY UP'}</button>
       </> : <>
-        <label className="lobby-label">YOUR CALLSIGN<input autoFocus value={name} maxLength={18} disabled={busy} onChange={event => setName(event.target.value)} autoComplete="nickname" placeholder="e.g. Nova" /></label>
-        <button className="primary" disabled={busy} onClick={() => lobby.connect('create',name)}>{busy ? 'CONNECTING…' : 'CREATE PRIVATE ROOM'}</button>
+        <label className="lobby-label">YOUR CALLSIGN<input autoFocus value={callsign} maxLength={18} disabled={busy || Boolean(account.user)} onChange={event => setName(event.target.value)} autoComplete="nickname" placeholder="e.g. Nova" /></label>
+        {account.user && <p className="muted">Using your saved profile and loadout. Edit them from the main menu before joining.</p>}
+        <button className="primary" disabled={busy || account.loading} onClick={() => lobby.connect('create',callsign)}>{busy ? 'CONNECTING…' : 'CREATE PRIVATE ROOM'}</button>
         <div className="lobby-divider"><span>OR JOIN A FRIEND</span></div>
-        <form onSubmit={event => { event.preventDefault(); if (!busy) void lobby.connect('join',name,code) }}>
+        <form onSubmit={event => { event.preventDefault(); if (!busy && !account.loading) void lobby.connect('join',callsign,code) }}>
           <label className="lobby-label">INVITE CODE<input className="code-input" value={code} maxLength={6} disabled={busy} onChange={event => setCode(event.target.value.toUpperCase())} autoComplete="off" spellCheck={false} placeholder="ABC234" /></label>
-          <button type="submit" disabled={busy}>JOIN ROOM</button>
+          <button type="submit" disabled={busy || account.loading}>JOIN ROOM</button>
         </form>
       </>}
       <button className="lobby-back" onClick={onClose}>{connected ? 'LEAVE ROOM' : busy ? 'CANCEL / BACK' : 'BACK'}</button>

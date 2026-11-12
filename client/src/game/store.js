@@ -1,3 +1,4 @@
+import { DEFAULT_LOADOUT, validateLoadout } from '../../../shared/loadout.js'
 import { useSyncExternalStore } from 'react'
 import { BLADE, WEAPONS, WEAPON_SWITCH, TARGET, TARGETS, HAZARD, ABILITIES, OPPONENT } from './config.js'
 import { damageTargets, pelletDamage } from './combatRules.js'
@@ -11,7 +12,7 @@ function loadSettings() {
   } catch { return defaults }
 }
 const fresh = () => ({
-  hp: 100, weapon: 'pistol',
+  hp: 100, weapon: 'pistol', loadout:DEFAULT_LOADOUT,
   magazines: Object.fromEntries(Object.entries(WEAPONS).filter(([,w]) => w.magazine).map(([id,w]) => [id,w.magazine])),
   weaponStats: Object.fromEntries(Object.entries(WEAPONS).filter(([,w]) => w.magazine).map(([id]) => [id,{ shots:0,hits:0 }])),
   reloading: false, reloadWeapon: null, reloadStart: 0, reloadEnd: 0, reloadReason: null, attackReadyAt: 0, lastSwitch: -10, lastShot: -10, lastSwing: -10,
@@ -42,7 +43,8 @@ export const game = {
   get: () => state,
   now: () => clock,
   set: (patch) => { state = { ...state, ...patch }; listeners.forEach(fn => fn()) },
-  reset: ({ opponentEnabled = false } = {}) => { clock = 0; opponentPosition.splice(0,3,...OPPONENT.spawn); game.set({ ...fresh(),opponent:freshOpponent(opponentEnabled),generation: state.generation + 1 }) },
+  reset: ({ opponentEnabled = false,loadout = DEFAULT_LOADOUT } = {}) => {
+    const equipped = validateLoadout(loadout) || DEFAULT_LOADOUT; clock = 0; opponentPosition.splice(0,3,...OPPONENT.spawn); game.set({ ...fresh(),loadout:equipped,weapon:equipped.startingWeapon,opponent:freshOpponent(opponentEnabled),generation: state.generation + 1 }) },
   opponentPosition: () => [...opponentPosition],
   reportOpponentPosition: (position) => { opponentPosition.splice(0,3,...position) },
   setOpponentEnabled: (enabled) => {
@@ -77,7 +79,7 @@ export const game = {
     if (state.hp === 0) { document.exitPointerLock(); game.set({ mode: 'dead' }) }
   },
   activateAbility: (id,{ position = [0,0,0], direction = [0,-1] } = {}) => {
-    if (state.mode !== 'playing' || !Object.hasOwn(ABILITIES,id) || clock < state.abilities[id].readyAt) return false
+    if (state.mode !== 'playing' || !Object.hasOwn(ABILITIES,id) || !state.loadout.abilities.includes(id) || clock < state.abilities[id].readyAt) return false
     if (position.length !== 3 || !position.every(Number.isFinite) || direction.length !== 2 || !direction.every(Number.isFinite)) return false
     const tuning = ABILITIES[id], previous = state.abilities[id]
     const length = Math.hypot(...direction) || 1
@@ -110,7 +112,7 @@ export const game = {
     }
   },
   switchWeapon: (weapon) => {
-    if (state.mode !== 'playing' || !Object.hasOwn(WEAPONS, weapon) || state.weapon === weapon || clock - state.lastSwitch < WEAPON_SWITCH) return false
+    if (state.mode !== 'playing' || !Object.hasOwn(WEAPONS, weapon) || !state.loadout.weapons.includes(weapon) || state.weapon === weapon || clock - state.lastSwitch < WEAPON_SWITCH) return false
     // Complete the visible melee swing before allowing a different weapon.
     if (state.weapon === 'blade' && clock - state.lastSwing < BLADE.swing) return false
     game.set({ weapon,...clearReload,lastSwitch:clock,attackReadyAt:Math.max(state.attackReadyAt,clock+WEAPON_SWITCH),time:clock })

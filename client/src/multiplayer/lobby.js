@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { canPlayArena } from '../../../shared/match.js'
 import { ONLINE } from '../../../shared/arena.js'
 import { clearPoses, recordPoses, latestPose } from './poses.js'
+import { accounts } from '../accounts/store.js'
 
 const empty = { status:'idle',room:null,sessionId:'',error:'',notice:'',captured:false,captureError:'' }
 let snapshot = empty
@@ -19,7 +20,7 @@ function endpoint() {
   return url.origin
 }
 function connectionError(error) {
-  if (error.code === 4400 || error.code === 4401) return error.message
+  if ([4400,4401,4402].includes(error.code) || error.accountError) return error.message
   if (/locked|full|maximum/i.test(error.message || '')) return 'This room is full or holding a seat for a reconnecting player.'
   if (/not found|not defined|invalid room|expired/i.test(error.message || '')) return 'Room not found. Check the invite code, or ask your friend to create a new room.'
   return 'Could not connect to the lobby server. Try again in a moment.'
@@ -28,9 +29,16 @@ function sync(room) {
   if (activeRoom !== room || !room.state?.players) return
   const state = room.state
   recordPoses(state)
+  const metadata = { mapId:state.mapId,ranked:state.ranked,saveStatus:state.saveStatus,resultRanked:state.resultRanked }
   const next = { format:state.format,matchPhase:state.matchPhase,roundNumber:state.roundNumber,roundId:state.roundId,roundRemaining:state.roundRemaining,phaseRemaining:state.phaseRemaining,roundWinnerId:state.roundWinnerId,winnerId:state.winnerId,matchReason:state.matchReason,roundResults:[...state.roundResults].map(r => ({ number:r.number,winnerId:r.winnerId,reason:r.reason })),results:[...state.results].map(r => ({ id:r.id,name:r.name,slot:r.slot,roundWins:r.roundWins,kills:r.kills,deaths:r.deaths })),code:state.code,hostId:state.hostId,phase:state.phase,arenaActive:state.arenaActive,arenaEpoch:state.arenaEpoch,countdown:state.countdown,note:state.note,time:state.tick/ONLINE.tickRate,
     players:[...state.players.entries()].map(([id,player]) => ({ id,name:player.name,slot:player.slot,roundWins:player.roundWins,ready:player.ready,connected:player.connected,combat:{ abilities:Object.fromEntries([...player.abilities.entries()].map(([id,a]) => [id,{ readyAt:a.readyAt,activeUntil:a.activeUntil,startedAt:a.startedAt,uses:a.uses,result:a.result,origin:[a.originX,a.originY,a.originZ],direction:[a.directionX,a.directionZ] }])),disabledUntil:player.disabledUntil,shieldCharge:player.shieldCharge,shieldHit:player.shieldHit,hitShieldDamage:player.hitShieldDamage,hp:player.hp,weapon:player.weapon,magazines:{ pistol:player.pistolAmmo,rifle:player.rifleAmmo,shotgun:player.shotgunAmmo },reloading:player.reloading,reloadWeapon:player.reloading ? player.weapon : null,reloadStart:player.reloadStart,reloadEnd:player.reloadEnd,reloadReason:player.reloadReason,attackReadyAt:player.attackReadyAt,lastSwitch:player.lastSwitch,lastShot:player.lastShot,lastSwing:player.lastSwing,shot:player.shot,hit:player.hit,hitId:player.hitId,hitDamage:player.hitDamage,hitDefeated:player.hitDefeated,hitHeadshot:player.hitHeadshot,hurt:player.hurt,kills:player.kills,deaths:player.deaths,respawnAt:player.respawnAt } })).sort((a,b) => a.slot-b.slot),
   }
+  Object.assign(next,metadata)
+  next.players.forEach(player => {
+    const source = state.players.get(player.id)
+    player.authenticated = source.authenticated
+    player.combat.loadout = { startingWeapon:source.startingWeapon,weapons:[...source.allowedWeapons],abilities:[...source.allowedAbilities] }
+  })
   // Positions stay outside React; combat HUD receives authoritative 20 Hz snapshots.
   if (JSON.stringify(next) !== JSON.stringify(snapshot.room)) update({ room:next })
 }
@@ -51,10 +59,13 @@ export const lobby = {
     let timer
     update({ ...empty,status:'connecting' })
     try {
+      let options
+      try { options = { name:callsign,...await accounts.joinOptions() } }
+      catch (error) { error.accountError = true; throw error }
       const { Client } = await import('@colyseus/sdk')
       if (operationId !== attempt) return
       const client = new Client(endpoint())
-      const request = kind === 'create' ? client.create('duel_lobby',{ name:callsign }) : client.joinById(invite,{ name:callsign })
+      const request = kind === 'create' ? client.create('duel_lobby',options) : client.joinById(invite,options)
       // A cancelled or timed-out request may finish later; never leave a ghost seat.
       request.then(room => { if (operationId !== attempt) room.leave().catch(() => {}) }).catch(() => {})
       const room = await Promise.race([request,new Promise((_,reject) => {
@@ -92,6 +103,8 @@ export const lobby = {
     if (activeRoom && snapshot.status === 'connected') activeRoom.send('ready',{ ready:value })
   },
   format(format) { if (activeRoom && snapshot.status==='connected') activeRoom.send('format',{ format }) },
+  map(mapId) { if (activeRoom && snapshot.status==='connected') activeRoom.send('map',{ mapId }) },
+  ranked(ranked) { if (activeRoom && snapshot.status==='connected') activeRoom.send('ranked',{ ranked }) },
   forfeit() { if (activeRoom && snapshot.status==='connected') activeRoom.send('forfeit') },
   start() { if (activeRoom && snapshot.status === 'connected') activeRoom.send('start') },
   backToLobby() { if (activeRoom && snapshot.status === 'connected') activeRoom.send('backToLobby') },

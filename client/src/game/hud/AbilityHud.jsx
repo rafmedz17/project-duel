@@ -11,9 +11,10 @@ export function AbilityBar({ state:s }) {
   return <div className="ability-bar" aria-label="Abilities">
     {Object.entries(ABILITIES).map(([id,tuning]) => {
       const ability = s.abilities[id], remaining = Math.max(0,ability.readyAt-s.time)
+      const equipped = !s.loadout || s.loadout.abilities.includes(id)
       const active = !jammed && !dead && s.time<ability.activeUntil && (id !== 'shield' || s.shieldCharge>0)
-      const status = dead ? 'OFFLINE' : jammed ? 'JAMMED' : active ? 'ACTIVE' : remaining>0 ? `${remaining.toFixed(1)}s` : 'READY'
-      return <div key={id} data-testid={`ability-${id}`} className={`ability ${jammed || dead ? 'jammed' : active ? 'active' : remaining>0 ? 'cooling' : 'ready'}`} aria-label={`${tuning.name} ${status}`}>
+      const status = !equipped ? 'UNEQUIPPED' : dead ? 'OFFLINE' : jammed ? 'JAMMED' : active ? 'ACTIVE' : remaining>0 ? `${remaining.toFixed(1)}s` : 'READY'
+      return <div key={id} data-testid={`ability-${id}`} className={`ability ${!equipped ? 'unequipped' : jammed || dead ? 'jammed' : active ? 'active' : remaining>0 ? 'cooling' : 'ready'}`} aria-label={`${tuning.name} ${status}`}>
         <span><kbd>{tuning.key}</kbd>{tuning.name}</span><strong>{status}</strong>
         <i style={{ width:`${Math.max(0,Math.min(1,1-remaining/tuning.cooldown))*100}%` }} />
       </div>

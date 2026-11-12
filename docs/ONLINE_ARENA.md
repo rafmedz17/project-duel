@@ -38,7 +38,7 @@ Releasing only your own mouse stops your controls without pausing the shared wor
 
 Server patches arrive at 20 Hz. Local camera look responds immediately; position smoothly approaches the authoritative pose. Other players interpolate across a 100 ms history. Position histories stay outside React, while the combat HUD receives server snapshots. First-person models and shared hit/reload feedback use those snapshots and do not edit the offline store. Released arena views render on invalidation to reduce background GPU work.
 
-There is no movement prediction or lag compensation/hit rewind yet. The server tests opponents at their current authoritative pose, so high latency and remote interpolation can affect shots against moving players. Hands-on balancing and laptop performance checks remain. Sound, accounts and persistent results are future milestones.
+There is no movement prediction or lag compensation/hit rewind yet. The server tests opponents at their current authoritative pose, so high latency and remote interpolation can affect shots against moving players. Hands-on balancing, laptop performance checks and sound remain. [Accounts and persistent results](ACCOUNTS_AND_RANKINGS.md) are optional through Supabase.
 
 ## Verification
 
@@ -64,4 +64,4 @@ Each non-final result displays for four seconds. The next round then resets both
 
 The HUD shows round number, round wins, timer, player scoreboard and round countdown/result. Winning the match displays VICTORY; the other player sees DEFEAT with the same authoritative scoreboard. Forfeit Match and permanent departure concede to the remaining player. A socket drop first freezes the current round, timer or intermission for the 15-second reconnect window; recovery preserves scores. Scoreboard names survive permanent departure. New players cannot enter until Return to Lobby clears the result.
 
-Return to Lobby after results, then both ready up to play a fresh rematch. Room codes and members remain; the new arena generation resets all scores and results. Results are in-memory prototype state, without accounts, persistence or rating. Free Play retains the earlier unlimited three-second respawn behavior.
+Return to Lobby after results, then both ready up to play a fresh rematch. Room codes and members remain; the new arena generation resets all scores and results. Signed-in Best of Three results save through the server to Supabase when configured, with a durable retry queue and optional Elo ranking. Guest-only results remain in memory. Free Play retains unlimited three-second respawns. See [account setup, maps and ranking rules](ACCOUNTS_AND_RANKINGS.md).

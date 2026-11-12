@@ -1,0 +1,11 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+server/data/
+.env
+.env.*
+!.env.example
+*.log
+*-preview.png
+supabase/.temp/

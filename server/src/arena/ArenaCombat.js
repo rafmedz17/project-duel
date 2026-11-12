@@ -1,6 +1,7 @@
 import { ARENA_SOLIDS, PLAYER, ONLINE } from '../../../shared/arena.js'
 import { WEAPONS, WEAPON_SWITCH, pelletDamage } from '../../../shared/weapons.js'
 import { rayBox, rayRobot, shotDirections } from '../../../shared/ballistics.js'
+import { DEFAULT_LOADOUT } from '../../../shared/loadout.js'
 import { ABILITIES } from '../../../shared/abilities.js'
 import { AbilityState } from '../rooms/LobbyState.js'
 
@@ -23,7 +24,7 @@ export function validateCombat(value) {
 export const ammoField = weapon => `${weapon}Ammo`
 const clearReload = { reloading:false,reloadStart:0,reloadEnd:0,reloadReason:'' }
 function resetLoadout(player) {
-  Object.assign(player,{ hp:100,weapon:'pistol',pistolAmmo:12,rifleAmmo:30,shotgunAmmo:6,...clearReload,attackReadyAt:0,lastSwitch:-10,lastShot:-10,lastSwing:-10,shot:0,hit:-10,hitDamage:0,hitShieldDamage:0,hitDefeated:0,hitHeadshot:false,hurt:-10,respawnAt:0,shieldCharge:0,shieldHit:-10,disabledUntil:0 })
+  Object.assign(player,{ hp:100,weapon:player.startingWeapon || 'pistol',pistolAmmo:12,rifleAmmo:30,shotgunAmmo:6,...clearReload,attackReadyAt:0,lastSwitch:-10,lastShot:-10,lastSwing:-10,shot:0,hit:-10,hitDamage:0,hitShieldDamage:0,hitDefeated:0,hitHeadshot:false,hurt:-10,respawnAt:0,shieldCharge:0,shieldHit:-10,disabledUntil:0 })
 }
 
 export class ArenaCombat {
@@ -32,6 +33,11 @@ export class ArenaCombat {
     this.allowRespawn = respawn; this.round = round
     this.sequences = new Map()
     for (const player of players.values()) {
+      if (!player.startingWeapon) {
+        player.startingWeapon = DEFAULT_LOADOUT.startingWeapon
+        player.allowedWeapons = [...DEFAULT_LOADOUT.weapons]
+        player.allowedAbilities = [...DEFAULT_LOADOUT.abilities]
+      }
       resetLoadout(player)
       Object.assign(player,{ kills:0,deaths:0,hitId:0 })
       player.abilities ??= new Map()
@@ -75,7 +81,9 @@ export class ArenaCombat {
     if (damage+absorbed>0) Object.assign(player,{ hit:this.time,hitId:player.hitId+1,hitDamage:damage,hitShieldDamage:absorbed,hitDefeated:defeated,hitHeadshot:headshot })
   }
   activate(id,abilityId) {
-    const player = this.players.get(id), ability = player.abilities.get(abilityId), tuning = ABILITIES[abilityId]
+    const player = this.players.get(id)
+    if (player.allowedAbilities && !player.allowedAbilities.includes(abilityId)) return false
+    const ability = player.abilities.get(abilityId), tuning = ABILITIES[abilityId]
     if (this.time+1e-8<ability.readyAt || this.time<player.disabledUntil) return false
     Object.assign(ability,{ readyAt:this.time+tuning.cooldown,activeUntil:this.time+tuning.duration,startedAt:this.time,uses:ability.uses+1,result:0,originX:player.x,originY:player.y,originZ:player.z })
     if (abilityId==='dash') {
@@ -112,7 +120,7 @@ export class ArenaCombat {
     const now = this.time
     if (intent.action==='reload') return this.reload(player,'manual')
     if (intent.action==='switch') {
-      if (player.weapon===intent.weapon || now-player.lastSwitch<WEAPON_SWITCH-1e-8 || (player.weapon==='blade' && now-player.lastSwing<WEAPONS.blade.swing)) return false
+      if (!(player.allowedWeapons || DEFAULT_LOADOUT.weapons).includes(intent.weapon) || player.weapon===intent.weapon || now-player.lastSwitch<WEAPON_SWITCH-1e-8 || (player.weapon==='blade' && now-player.lastSwing<WEAPONS.blade.swing)) return false
       Object.assign(player,{ weapon:intent.weapon,...clearReload,lastSwitch:now,attackReadyAt:Math.max(player.attackReadyAt,now+WEAPON_SWITCH) })
       return true
     }
@@ -125,7 +133,7 @@ export class ArenaCombat {
     const origin = [player.x,player.y+PLAYER.eye,player.z], damage = new Map()
     for (const direction of shotDirections(intent.yaw,intent.pitch,weapon)) {
       let limit = weapon.range, hit = null
-      for (const solid of ARENA_SOLIDS) {
+      for (const solid of (this.simulation.map?.solids || ARENA_SOLIDS)) {
         const distance = rayBox(origin,direction,solid.position,solid.size)
         if (distance!==null && distance<=limit) limit = distance
       }

@@ -1,5 +1,6 @@
 import RAPIER from '@dimforge/rapier3d-compat'
-import { ARENA_SOLIDS, PLAYER, ONLINE } from '../../../shared/arena.js'
+import { getMap } from '../../../shared/maps.js'
+import { PLAYER, ONLINE } from '../../../shared/arena.js'
 import { ABILITIES } from '../../../shared/abilities.js'
 
 await RAPIER.init()
@@ -15,13 +16,14 @@ export function validateInput(value) {
 }
 
 export class ArenaSimulation {
-  constructor(players) {
+  constructor(players,mapId = 'facility') {
+    this.map = getMap(mapId)
     this.world = new RAPIER.World({ x:0,y:-PLAYER.gravity,z:0 })
     this.world.timestep = 1/ONLINE.tickRate
     this.players = new Map()
-    for (const { position:[x,y,z],size:[w,h,d] } of ARENA_SOLIDS) this.world.createCollider(RAPIER.ColliderDesc.cuboid(w/2,h/2,d/2).setTranslation(x,y,z))
+    for (const { position:[x,y,z],size:[w,h,d] } of this.map.solids) this.world.createCollider(RAPIER.ColliderDesc.cuboid(w/2,h/2,d/2).setTranslation(x,y,z))
     for (const [id,player] of players) {
-      const spawn = ONLINE.spawns[player.slot]
+      const spawn = this.map.spawns[player.slot]
       const [x,y,z] = spawn.position
       const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(x,y,z))
       const collider = this.world.createCollider(RAPIER.ColliderDesc.capsule(ONLINE.capsuleHalfHeight,ONLINE.capsuleRadius),body)
@@ -89,7 +91,7 @@ export class ArenaSimulation {
   respawn(id) {
     const entry = this.players.get(id)
     if (!entry) return
-    const spawn = ONLINE.spawns[entry.player.slot], [x,y,z] = spawn.position
+    const spawn = this.map.spawns[entry.player.slot], [x,y,z] = spawn.position
     this.setAlive(id,true)
     entry.body.setTranslation({ x,y,z },true)
     entry.body.setNextKinematicTranslation({ x,y,z })

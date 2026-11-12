@@ -1,6 +1,6 @@
 ﻿# PROJECT DUEL
 
-A playable FPS training facility and private two-player arena built with React, Three.js, React Three Fiber, Rapier, and Colyseus. Training has four robot targets, four weapons, four abilities, hazards, scoring, and saved settings. Multiplayer now has server-owned movement, weapons, hit validation, damage, kills, respawns, all four abilities, and best-of-three matches. Training works without a backend or account.
+A playable FPS training facility and private two-player arena built with React, Three.js, React Three Fiber, Rapier, and Colyseus. Training has four robot targets, four weapons, four abilities, hazards, scoring, and saved settings. Multiplayer has server-owned combat, best-of-three matches, three selectable maps and customizable loadouts. Optional Supabase accounts add saved profiles, cross-device equipment, match history, statistics, Elo rankings and a leaderboard. Training and guest play work without cloud accounts.
 
 ## Launch
 
@@ -43,6 +43,8 @@ Escape releases your own controls while the opponent can keep playing. A connect
 
 ## Verification
 
+For cloud accounts and rankings, follow [Supabase setup and feature rules](docs/ACCOUNTS_AND_RANKINGS.md). Until configured, guest loadouts save locally and multiplayer remains casual. The backend secret belongs only in `server/.env`; the frontend receives a public publishable key.
+
 From `client`:
 
 ```powershell
@@ -59,7 +61,7 @@ npm.cmd run lint:server
 npm.cmd run test:server
 ```
 
-There are 31 local combat/geometry/physics tests, 40 backend tests, and 21 browser scenarios. The backend tests include real HTTP/WebSocket rooms and deterministic physics/combat. Browser tests use actual mouse capture and inputs, including robot head/foot shots, reload feedback, two-player damage/death/respawn, a complete 2?1 match/rematch and forfeit results, weapon input, collision, connection flow, and arena re-entry. Test-only fixtures never supply gameplay hit results.
+There are 31 local combat/geometry/physics tests and 54 backend cases, including actual PostgreSQL RLS and result transactions. Browser tests cover gameplay, new maps, guest equipment and fixture-backed account flows. They use actual mouse capture and inputs for regional hits, reloads, online combat, complete matches, collision and connection lifecycle. See the account guide for the distinction between local database tests, mocked provider responses and a live Supabase smoke check. Test-only fixtures never supply gameplay hit results.
 
 Browser tests start both services if needed. Install Chromium with `npx.cmd playwright install chromium`, or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to an installed browser. Restart an older running backend after updating code.
 
