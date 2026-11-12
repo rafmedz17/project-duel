@@ -21,6 +21,8 @@ export const LobbyPlayer = schema({
   connected:t.boolean().default(true),
   x:t.number(),y:t.number(),z:t.number(),yaw:t.number(),pitch:t.number(),
   grounded:t.boolean().default(false),active:t.boolean().default(false),inputSequence:t.number().default(-1),
+  inputSteps:t.number(),vx:t.number(),vy:t.number(),vz:t.number(),dashRemaining:t.number(),dashX:t.number(),dashZ:t.number(),
+  combatSequence:t.number().default(-1),
 },'LobbyPlayer')
 
 export const RoundResult = schema({ number:t.number(),winnerId:t.string(),reason:t.string() },'RoundResult')

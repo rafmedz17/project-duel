@@ -1,7 +1,8 @@
 import RAPIER from '@dimforge/rapier3d-compat'
 import { getMap } from '../../../shared/maps.js'
-import { PLAYER, ONLINE } from '../../../shared/arena.js'
+import { ONLINE } from '../../../shared/arena.js'
 import { ABILITIES } from '../../../shared/abilities.js'
+import { createMovementWorld, createCharacter, stepCharacter } from '../../../shared/movement.js'
 
 await RAPIER.init()
 const fields = new Set(['sequence','round','x','z','yaw','pitch','sprint','jump','active'])
@@ -18,21 +19,13 @@ export function validateInput(value) {
 export class ArenaSimulation {
   constructor(players,mapId = 'facility') {
     this.map = getMap(mapId)
-    this.world = new RAPIER.World({ x:0,y:-PLAYER.gravity,z:0 })
-    this.world.timestep = 1/ONLINE.tickRate
+    this.world = createMovementWorld(RAPIER,this.map)
     this.players = new Map()
-    for (const { position:[x,y,z],size:[w,h,d] } of this.map.solids) this.world.createCollider(RAPIER.ColliderDesc.cuboid(w/2,h/2,d/2).setTranslation(x,y,z))
     for (const [id,player] of players) {
       const spawn = this.map.spawns[player.slot]
       const [x,y,z] = spawn.position
-      const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(x,y,z))
-      const collider = this.world.createCollider(RAPIER.ColliderDesc.capsule(ONLINE.capsuleHalfHeight,ONLINE.capsuleRadius),body)
-      const controller = this.world.createCharacterController(0.02)
-      controller.setSlideEnabled(true)
-      controller.enableSnapToGround(0.15)
-      controller.setMaxSlopeClimbAngle(Math.PI/4)
-      this.players.set(id,{ player,body,collider,controller,vx:0,vz:0,vy:0,input:null,lastSequence:-1,jumpHeld:false,jumpPending:false,dash:null })
-      Object.assign(player,{ x,y,z,yaw:spawn.yaw,pitch:0,grounded:false,active:false,inputSequence:-1 })
+      this.players.set(id,{ ...createCharacter(RAPIER,this.world,spawn.position),player,input:null,lastSequence:-1,jumpHeld:false,jumpPending:false })
+      Object.assign(player,{ x,y,z,yaw:spawn.yaw,pitch:0,grounded:false,active:false,inputSequence:-1,inputSteps:0,vx:0,vy:0,vz:0,dashRemaining:0,dashX:0,dashZ:0 })
     }
     this.world.step()
   }
@@ -41,7 +34,6 @@ export class ArenaSimulation {
     const entry = this.players.get(id), input = validateInput(payload)
     if (!entry || entry.player.hp===0 || !input || input.sequence <= entry.lastSequence) return false
     entry.lastSequence = input.sequence
-    entry.player.inputSequence = input.sequence
     entry.jumpPending ||= input.active && input.jump && !entry.jumpHeld
     entry.jumpHeld = input.jump
     entry.input = { ...input,receivedAt:now }
@@ -95,48 +87,25 @@ export class ArenaSimulation {
     this.setAlive(id,true)
     entry.body.setTranslation({ x,y,z },true)
     entry.body.setNextKinematicTranslation({ x,y,z })
-    Object.assign(entry.player,{ x,y,z,yaw:spawn.yaw,pitch:0,grounded:false })
+    entry.grounded = false
+    Object.assign(entry.player,{ x,y,z,yaw:spawn.yaw,pitch:0,grounded:false,vx:0,vy:0,vz:0,dashRemaining:0 })
   }
 
   step(now = performance.now()) {
-    const dt = 1/ONLINE.tickRate
     const proposals = []
     for (const [id,entry] of this.players) {
-      const { player,body,collider,controller } = entry
+      const { player } = entry
       if (player.hp===0) continue
       let input = entry.input
       if (input && now-input.receivedAt > ONLINE.inputTimeoutMs) { this.stop(id); input = null }
       const active = Boolean(input?.active && player.connected)
-      let x = active ? input.x : 0, z = active ? input.z : 0
-      const length = Math.max(1,Math.hypot(x,z))
-      x /= length; z /= length
-      const speed = input?.sprint ? PLAYER.sprint : PLAYER.speed
       const yaw = input?.yaw ?? player.yaw
-      const smooth = 1-Math.exp(-14*dt)
-      entry.vx += ((x*Math.cos(yaw)+z*Math.sin(yaw))*speed-entry.vx)*smooth
-      entry.vz += ((z*Math.cos(yaw)-x*Math.sin(yaw))*speed-entry.vz)*smooth
-      if (controller.computedGrounded() && entry.vy <= 0) entry.vy = -0.5
-      if (active && entry.jumpPending && controller.computedGrounded()) entry.vy = PLAYER.jump
+      proposals.push(stepCharacter(entry,input ? { ...input,active } : null,entry.jumpPending))
       entry.jumpPending = false
-      entry.vy -= PLAYER.gravity*dt
-      const dash = entry.dash, dashTime = dash ? Math.min(dt,dash.remaining) : 0
-      controller.computeColliderMovement(collider,{
-        x:dash ? dash.direction[0]*ABILITIES.dash.speed*dashTime : entry.vx*dt,
-        y:entry.vy*dt,
-        z:dash ? dash.direction[1]*ABILITIES.dash.speed*dashTime : entry.vz*dt,
-      })
-      if (dash) {
-        dash.remaining -= dashTime
-        entry.vx = 0; entry.vz = 0
-        if (dash.remaining<1e-8) entry.dash = null
-      }
-      const delta = controller.computedMovement(), position = body.translation()
-      if (Math.abs(delta.y)<Math.abs(entry.vy*dt)*0.5 && entry.vy>0) entry.vy = 0
-      const next = { x:position.x+delta.x,y:position.y+delta.y,z:position.z+delta.z }
-      proposals.push({ body,position,next })
-      body.setNextKinematicTranslation(next)
       player.yaw = yaw; player.pitch = input?.pitch ?? player.pitch; player.active = active
-      player.grounded = controller.computedGrounded()
+      player.grounded = entry.grounded
+      if (player.inputSequence!==entry.lastSequence) { player.inputSequence = entry.lastSequence; player.inputSteps = 0 }
+      player.inputSteps++
     }
     // Character sweeps see the other capsule's previous pose. Reject overlapping
     // simultaneous endpoints rather than pushing a player into adjacent cover.
@@ -149,9 +118,10 @@ export class ArenaSimulation {
       }
     }
     this.world.step()
-    for (const { player,body } of this.players.values()) {
+    for (const { player,body,vx,vy,vz,dash } of this.players.values()) {
       const p = body.translation()
       player.x = p.x; player.y = p.y; player.z = p.z
+      Object.assign(player,{ vx,vy,vz,dashRemaining:dash?.remaining || 0,dashX:dash?.direction[0] || 0,dashZ:dash?.direction[1] || 0 })
     }
   }
 

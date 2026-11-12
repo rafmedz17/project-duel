@@ -115,6 +115,7 @@ export class ArenaCombat {
     if (!player || !intent || intent.epoch!==this.epoch || intent.sequence<=(this.sequences.get(id) ?? -1)) return false
     if (this.round>0 ? intent.round!==this.round : intent.round!==undefined && intent.round!==0) return false
     this.sequences.set(id,intent.sequence)
+    player.combatSequence = intent.sequence
     if (!player.connected || player.hp<=0) return false
     if (intent.action==='ability') return this.activate(id,intent.ability)
     const now = this.time

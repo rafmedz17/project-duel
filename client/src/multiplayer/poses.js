@@ -13,7 +13,7 @@ export function recordPoses(state, now = performance.now()) {
   tick = state.tick
   for (const [id,player] of state.players) {
     const samples = history.get(id) || []
-    samples.push({ time:now,x:player.x,y:player.y,z:player.z,yaw:player.yaw,pitch:player.pitch,grounded:player.grounded,inputSequence:player.inputSequence })
+    samples.push({ time:now,tick:state.tick,x:player.x,y:player.y,z:player.z,yaw:player.yaw,pitch:player.pitch,grounded:player.grounded,inputSequence:player.inputSequence,inputSteps:player.inputSteps,vx:player.vx,vy:player.vy,vz:player.vz,dashRemaining:player.dashRemaining,dashX:player.dashX,dashZ:player.dashZ })
     if (samples.length > 12) samples.shift()
     history.set(id,samples)
   }

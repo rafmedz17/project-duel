@@ -3,12 +3,13 @@ import { useSyncExternalStore } from 'react'
 import { BLADE, WEAPONS, WEAPON_SWITCH, TARGET, TARGETS, HAZARD, ABILITIES, OPPONENT } from './config.js'
 import { damageTargets, pelletDamage } from './combatRules.js'
 import { freshOpponent, damageOpponent } from './opponents/opponentRules.js'
+import { audioSettings,DEFAULT_AUDIO } from '../audio/settings.js'
 
-const defaults = { sensitivity: 1, fps: false, quality: 'Medium' }
+const defaults = { sensitivity: 1, fps: false, quality: 'Medium',...DEFAULT_AUDIO }
 function loadSettings() {
   try {
     const saved = JSON.parse(localStorage.getItem('duel-settings')) || {}
-    return { sensitivity: Math.max(0.2, Math.min(3, Number(saved.sensitivity) || 1)), fps: saved.fps === true, quality: ['Low', 'Medium', 'High'].includes(saved.quality) ? saved.quality : 'Medium' }
+    return { sensitivity: Math.max(0.2, Math.min(3, Number(saved.sensitivity) || 1)), fps: saved.fps === true, quality: ['Low', 'Medium', 'High'].includes(saved.quality) ? saved.quality : 'Medium',...audioSettings(saved) }
   } catch { return defaults }
 }
 const fresh = () => ({
@@ -41,6 +42,7 @@ function hitFeedback(damage, defeated, headshot = false) {
 }
 export const game = {
   get: () => state,
+  subscribe:fn => { listeners.add(fn); return () => listeners.delete(fn) },
   now: () => clock,
   set: (patch) => { state = { ...state, ...patch }; listeners.forEach(fn => fn()) },
   reset: ({ opponentEnabled = false,loadout = DEFAULT_LOADOUT } = {}) => {
@@ -67,7 +69,7 @@ export const game = {
     return true
   },
   settings: (patch) => {
-    const settings = { ...state.settings, ...patch }
+    const settings = { ...state.settings,...patch,...audioSettings({ ...state.settings,...patch }) }
     try { localStorage.setItem('duel-settings', JSON.stringify(settings)) } catch { /* Storage may be disabled. */ }
     game.set({ settings })
   },

@@ -45,6 +45,7 @@ function sync(room) {
 
 export const lobby = {
   get: () => snapshot,
+  subscribe:fn => { listeners.add(fn); return () => listeners.delete(fn) },
   async connect(kind, name, code = '') {
     if (['connecting','connected','reconnecting'].includes(snapshot.status)) return
     const callsign = name.trim().replace(/\s+/g,' ')
@@ -111,7 +112,9 @@ export const lobby = {
   move(input) {
     if (!activeRoom || snapshot.status !== 'connected' || !canPlayArena(snapshot.room)) return
     sequence = Math.max(sequence,(latestPose(snapshot.sessionId)?.inputSequence ?? -1)+1)
-    activeRoom.send('move',{ ...input,round:snapshot.room.roundId,sequence:sequence++ })
+    const packet = { ...input,round:snapshot.room.roundId,sequence:sequence++ }
+    activeRoom.send('move',packet)
+    return packet
   },
   combat(action,details = {}) {
     if (!activeRoom || snapshot.status!=='connected' || !canPlayArena(snapshot.room)) return

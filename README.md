@@ -31,7 +31,9 @@ All four weapons use these multipliers; shotgun falloff is applied before region
 
 Firearms keep separate magazines and unlimited reserve ammo. Empty magazines auto reload, with a weapon/cell animation, notice, progress bar, and countdown. R reloads partial magazines. Switching cancels a reload without refilling it; re-equipping an empty firearm starts again after the equip delay. The shotgun has only a dotted ring crosshair.
 
-Training abilities: **E** Dash, **F** Shield, **C** Scanner, **V** EMP. Amber pads deal damage; Shield absorbs it and EMP temporarily disables pads. Restart restores health, weapons, targets, score, abilities, and timers. Settings save sensitivity, quality, and FPS visibility locally. See [controls](docs/CONTROLS.md) and [tactical systems](docs/TACTICAL_SYSTEMS.md).
+Training abilities: **E** Dash, **F** Shield, **C** Scanner, **V** EMP. Amber pads deal damage; Shield absorbs it and EMP temporarily disables pads. Restart restores health, weapons, targets, score, abilities, and timers. Settings save sensitivity, quality, FPS visibility, sound volume and mute locally. See [controls](docs/CONTROLS.md) and [tactical systems](docs/TACTICAL_SYSTEMS.md).
+
+Combat audio includes distinct weapons, reloads, confirmed hits/headshots, eliminations, damage, abilities, footsteps and round results. Opponent sounds use distance and direction in multiplayer. **Settings → Test Audio** previews the current volume. Training pause and tab/focus loss silence active sounds, and resuming does not replay missed events. All sounds are generated locally without asset downloads. See [audio behavior and controls](docs/AUDIO_SYSTEM.md).
 
 ## Multiplayer
 
@@ -61,7 +63,7 @@ npm.cmd run lint:server
 npm.cmd run test:server
 ```
 
-There are 31 local combat/geometry/physics tests and 54 backend cases, including actual PostgreSQL RLS and result transactions. Browser tests cover gameplay, new maps, guest equipment and fixture-backed account flows. They use actual mouse capture and inputs for regional hits, reloads, online combat, complete matches, collision and connection lifecycle. See the account guide for the distinction between local database tests, mocked provider responses and a live Supabase smoke check. Test-only fixtures never supply gameplay hit results.
+There are 38 local combat/audio/geometry/physics tests and 54 backend cases, including actual PostgreSQL RLS and result transactions. The 31 browser scenarios cover gameplay, actual audio output and lifecycle, new maps, guest equipment and fixture-backed account flows. They use actual mouse capture and inputs for regional hits, reloads, online combat, complete matches, collision and connection lifecycle. See the account guide for the distinction between local database tests, mocked provider responses and a live Supabase smoke check. Test-only fixtures never supply gameplay hit results.
 
 Browser tests start both services if needed. Install Chromium with `npx.cmd playwright install chromium`, or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to an installed browser. Restart an older running backend after updating code.
 
@@ -84,6 +86,7 @@ Browser tests start both services if needed. Install Chromium with `npx.cmd play
 | `client/src/game/hud/` | Training HUD, scanner and shared combat feedback |
 | `client/src/multiplayer/` | Lobby, online controls, interpolated players, server-backed weapon rendering/HUD |
 | `client/src/accounts/` | Supabase Auth, profile, equipment, history and leaderboard screens |
+| `client/src/audio/` | Generated combat audio, positional opponents, audio settings and lifecycle |
 | `server/src/rooms/` | Private rooms, synchronized state and lifecycle |
 | `server/src/arena/ArenaSimulation.js` | Authoritative fixed-step Rapier movement |
 | `server/src/arena/DuelMatch.js` | Best-of-three lifecycle, timed rounds, scoring, forfeits and results |
@@ -97,7 +100,7 @@ All visual assets are procedural geometry and system fonts. Accounts use the pin
 
 - Online poses use smoothed server snapshots and 100 ms remote interpolation. There is no movement prediction or hit rewind yet; latency can affect aiming at moving players.
 - Hands-on balancing and integrated-GPU performance testing remain. The production engine/WASM bundle retains its large-chunk warning; Low render quality reduces GPU work.
-- Multiplayer offers private Best of Three and Free Play. Cloud accounts, persistent history and Elo require a configured Supabase project. Sound, public matchmaking, arena-session recovery across page reloads and public hosting remain future work.
+- Multiplayer offers private Best of Three and Free Play. Cloud accounts, persistent history and Elo require a configured Supabase project. Public matchmaking, arena-session recovery across page reloads and public hosting remain future work. Audio has distance/direction but no wall muffling or background music.
 - The existing four moderate development-only ESLint/minimatch advisories remain; they are unrelated to account gameplay.
 
 See the [design](docs/GAME_DESIGN.md) and [roadmap](docs/DEVELOPMENT_ROADMAP.md).

@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Euler } from 'three'
+import { useRapier } from '@react-three/rapier'
+import { Prediction } from './Prediction.js'
 import { canPlayArena } from '../../../shared/match.js'
 import { PLAYER, ONLINE } from '../../../shared/arena.js'
 import RobotModel from '../game/characters/RobotModel.jsx'
@@ -15,6 +17,9 @@ import { arenaView, latestPose, samplePose, subscribePoses } from './poses.js'
 
 function LocalCamera({ id }) {
   const { gl } = useThree()
+  const { rapier } = useRapier()
+  const mapId = useLobby(s => s.room?.mapId)
+  const prediction = useRef(null), accumulator = useRef(0), correction = useRef([0,0,0])
   const keys = useRef(new Set()), jump = useRef(false), look = useRef(null), initialized = useRef(false)
   const phase = useLobby(s => s.room?.phase), status = useLobby(s => s.status)
   const matchPhase = useLobby(s => s.room?.matchPhase)
@@ -22,12 +27,18 @@ function LocalCamera({ id }) {
   const seenRound = useRef(-1)
   const clearInput = useRef(null), held = useRef(false), nextFire = useRef(0), wasDead = useRef(false)
   useEffect(() => {
+    const engine = new Prediction(rapier,mapId)
+    prediction.current = engine
+    return () => { prediction.current = null; engine.free() }
+  },[rapier,mapId])
+  useEffect(() => {
     const canvas = gl.domElement
     const active = () => document.pointerLockElement === canvas && lobby.get().status === 'connected' && canPlayArena(lobby.get().room)
     const send = () => {
       const captured = active(), pressed = keys.current, pose = latestPose(id)
       const aim = look.current || { yaw:pose?.yaw || 0,pitch:pose?.pitch || 0 }
-      lobby.move({ x:captured ? Number(pressed.has('KeyD'))-Number(pressed.has('KeyA')) : 0,z:captured ? Number(pressed.has('KeyS'))-Number(pressed.has('KeyW')) : 0,yaw:aim.yaw,pitch:aim.pitch,sprint:captured && (pressed.has('ShiftLeft') || pressed.has('ShiftRight')),jump:captured && jump.current,active:captured })
+      const packet = lobby.move({ x:captured ? Number(pressed.has('KeyD'))-Number(pressed.has('KeyA')) : 0,z:captured ? Number(pressed.has('KeyS'))-Number(pressed.has('KeyW')) : 0,yaw:aim.yaw,pitch:aim.pitch,sprint:captured && (pressed.has('ShiftLeft') || pressed.has('ShiftRight')),jump:captured && jump.current,active:captured })
+      prediction.current?.command(packet)
       jump.current = false
     }
     const clear = () => { held.current = false; keys.current.clear(); jump.current = false; send() }
@@ -56,6 +67,7 @@ function LocalCamera({ id }) {
       event.preventDefault()
       keys.current.add(event.code)
       if (event.code === 'Space' && !event.repeat) jump.current = true
+      if (!event.repeat) send()
     }
     const up = event => { keys.current.delete(event.code); if (active()) send() }
     const move = event => {
@@ -100,7 +112,8 @@ function LocalCamera({ id }) {
     const pose = latestPose(id)
     if (!pose) return
     const dead = lobby.self()?.hp===0
-    if (!initialized.current || (wasDead.current && !dead) || seenRound.current!==roundId) {
+    const reset = !initialized.current || (wasDead.current && !dead) || seenRound.current!==roundId
+    if (reset) {
       camera.position.set(pose.x,pose.y+PLAYER.eye,pose.z)
       look.current = { yaw:pose.yaw,pitch:pose.pitch }
       initialized.current = true
@@ -116,10 +129,23 @@ function LocalCamera({ id }) {
         nextFire.current = performance.now()+WEAPONS.rifle.cooldown*1000+10
       }
     }
-    const alpha = 1-Math.exp(-24*Math.min(delta,0.1))
-    camera.position.x += (pose.x-camera.position.x)*alpha
-    camera.position.y += (pose.y+PLAYER.eye-camera.position.y)*alpha
-    camera.position.z += (pose.z-camera.position.z)*alpha
+    const engine = prediction.current
+    const predicting = !dead && document.pointerLockElement===gl.domElement && lobby.get().status==='connected' && canPlayArena(lobby.get().room)
+    if (engine) {
+      if (reset || !predicting) {
+        engine.reset(pose); accumulator.current = 0; correction.current = [0,0,0]
+      } else {
+        const other = lobby.get().room.players.find(player => player.id!==id)
+        const difference = engine.reconcile(pose,other ? { ...latestPose(other.id),hp:other.combat.hp } : null)
+        if (Math.hypot(...difference)>1.5) correction.current = [0,0,0]
+        else correction.current = correction.current.map((value,index) => value+difference[index])
+        accumulator.current += Math.min(delta,0.1)
+        while (accumulator.current>=1/ONLINE.tickRate) { engine.step(); accumulator.current -= 1/ONLINE.tickRate }
+      }
+      const position = engine.position(), decay = Math.exp(-16*Math.min(delta,0.1))
+      correction.current = correction.current.map(value => value*decay)
+      camera.position.set(position.x+correction.current[0],position.y+PLAYER.eye+correction.current[1],position.z+correction.current[2])
+    } else camera.position.set(pose.x,pose.y+PLAYER.eye,pose.z)
     camera.quaternion.setFromEuler(new Euler(look.current.pitch,look.current.yaw,0,'YXZ'))
     arenaView.position = [camera.position.x,camera.position.y-PLAYER.eye,camera.position.z]
     arenaView.yaw = look.current.yaw; arenaView.pitch = look.current.pitch

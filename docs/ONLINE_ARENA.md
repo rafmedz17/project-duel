@@ -38,7 +38,7 @@ Releasing only your own mouse stops your controls without pausing the shared wor
 
 Server patches arrive at 20 Hz. Local camera look responds immediately; position smoothly approaches the authoritative pose. Other players interpolate across a 100 ms history. Position histories stay outside React, while the combat HUD receives server snapshots. First-person models and shared hit/reload feedback use those snapshots and do not edit the offline store. Released arena views render on invalidation to reduce background GPU work.
 
-There is no movement prediction or lag compensation/hit rewind yet. The server tests opponents at their current authoritative pose, so high latency and remote interpolation can affect shots against moving players. Hands-on balancing, laptop performance checks and sound remain. [Accounts and persistent results](ACCOUNTS_AND_RANKINGS.md) are optional through Supabase.
+There is no movement prediction or lag compensation/hit rewind yet. The server tests opponents at their current authoritative pose, so high latency and remote interpolation can affect shots against moving players. Hands-on balancing and laptop performance checks remain. [Combat audio](AUDIO_SYSTEM.md) follows confirmed state, with spatial opponent sounds. [Accounts and persistent results](ACCOUNTS_AND_RANKINGS.md) are optional through Supabase.
 
 ## Verification
 

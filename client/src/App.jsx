@@ -7,14 +7,27 @@ import { lobby, useLobby } from './multiplayer/lobby.js'
 import OnlineOverlay from './multiplayer/OnlineOverlay.jsx'
 import AccountPanel from './accounts/AccountPanel.jsx'
 import { accounts, useAccount } from './accounts/store.js'
+import { useGameAudio } from './audio/useGameAudio.js'
+import { audio } from './audio/synth.js'
 import './App.css'
 
 const controls = [['W A S D','Move'],['MOUSE','Look around'],['LEFT CLICK','Fire / swing equipped weapon'],['HOLD LEFT CLICK','Automatic rifle fire'],['1 / 2 / 3 / 4','Pistol / Blade / Rifle / Shotgun'],['Q','Cycle weapons'],['E','Dash toward movement / aim'],['F','Energy Shield'],['C','Scan for training targets'],['V','EMP blast'],['SPACE','Jump'],['SHIFT','Sprint'],['R','Reload equipped firearm'],['ESC','Pause / release mouse']]
 function Settings() {
   const settings = useGame(s => s.settings)
-  return <div className="settings"><label>Mouse sensitivity <span>{settings.sensitivity.toFixed(1)}×</span><input type="range" min="0.2" max="3" step="0.1" value={settings.sensitivity} onChange={e => game.settings({ sensitivity:Number(e.target.value) })} /></label><label>Render quality<select value={settings.quality} onChange={e => game.settings({ quality:e.target.value })}>{['Low','Medium','High'].map(q => <option key={q}>{q}</option>)}</select></label><label className="check">Show FPS counter<input type="checkbox" checked={settings.fps} onChange={e => game.settings({ fps:e.target.checked })} /></label><p className="muted">Settings are saved on this device. Low quality reduces resolution and lighting.</p></div>
+  const [audioNotice,setAudioNotice] = useState('')
+  return <div className="settings">
+    <label>Mouse sensitivity <span>{settings.sensitivity.toFixed(1)}×</span><input type="range" min="0.2" max="3" step="0.1" value={settings.sensitivity} onChange={e => game.settings({ sensitivity:Number(e.target.value) })} /></label>
+    <label>Render quality<select value={settings.quality} onChange={e => game.settings({ quality:e.target.value })}>{['Low','Medium','High'].map(q => <option key={q}>{q}</option>)}</select></label>
+    <label className="check">Show FPS counter<input type="checkbox" checked={settings.fps} onChange={e => game.settings({ fps:e.target.checked })} /></label>
+    <label>Sound volume <span>{Math.round(settings.volume*100)}%</span><input type="range" min="0" max="100" step="1" value={Math.round(settings.volume*100)} onChange={e => { game.settings({ volume:Number(e.target.value)/100 }); setAudioNotice('') }} /></label>
+    <label className="check">Mute sound<input type="checkbox" checked={settings.muted} onChange={e => { game.settings({ muted:e.target.checked }); setAudioNotice('') }} /></label>
+    <button disabled={settings.muted || settings.volume===0} onClick={async () => setAudioNotice(await audio.preview() ? 'Audio test played.' : 'Audio is unavailable or blocked by this browser.')}>TEST AUDIO</button>
+    {audioNotice && <p role="status">{audioNotice}</p>}
+    <p className="muted">Settings are saved on this device. Low quality reduces resolution and lighting. Use headphones for directional opponent sounds.</p>
+  </div>
 }
 export default function App() {
+  useGameAudio()
   const mode = useGame(s => s.mode), ready = useGame(s => s.ready), error = useGame(s => s.error)
   const s = { mode, ready, error, time:game.get().time }
   const [panel,setPanel] = useState(null)
