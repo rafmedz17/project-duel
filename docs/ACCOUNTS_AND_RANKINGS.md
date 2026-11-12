@@ -2,9 +2,13 @@
 
 The game supports guest play without cloud configuration. **Loadout** saves guest equipment on this device and applies it to training and the next multiplayer room. **Player Profile** provides email/password registration, sign-in, confirmation notices, password recovery, callsign editing, match history, win rate and statistics. Signed-in loadouts sync across devices. **Leaderboard** lists the top 50 players with at least one rated match, ordered by Elo, wins, then account ID.
 
+This workspace is connected to **project-duel** (`okwbhevczeccwumakwbp`). The migration is deployed, ignored environment files are configured, and Auth redirects allow the local frontend. A live browser and two-player server check passed on November 13, 2026: sign-in, callsign/loadout saves, two validated headshot rounds, a ranked 2–0 result, Elo, RLS, history, leaderboard and duplicate protection. Temporary test users/results were removed. The hosted database security advisor reported no issues. Email inbox delivery was not part of this check.
+
+**Email delivery:** Supabase's built-in mail service only sends to project-team addresses. To register friends with other addresses, configure [custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp) in the project's Auth settings. Keep email confirmation enabled. SMTP credentials belong in Supabase settings or a local secret file, never in frontend code or chat. The game supports the confirmation and password-reset flows; sending mail to general users needs that provider setup.
+
 ## Connect Supabase
 
-Use an existing Supabase project dedicated to this game. No hosted project is created automatically. The included migration has been tested in embedded PostgreSQL; a live Auth/email integration still needs project configuration.
+For a fresh checkout or another deployment, use a Supabase project dedicated to this game. No hosted project is created automatically. The included migration has been tested in embedded PostgreSQL and in the selected hosted project.
 
 1. Connect Supabase to this Codex session and identify the intended project, or use its Dashboard SQL Editor to apply [the migration](../supabase/migrations/20261112182313_accounts_loadouts_rankings.sql). Apply it once to a fresh game schema; existing tables with these names need review before deployment. This creates `profiles`, `loadouts`, `profile_stats`, `duel_matches` and a server-only result function. RLS and explicit grants are included.
 2. Copy `client/.env.example` to `client/.env.local`. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` using the project's URL and **publishable** API key.
@@ -43,6 +47,14 @@ This is private-room ranking, without public matchmaking, seasonal ranks or comp
 
 `npm.cmd run test:server` runs 54 cases, including actual PostgreSQL grants/RLS/result transactions, token verification behavior, durable retries, new map physics, loadout enforcement and real WebSocket rooms. PostgreSQL tests bootstrap Auth roles and UID claims locally; they do not replace a live Supabase Auth test.
 
-The browser suite includes account forms, confirmation/errors/recovery, restored sessions, cross-browser loadout restoration, history/leaderboard, guest equipment and both new maps. Account HTTP responses in those tests are fixtures on a separate Vite instance at port 5174, keeping real credentials out of tests. Normal gameplay tests use port 5173 with cloud accounts disabled. The hosted smoke check in step 5 is required after connecting a real project.
+The 26 browser scenarios include account forms, confirmation/errors/recovery, restored sessions, cross-browser loadout restoration, history/leaderboard, guest equipment and both new maps. Account HTTP responses in those tests are fixtures on a separate Vite instance at port 5174, keeping real credentials out of those tests. Normal gameplay tests use fresh guest contexts on port 5173 and do not write cloud stats. The hosted smoke check in step 5 is required after connecting a new project.
+
+The opt-in live check can also be repeated from `server` while the frontend and backend are running:
+
+```powershell
+npm.cmd run test:cloud -- --project-ref=YOUR_PROJECT_REF --browser
+```
+
+It confirms the project ref matches the configured URL, creates its own temporary confirmed Auth users without sending emails, signs in through the real browser UI, plays actual socket shots and removes only its own temporary users/results. Omit `--browser` for the API/socket check. The optional browser check uses Playwright from `client`; `PLAYWRIGHT_CHROMIUM_EXECUTABLE` can select an installed Chromium. The live backend must have outbound access to Supabase. A mailbox confirmation/reset-delivery test is still separate.
 
 Implementation references: [Supabase API keys](https://supabase.com/docs/guides/getting-started/api-keys), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [Auth getUser](https://supabase.com/docs/reference/javascript/auth-getuser), [Auth events](https://supabase.com/docs/reference/javascript/auth-onauthstatechange), [password recovery](https://supabase.com/docs/reference/javascript/auth-resetpasswordforemail), [CLI v3](https://supabase.com/changelog/supabase-cli-v3).

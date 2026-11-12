@@ -22,13 +22,14 @@ async function temp(t) {
 test('Auth validates the token remotely and loads canonical profile/equipment, ignoring editable metadata',async t => {
   let token
   const client = {
-    auth:{ getUser:async value => { token=value; return value==='valid' ? { data:{ user:{ id:userId,user_metadata:{ callsign:'Forged',rating:99999 } } } } : { error:new Error('Invalid') } } },
+    auth:{ getUser:async value => { token=value; return value==='valid' ? { data:{ user:{ id:userId,user_metadata:{ callsign:'Forged',rating:99999 } } } } : { error:value==='offline' ? Object.assign(new Error('Offline'),{ status:0,name:'AuthRetryableFetchError' }) : new Error('Invalid') } } },
     from(table) { return { select() { return this },eq() { return this },async maybeSingle() { return { data:table==='profiles' ? { callsign:'Canonical' } : { starting_weapon:'rifle',weapons:['rifle'],abilities:[] } } } } },
   }
   const service=createAccountsService({ client,directory:await temp(t) }); t.after(() => service.close())
   assert.deepEqual(await service.verify('valid'),{ userId,name:'Canonical',loadout:{ startingWeapon:'rifle',weapons:['rifle'],abilities:[] } })
   assert.equal(token,'valid')
   await assert.rejects(service.verify('forged'),/expired/)
+  await assert.rejects(service.verify('offline'),/temporarily unavailable/)
   await assert.rejects(service.verify({ sub:userId }),/expired/)
 })
 test('failed uploads persist without tokens, survive restart, and retry the same idempotency key',async t => {

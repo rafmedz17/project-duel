@@ -70,6 +70,8 @@ Browser tests start both services if needed. Install Chromium with `npx.cmd play
 | File | Responsibility |
 | --- | --- |
 | `shared/arena.js` | Facility solids, movement, capsule and network values |
+| `shared/maps.js` | Three shared collision layouts, spawns and visual themes |
+| `shared/loadout.js` | Shared equipment defaults and validation |
 | `shared/weapons.js` | Four weapon configurations, falloff, regional damage |
 | `shared/match.js` | Match formats, round timing and gameplay gating |
 | `shared/abilities.js` | Shared ability bindings, cooldowns and tuning |
@@ -81,18 +83,21 @@ Browser tests start both services if needed. Install Chromium with `npx.cmd play
 | `client/src/game/weapons/` | Weapon models, animations and local attack input |
 | `client/src/game/hud/` | Training HUD, scanner and shared combat feedback |
 | `client/src/multiplayer/` | Lobby, online controls, interpolated players, server-backed weapon rendering/HUD |
+| `client/src/accounts/` | Supabase Auth, profile, equipment, history and leaderboard screens |
 | `server/src/rooms/` | Private rooms, synchronized state and lifecycle |
 | `server/src/arena/ArenaSimulation.js` | Authoritative fixed-step Rapier movement |
 | `server/src/arena/DuelMatch.js` | Best-of-three lifecycle, timed rounds, scoring, forfeits and results |
 | `server/src/arena/ArenaCombat.js` | Validated attacks, abilities, shields/EMP, damage and respawn |
+| `server/src/accounts.js` | Verified identities, canonical loadouts and durable result uploads |
+| `supabase/migrations/` | Account tables, RLS, grants and atomic match/Elo recording |
 
-All visual assets are procedural geometry and system fonts. No new dependency was needed for this feature. Earlier drone modules remain unused; the game no longer renders or offers the drone.
+All visual assets are procedural geometry and system fonts. Accounts use the pinned Supabase JS SDK; database tests use PGlite, and local migration tooling uses the pinned Supabase CLI. Earlier drone modules remain unused; the game no longer renders or offers the drone.
 
 ## Known limits
 
 - Online poses use smoothed server snapshots and 100 ms remote interpolation. There is no movement prediction or hit rewind yet; latency can affect aiming at moving players.
 - Hands-on balancing and integrated-GPU performance testing remain. The production engine/WASM bundle retains its large-chunk warning; Low render quality reduces GPU work.
-- Multiplayer offers private Best of Three and Free Play. Results are in memory; accounts, persistent match history, ranking, sound, session recovery across reloads and public hosting remain future work.
-- The existing four moderate development-only ESLint/minimatch advisories were not changed by this dependency-free update.
+- Multiplayer offers private Best of Three and Free Play. Cloud accounts, persistent history and Elo require a configured Supabase project. Sound, public matchmaking, arena-session recovery across page reloads and public hosting remain future work.
+- The existing four moderate development-only ESLint/minimatch advisories remain; they are unrelated to account gameplay.
 
 See the [design](docs/GAME_DESIGN.md) and [roadmap](docs/DEVELOPMENT_ROADMAP.md).

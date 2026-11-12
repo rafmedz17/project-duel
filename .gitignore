@@ -9,3 +9,4 @@ server/data/
 *.log
 *-preview.png
 supabase/.temp/
+.tmp/

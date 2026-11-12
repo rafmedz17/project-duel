@@ -41,6 +41,7 @@ export function createAccountsService({ url=process.env.SUPABASE_URL,key=process
       if (!configured) throw new Error('Accounts are not enabled on this game server yet. Sign out to play as a guest.')
       if (typeof accessToken!=='string' || !accessToken.trim() || accessToken.length>8192) throw new Error('Your sign-in expired. Sign in again.')
       const { data,error } = await db.auth.getUser(accessToken)
+      if (error && (error.name==='AuthRetryableFetchError' || error.status===0 || error.status>=500)) throw new Error('Account verification is temporarily unavailable. Try again shortly.')
       if (error || !data?.user) throw new Error('Your sign-in expired. Sign in again.')
       const userId = data.user.id
       const [profile,loadout] = await Promise.all([

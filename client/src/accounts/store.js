@@ -6,7 +6,7 @@ function deviceLoadout() {
   try { return validateLoadout(JSON.parse(localStorage.getItem('duel-loadout'))) || DEFAULT_LOADOUT }
   catch { return DEFAULT_LOADOUT }
 }
-let state = { configured,loading:false,busy:false,user:null,profile:null,loadout:deviceLoadout(),stats:null,history:[],leaderboard:[],error:'',notice:'',recovery:false }
+let state = { configured,loading:configured,busy:false,user:null,profile:null,loadout:deviceLoadout(),stats:null,history:[],leaderboard:[],error:'',notice:'',recovery:false }
 let clientPromise, initialized, generation=0
 const listeners = new Set()
 const update = patch => { state = { ...state,...patch }; listeners.forEach(fn => fn()) }

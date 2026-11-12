@@ -47,7 +47,7 @@ test('guest loadout saves across reloads and controls training weapons and abili
   await page.goto('/')
   await page.getByRole('button',{ name:/^LOADOUT/ }).click()
   const dialog=page.getByRole('dialog',{ name:'LOADOUT' })
-  await expect(dialog.getByText(/Cloud accounts and rankings are not enabled/)).toBeVisible()
+  await expect(dialog.getByText(/Guest loadouts save on this device/)).toBeVisible()
   await dialog.getByLabel('STARTING WEAPON').selectOption('shotgun')
   for (const name of ['ENERGY PISTOL','ENERGY BLADE','PULSE RIFLE','DASH','SHIELD','SCANNER','EMP']) await dialog.getByRole('checkbox',{ name:new RegExp(name) }).uncheck()
   await dialog.getByRole('button',{ name:'SAVE LOADOUT' }).click()

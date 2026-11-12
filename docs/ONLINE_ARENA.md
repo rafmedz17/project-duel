@@ -44,7 +44,7 @@ There is no movement prediction or lag compensation/hit rewind yet. The server t
 
 From root: `npm.cmd run lint:server`, `npm.cmd run test:server`. From `client`: `npm.cmd run lint`, `npm.cmd run build`, `npm.cmd test`, `npm.cmd run test:browser`.
 
-The 40 backend cases cover room lifecycle, capacity, ready/countdown/re-entry, movement/collision, malformed/forged/replayed inputs, all weapon magazines/reload/recovery, cover/range, head/body/limb/foot hits, death/respawn, real WebSocket damage synchronization, and reconnect-frozen reloads. The 31 local cases include rendered-box versus authoritative-volume agreement across rotated/tilted robots. The 21 browser scenarios include offline robot regional hits and two-browser movement, combat, server-confirmed health/kills, respawn, weapon inputs/reload, online abilities/dash collision/shields/EMP jam/scanner, focus release, lobby return, and re-entry.
+The backend cases cover room lifecycle, capacity, ready/countdown/re-entry, movement/collision, malformed/forged/replayed inputs, weapon timing, regional hits, respawns, abilities and reconnect-frozen clocks. They also verify accounts, loadout enforcement, new map collision, PostgreSQL RLS and idempotent result transactions. The 31 local cases include rendered-box versus authoritative-volume agreement across rotated/tilted robots. The browser suite covers regional hits, two-browser combat, abilities, complete matches, map selection, connection lifecycle and fixture-backed account flows. See the account guide for live-cloud setup and test boundaries.
 
 ## Online abilities
 
