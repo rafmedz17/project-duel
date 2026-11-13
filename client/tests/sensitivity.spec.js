@@ -1,11 +1,11 @@
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
 import { PLAYER } from '../../shared/arena.js'
-import { state,presetLoadout,equipWeapon } from './helpers.js'
+import {state,presetLoadout,equipWeapon, openGame} from './helpers.js'
 
 async function configure(page) {
   await presetLoadout(page,{primary:'astral',startingWeapon:'astral'})
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button',{name:/SETTINGS/}).click()
   await page.getByRole('tab',{name:'Graphics',exact:true}).click()
   await page.getByLabel('Render quality').selectOption('Low')

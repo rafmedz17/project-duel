@@ -1,3 +1,4 @@
+import {openGame} from './helpers.js'
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
 import { PLAYER } from '../src/game/config.js'
@@ -40,7 +41,7 @@ async function aim(page,id,miss=false) {
 }
 async function setup(page,format) {
   await page.addInitScript(()=>localStorage.setItem('duel-loadout',JSON.stringify({ character:'ion',primary:'hyperion',unique:'scanner' })))
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button',{name:/^MULTIPLAYER/}).click()
   await page.getByLabel('YOUR CALLSIGN').fill('Effects Pilot')
   await page.getByRole('button',{name:'CREATE PRIVATE ROOM'}).click()

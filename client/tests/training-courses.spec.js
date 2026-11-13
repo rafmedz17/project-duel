@@ -1,10 +1,10 @@
 import { test,expect } from '@playwright/test'
-import { state,position,lookAt,moveUntil,equipWeapon,observeHitFeedback,observedFeedback,editLoadout } from './helpers.js'
+import {state,position,lookAt,moveUntil,equipWeapon,observeHitFeedback,observedFeedback,editLoadout, openGame,reloadGame} from './helpers.js'
 import { PLAYER } from '../src/game/config.js'
 import { ROBOT_HEAD_Y } from '../../shared/robot.js'
 
 async function start(page) {
-  await page.goto('/');await page.getByRole('button',{ name:/SETTINGS/ }).click()
+  await openGame(page,'/');await page.getByRole('button',{ name:/SETTINGS/ }).click()
   await page.getByRole('tab',{ name:'Graphics',exact:true }).click();await page.getByLabel('Render quality').selectOption('Low');await page.getByRole('button',{ name:'BACK' }).click()
   await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
   await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
@@ -100,7 +100,7 @@ test('B edits character, guns, melee and skill in place while freezing an active
   await expect(presets.getByRole('button',{name:'Loadout slot 2',exact:true})).toHaveAttribute('aria-pressed','true')
   await expect(presets.getByRole('button',{name:'Change primary gun',exact:true})).toContainText('HYPERION X')
   await presets.getByRole('button',{name:'BACK',exact:true}).click()
-  await page.reload()
+  await reloadGame(page)
   await page.getByRole('button',{name:/ENTER TRAINING/}).click()
   expect((await state(page)).loadout).toMatchObject(saved.slots[1])
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('duel-loadout-bank')))).toEqual(saved)
@@ -132,7 +132,7 @@ test('training ammo mode applies to both guns, cancels reloads, survives refresh
   await page.evaluate(()=>document.exitPointerLock());await page.getByRole('button',{ name:'SETTINGS',exact:true }).click()
   await page.getByLabel('Training ammo').selectOption('unlimited')
   expect((await state(page)).reloading).toBe(false)
-  await page.reload();await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
+  await reloadGame(page);await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
   expect((await state(page)).trainingOptions.noReload).toBe(true)
 })
 

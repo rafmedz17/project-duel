@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test'
 import {Client} from '@colyseus/sdk'
-import {diagnostics,state} from './helpers.js'
+import {diagnostics,state, openGame} from './helpers.js'
 
 const crosshair=page=>page.locator('.custom-crosshair[data-crouched]')
 const view=(page,id)=>page.evaluate(async id=>{
@@ -17,7 +17,7 @@ async function pressCrouch(page,key='ControlLeft') {
 
 test('training crouch lowers the capsule, slows sprinting and clears on release/pause with a rebindable control',async({page})=>{
   const errors=[];page.on('pageerror',error=>errors.push(error.message))
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button',{name:/SETTINGS/}).click()
   await page.getByRole('tab',{name:'Controls',exact:true}).click()
   await expect(page.getByRole('button',{name:'Rebind Crouch (hold)',exact:true})).toHaveText('L CTRL')
@@ -57,7 +57,7 @@ test('training crouch lowers the capsule, slows sprinting and clears on release/
 
 test('online crouch predicts locally, replicates both players and fires from the lowered authoritative eye',async({page})=>{
   const errors=[];page.on('pageerror',error=>errors.push(error.message))
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button',{name:/^MULTIPLAYER/}).click()
   await page.getByLabel('YOUR CALLSIGN').fill('Crouch Pilot')
   await page.getByRole('button',{name:'CREATE PRIVATE ROOM'}).click()

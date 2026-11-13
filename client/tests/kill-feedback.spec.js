@@ -2,12 +2,12 @@ import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
 import { writeFile } from 'node:fs/promises'
 import { Buffer } from 'node:buffer'
-import { state,presetLoadout,position,lookAt } from './helpers.js'
+import {state,presetLoadout,position,lookAt, openGame} from './helpers.js'
 import { TARGETS,PLAYER } from '../src/game/config.js'
 import { ROBOT_HEAD_Y } from '../../shared/robot.js'
 
 async function start(page,gear) {
-  await presetLoadout(page,gear);await page.goto('/')
+  await presetLoadout(page,gear);await openGame(page,'/')
   await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
   await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
   await expect.poll(async ()=>(await state(page)).mode).toBe('playing')
@@ -107,7 +107,7 @@ test('multiplayer confirms combo badges and sound, renders opponent shots, and c
   let peer
   const errors=[];page.on('pageerror',e=>errors.push(e.message))
   try {
-    await presetLoadout(page,{ primary:'hyperion',startingWeapon:'hyperion' });await page.goto('/')
+    await presetLoadout(page,{ primary:'hyperion',startingWeapon:'hyperion' });await openGame(page,'/')
     await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click();await page.getByLabel('YOUR CALLSIGN').fill('Badge Pilot')
     await page.getByRole('button',{ name:'CREATE PRIVATE ROOM' }).click()
     peer=await new Client('http://127.0.0.1:2567').joinById(await page.getByTestId('invite-code').textContent(),{ name:'Trail Pilot' })

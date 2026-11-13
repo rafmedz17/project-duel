@@ -1,7 +1,8 @@
+import {openGame} from './helpers.js'
 import { test, expect } from '@playwright/test'
 
 async function open(page, name) {
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
   await expect(page.getByRole('dialog',{ name:'PRIVATE MULTIPLAYER' })).toBeVisible()
   if (name) await page.getByLabel('YOUR CALLSIGN').fill(name)

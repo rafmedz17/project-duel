@@ -1,3 +1,4 @@
+import {openGame} from './helpers.js'
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
 
@@ -37,7 +38,7 @@ async function exercise(page) {
 
 test('training crosshair shows walk, sprint, jump and dash inaccuracy and settles after stopping',async({page})=>{
   const errors=[];page.on('pageerror',error=>errors.push(error.message))
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button',{name:/ENTER TRAINING/}).click()
   await page.getByRole('button',{name:'RESUME / ENTER ARENA'}).click()
   await exercise(page)
@@ -46,7 +47,7 @@ test('training crosshair shows walk, sprint, jump and dash inaccuracy and settle
 
 test('online crosshair follows movement and settles after stopping without breaking multiplayer feedback',async({page})=>{
   const errors=[];page.on('pageerror',error=>errors.push(error.message))
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button',{name:/^MULTIPLAYER/}).click()
   await page.getByLabel('YOUR CALLSIGN').fill('Accuracy Pilot')
   await page.getByRole('button',{name:'CREATE PRIVATE ROOM'}).click()

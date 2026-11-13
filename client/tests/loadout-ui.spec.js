@@ -1,10 +1,10 @@
 import {test,expect} from '@playwright/test'
-import {editLoadout} from './helpers.js'
+import {editLoadout, openGame} from './helpers.js'
 
 test('dashboard inspects without saving, opens accessible pickers and automatically persists every equipment type',async({page})=>{
   test.setTimeout(90000)
   const errors=[];page.on('pageerror',error=>errors.push(error.message))
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button',{name:/^CHARACTER & LOADOUT/}).click()
   const dialog=page.getByRole('dialog',{name:'CHARACTER & LOADOUT',exact:true})
   await expect(dialog.getByRole('button',{name:/^(SAVE|APPLY)/})).toHaveCount(0)

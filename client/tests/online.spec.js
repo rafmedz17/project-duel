@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { observeHitFeedback, observedFeedback } from './helpers.js'
+import {observeHitFeedback, observedFeedback, openGame} from './helpers.js'
 import { PLAYER } from '../src/game/config.js'
 import { ROBOT_HEAD_Y } from '../../shared/robot.js'
 
@@ -13,7 +13,7 @@ async function onlineState(page) {
   })
 }
 async function open(page,name) {
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
   await page.getByLabel('YOUR CALLSIGN').fill(name)
 }

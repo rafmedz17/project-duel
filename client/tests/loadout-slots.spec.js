@@ -4,7 +4,7 @@ import { makeLoadoutBank } from '../../shared/loadoutBank.js'
 import { validateLoadout } from '../../shared/loadout.js'
 import { PLAYER } from '../../shared/arena.js'
 import { ROBOT_HEAD_Y } from '../../shared/robot.js'
-import { state,editLoadout } from './helpers.js'
+import {state,editLoadout, openGame,reloadGame} from './helpers.js'
 
 const gear=(primary,character='vex')=>validateLoadout({ character,primary,secondary:'volt',melee:'gravity',unique:'scanner',startingWeapon:primary })
 function bank() {
@@ -17,7 +17,7 @@ const network=page=>page.evaluate(async ()=> {
 const self=async page=> { const s=await network(page);return s.room?.players.find(p=>p.id===s.sessionId)?.combat }
 async function openRoom(page,format) {
   await page.addInitScript(value=>localStorage.setItem('duel-loadout-bank',JSON.stringify(value)),bank())
-  await page.goto('/');await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
+  await openGame(page,'/');await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
   await page.getByLabel('YOUR CALLSIGN').fill('Preset Pilot');await page.getByRole('button',{ name:'CREATE PRIVATE ROOM' }).click()
   const peer=await new Client('http://127.0.0.1:2567').joinById(await page.getByTestId('invite-code').textContent(),{ name:'Preset Peer',loadout:gear('hyperion') })
   peer.onMessage('shot-trail',()=>{})
@@ -39,7 +39,7 @@ async function aimAtPeer(page,id) {
 test('five presets automatically save independent choices, survive reload and fit a smaller screen',async ({ page })=> {
   test.setTimeout(90000)
   const errors=[];page.on('pageerror',e=>errors.push(e.message))
-  await page.goto('/');await page.getByRole('button',{ name:/^CHARACTER & LOADOUT/ }).click()
+  await openGame(page,'/');await page.getByRole('button',{ name:/^CHARACTER & LOADOUT/ }).click()
   const dialog=page.getByRole('dialog'),slots=dialog.getByRole('group',{ name:'Five loadout slots' })
   await expect(slots.getByRole('button')).toHaveCount(5)
   await expect(dialog.getByLabel('Starting weapon')).toHaveCount(0)
@@ -53,7 +53,7 @@ test('five presets automatically save independent choices, survive reload and fi
   await editLoadout(page,{secondary:'magnus',melee:'fangs'})
   await expect(dialog.getByRole('button',{name:/SAVE & EQUIP/})).toHaveCount(0)
   await expect(dialog.getByRole('status')).toContainText('AUTO-SAVED')
-  await page.reload();await page.getByRole('button',{ name:/^CHARACTER & LOADOUT/ }).click()
+  await reloadGame(page);await page.getByRole('button',{ name:/^CHARACTER & LOADOUT/ }).click()
   await expect(dialog.getByRole('button',{ name:'Loadout slot 5',exact:true })).toHaveAttribute('aria-pressed','true')
   await expect(dialog.getByRole('button',{ name:'Change primary gun',exact:true })).toContainText('OMEGA-88')
   await dialog.getByRole('button',{ name:'Loadout slot 2',exact:true }).click()

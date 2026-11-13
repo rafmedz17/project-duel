@@ -1,6 +1,6 @@
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
-import { state,presetLoadout,moveUntil,equipWeapon,aimAtTarget } from './helpers.js'
+import {state,presetLoadout,moveUntil,equipWeapon,aimAtTarget, openGame} from './helpers.js'
 import { WEAPONS } from '../../shared/weapons.js'
 import { reflexProfile } from '../src/game/weapons/optics.js'
 
@@ -16,7 +16,7 @@ async function view(page) {
   })
 }
 async function start(page,id) {
-  await presetLoadout(page,{ primary:id });await page.goto('/')
+  await presetLoadout(page,{ primary:id });await openGame(page,'/')
   await page.getByRole('button',{ name:/SETTINGS/ }).click();await page.getByRole('tab',{ name:'Graphics',exact:true }).click();await page.getByLabel('Render quality').selectOption('Low')
   await page.getByRole('button',{ name:'BACK' }).click();await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
   await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
@@ -66,7 +66,7 @@ test('rifle ADS fires real hits through its open sight, drops for reload, switch
 for(const id of ['astral','omega']) test(`${id} multiplayer ADS preserves its firing behavior and remains centered`,async ({ page })=> {
   test.setTimeout(60000);let peer
   try {
-    await presetLoadout(page,{ primary:id });await page.goto('/');await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
+    await presetLoadout(page,{ primary:id });await openGame(page,'/');await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
     await page.getByLabel('YOUR CALLSIGN').fill('Reflex Pilot');await page.getByRole('button',{ name:'CREATE PRIVATE ROOM' }).click()
     peer=await new Client('http://127.0.0.1:2567').joinById(await page.getByTestId('invite-code').textContent(),{ name:'Sight Target' });peer.onMessage('shot-trail',()=>{})
     await page.getByLabel('Match format').selectOption('freeplay');peer.send('ready',{ ready:true })

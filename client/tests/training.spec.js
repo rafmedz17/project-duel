@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { equipWeapon, state, diagnostics, position, moveUntil, aimAtTarget } from './helpers.js'
+import {equipWeapon, state, diagnostics, position, moveUntil, aimAtTarget, openGame,reloadGame} from './helpers.js'
 async function pause(page) {
   // Browser automation cannot synthesize the browser-owned Escape shortcut.
   await page.evaluate(() => document.exitPointerLock())
@@ -14,7 +14,7 @@ async function resume(page) {
 test('menus, persistent settings, movement, collisions, combat, pause and reset', async ({ page }) => {
   const errors = []
   page.on('pageerror', error => errors.push(error.message))
-  await page.goto('/')
+  await openGame(page,'/')
   await expect(page.getByRole('heading', { name: /PROJECT.*DUEL/ })).toBeVisible()
   await page.getByRole('button', { name: /SETTINGS/ }).click();await page.getByRole('tab',{ name:'Controls',exact:true }).click()
   await expect(page.getByRole('button',{ name:'Rebind Fire / melee' })).toBeVisible()
@@ -23,7 +23,7 @@ test('menus, persistent settings, movement, collisions, combat, pause and reset'
   await page.getByRole('tab',{ name:'Graphics',exact:true }).click();await page.getByLabel('Render quality').selectOption('Low')
   await page.getByRole('tab',{ name:'General',exact:true }).click();await page.getByLabel('Show FPS counter').check()
   await page.getByRole('button', { name: /^BACK/ }).click()
-  await page.reload()
+  await reloadGame(page)
   expect((await state(page)).settings).toMatchObject({ quality:'Low', fps:true })
   await page.getByRole('button', { name: /ENTER TRAINING/ }).click()
   await expect(page.getByRole('button', { name: 'RESUME / ENTER ARENA' })).toBeEnabled({ timeout:30000 })
@@ -79,7 +79,7 @@ test('menus, persistent settings, movement, collisions, combat, pause and reset'
 test('cover blocks the capsule and marked hazards damage and defeat the player', async ({ page }) => {
   const errors = []
   page.on('pageerror', error => errors.push(error.message))
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button', { name:/SETTINGS/ }).click()
   await page.getByRole('tab',{ name:'Graphics',exact:true }).click();await page.getByLabel('Render quality').selectOption('Low')
   await page.getByRole('button', { name:/^BACK/ }).click()

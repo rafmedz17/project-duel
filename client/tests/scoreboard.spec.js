@@ -1,3 +1,4 @@
+import {openGame} from './helpers.js'
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
 import { PLAYER } from '../../shared/arena.js'
@@ -11,7 +12,7 @@ const network=page=>page.evaluate(async ()=> {
 
 async function pair(page,format) {
   await page.addInitScript(()=>localStorage.setItem('duel-loadout',JSON.stringify({character:'vex',primary:'hyperion',unique:'scanner'})))
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button',{name:/^MULTIPLAYER/}).click()
   await page.getByLabel('YOUR CALLSIGN').fill('Roster Pilot')
   await page.getByRole('button',{name:'CREATE PRIVATE ROOM'}).click()

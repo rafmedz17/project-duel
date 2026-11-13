@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test'
-import { state, position, lookAt, aimAtTarget, moveUntil, presetLoadout } from './helpers.js'
+import {state, position, lookAt, aimAtTarget, moveUntil, presetLoadout, openGame} from './helpers.js'
 import { TARGETS } from '../src/game/config.js'
 
 async function start(page,primary='rifle') {
   await presetLoadout(page,{ character:'aegis',primary,unique:'scanner' })
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button',{ name:/SETTINGS/ }).click()
   await page.getByRole('tab',{ name:'Graphics',exact:true }).click();await page.getByLabel('Render quality').selectOption('Low')
   await page.getByRole('button',{ name:'BACK' }).click()

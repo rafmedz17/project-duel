@@ -1,0 +1,66 @@
+import {test,expect} from '@playwright/test'
+
+const notice=page=>page.getByRole('dialog',{name:'HI, PLAYERS.',exact:true})
+const fullscreen=page=>page.evaluate(()=>Boolean(document.fullscreenElement))
+
+test('launch notice traps focus, can be declined, fits mobile and returns on reload',async({page})=>{
+  await page.goto('/')
+  await expect(notice(page)).toBeVisible()
+  await expect(notice(page).getByRole('button',{name:'NO, THANKS',exact:true})).toBeFocused()
+  await expect(notice(page)).toContainText('Ctrl')
+  await expect(notice(page)).toContainText('Fullscreen doesn’t guarantee that browser shortcuts are disabled.')
+  await page.keyboard.press('Shift+Tab')
+  await expect(notice(page).getByRole('button',{name:'I AGREE',exact:true})).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(notice(page).getByRole('button',{name:'NO, THANKS',exact:true})).toBeFocused()
+  await page.screenshot({path:'fullscreen-notice-preview.png'})
+  await page.setViewportSize({width:390,height:844})
+  expect(await notice(page).evaluate(element=>element.scrollWidth<=element.clientWidth)).toBe(true)
+  await expect(notice(page).getByRole('button',{name:'I AGREE',exact:true})).toBeInViewport({ratio:1})
+  await page.screenshot({path:'fullscreen-notice-mobile-preview.png'})
+  await notice(page).getByRole('button',{name:'NO, THANKS',exact:true}).click()
+  await expect(notice(page)).toHaveCount(0);expect(await fullscreen(page)).toBe(false)
+  await page.getByRole('button',{name:/ENTER TRAINING/}).click()
+  await page.getByRole('button',{name:'RETURN TO MAIN MENU',exact:true}).click()
+  await expect(notice(page)).toHaveCount(0)
+  await page.reload()
+  await expect(notice(page)).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(notice(page)).toHaveCount(0);expect(await fullscreen(page)).toBe(false)
+})
+
+test('agree enters real document fullscreen and leaving fullscreen does not reopen the notice',async({page})=>{
+  const errors=[];page.on('pageerror',error=>errors.push(error.message))
+  await page.goto('/')
+  expect(await fullscreen(page)).toBe(false)
+  await notice(page).getByRole('button',{name:'I AGREE',exact:true}).click()
+  await expect.poll(()=>page.evaluate(()=>document.fullscreenElement===document.documentElement)).toBe(true)
+  await expect(notice(page)).toHaveCount(0)
+  await page.getByRole('button',{name:'SETTINGS',exact:true}).click()
+  await expect(page.getByRole('dialog',{name:'SETTINGS',exact:true})).toBeVisible()
+  expect(await fullscreen(page)).toBe(true)
+  await page.getByRole('button',{name:/^BACK/}).click()
+  await page.evaluate(()=>document.exitFullscreen())
+  await expect.poll(()=>fullscreen(page)).toBe(false)
+  await expect(notice(page)).toHaveCount(0)
+  expect(errors).toEqual([])
+})
+
+for(const support of ['blocked','unavailable']) test(`${support} fullscreen shows a helpful fallback and still allows windowed play`,async({page})=>{
+  const errors=[];page.on('pageerror',error=>errors.push(error.message))
+  await page.addInitScript(mode=>{
+    Object.defineProperty(Element.prototype,'requestFullscreen',{
+      configurable:true,
+      value:mode==='blocked' ? ()=>Promise.reject(new TypeError('Browser denied fullscreen')) : undefined,
+    })
+  },support)
+  await page.goto('/')
+  await notice(page).getByRole('button',{name:'I AGREE',exact:true}).click()
+  await expect(notice(page).getByRole('alert')).toContainText('F11')
+  await expect(notice(page).getByRole('button',{name:'NO, THANKS',exact:true})).toBeEnabled()
+  await notice(page).getByRole('button',{name:'NO, THANKS',exact:true}).click()
+  await expect(notice(page)).toHaveCount(0)
+  await page.getByRole('button',{name:/ENTER TRAINING/}).click()
+  await expect(page.getByRole('button',{name:'RESUME / ENTER ARENA'})).toBeEnabled({timeout:30000})
+  expect(await fullscreen(page)).toBe(false);expect(errors).toEqual([])
+})

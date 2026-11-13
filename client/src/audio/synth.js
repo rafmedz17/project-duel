@@ -1,11 +1,12 @@
 import { audioSettings } from './settings.js'
 import { roomSend,soundLayers } from './profiles.js'
+import {MENU_THEME} from './menuTheme.js'
 
-// One lazy AudioContext, bounded voices and one reused noise buffer. Nothing is
-// downloaded. Creation/resume happens from user interaction, never page load.
+// One lazy AudioContext, bounded effects voices and one cached menu music loop.
+// Context creation/resume happens from user interaction, never page load.
 export function createSynth() {
   let context,master,compressor,analyser,noiseBuffer,sfx,music,room,musicActive=false,ambient=null,active=false,settings=audioSettings(),unavailable=false
-  let played=0,spatial=0,peakRms=0,lastSpatial=null
+  let played=0,spatial=0,peakRms=0,lastSpatial=null,menuBuffer=null,menuLoading=null,musicFailed=false
   const counts={},voices=new Set(),events=[],samples=new Float32Array(512)
   function create() {
     if (context || unavailable) return
@@ -39,18 +40,28 @@ export function createSynth() {
   function syncMusic() {
     const enabled=musicActive && !settings.muted && settings.volume>0 && settings.musicVolume>0
     if(!context || !enabled) {
-      if(ambient) { clearInterval(ambient.timer);for(const node of ambient.sources) { try { node.stop() } catch { /* Already stopped. */ } };for(const node of ambient.nodes) node.disconnect();ambient=null }
+      if(ambient) { for(const node of ambient.sources) { try { node.stop() } catch { /* Already stopped. */ } };for(const node of ambient.nodes) node.disconnect();ambient=null }
       return
     }
     if(ambient) return
-    // A quiet evolving sci-fi pad, generated locally with independent mixing.
-    const filter=context.createBiquadFilter(),level=context.createGain(),sources=[]
-    filter.type='lowpass';filter.frequency.value=650;level.gain.value=.045
-    filter.connect(level);level.connect(music)
-    for(const ratio of [1,1.5,2.002]) { const oscillator=context.createOscillator();oscillator.type='triangle';oscillator.frequency.value=110*ratio;oscillator.connect(filter);oscillator.start();sources.push(oscillator) }
-    const chords=[110,87.31,130.81,98],ratios=[1,1.5,2.002];let chord=0
-    const timer=setInterval(()=> { if(!context || context.state!=='running') return;chord=(chord+1)%chords.length;for(const [i,node] of sources.entries()) node.frequency.setTargetAtTime(chords[chord]*ratios[i],context.currentTime,1.2) },4000)
-    ambient={ sources,nodes:[...sources,filter,level],timer }
+    if(!menuBuffer) {
+      if(!menuLoading && !musicFailed) {
+        const owner=context
+        menuLoading=fetch(new URL('./limit-break.wav',import.meta.url)).then(response=>{
+          if(!response.ok) throw new Error('Menu theme unavailable')
+          return response.arrayBuffer()
+        }).then(data=>owner.decodeAudioData(data)).then(buffer=>{
+          if(context!==owner) return
+          menuBuffer=buffer;syncMusic()
+        }).catch(()=>{musicFailed=true}).finally(()=>{menuLoading=null})
+      }
+      return
+    }
+    const source=context.createBufferSource(),level=context.createGain()
+    source.buffer=menuBuffer;source.loop=true
+    level.gain.setValueAtTime(0,context.currentTime);level.gain.linearRampToValueAtTime(1,context.currentTime+.6)
+    source.connect(level);level.connect(music);source.start()
+    ambient={sources:[source],nodes:[source,level]}
   }
   const synth = {
     async unlock() {
@@ -171,9 +182,9 @@ export function createSynth() {
     diagnostics() {
       let rms=0
       if (context?.state==='running') { analyser.getFloatTimeDomainData(samples); rms=Math.sqrt(samples.reduce((total,v) => total+v*v,0)/samples.length); peakRms=Math.max(peakRms,rms) }
-      return { state:unavailable ? 'unavailable' : context?.state || 'locked',active,voices:voices.size,musicPlaying:Boolean(ambient),sfxVolume:settings.sfxVolume,musicVolume:settings.musicVolume,played,spatial,counts:{ ...counts },events:[...events],lastSpatial:lastSpatial && [...lastSpatial],peakRms,rms,volume:settings.volume,muted:settings.muted }
+      return { state:unavailable ? 'unavailable' : context?.state || 'locked',active,voices:voices.size,musicPlaying:Boolean(ambient),musicTrack:ambient ? MENU_THEME.title : null,musicSources:ambient?.sources.length || 0,sfxVolume:settings.sfxVolume,musicVolume:settings.musicVolume,played,spatial,counts:{ ...counts },events:[...events],lastSpatial:lastSpatial && [...lastSpatial],peakRms,rms,volume:settings.volume,muted:settings.muted }
     },
-    dispose() { musicActive=false;syncMusic();stop(); if (context) void context.close().catch(() => {}); context=null },
+    dispose() { musicActive=false;syncMusic();stop(); if (context) void context.close().catch(() => {}); context=null;menuBuffer=null },
   }
   return synth
 }

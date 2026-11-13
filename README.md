@@ -51,6 +51,14 @@ The server validates shot origin from its own player position, range, cover, rob
 
 Escape releases your own controls while the opponent can keep playing. A connection interruption pauses the shared simulation, including reload and respawn timers. A reconnect within 15 seconds preserves the arena. In Best of Three, **Forfeit Match** concedes to the opponent; permanent departure also awards a forfeit. The victory/defeat screen preserves both scoreboard rows. **Return to Lobby** after a match lets both players ready up for a fresh rematch. In Free Play, Return to Lobby ends the practice session for both. See [lobby/LAN setup](docs/PRIVATE_LOBBIES.md) and [online combat details](docs/ONLINE_ARENA.md).
 
+## Main menu
+
+Each fresh page load opens a fullscreen recommendation with **No, thanks** and **I agree**. Agree requests fullscreen for the whole game through the browser API; declining continues normally. A blocked or unsupported request leaves a message and a way to continue. The choice lasts until the next page load. Browser shortcuts such as Ctrl+W can still close the tab; fullscreen cannot guarantee shortcut blocking. F11 is also available manually in desktop browsers that support it.
+
+The menu has Settings, Leaderboard and Profile in the upper right, with Training Grounds, Play Multiplayer and Loadouts below. Its live cinematic loops through the Facility, Neon District, Orbital Station and Training Nexus with camera moves, staged operatives and cosmetic bullet trails. **Pause cinematic** freezes the view; reduced-motion preferences start it paused. Opening a panel or hiding the tab also stops the cinematic from continuously rendering.
+
+The original **Limit Break** theme is a 138 BPM electronic score with a drum/bass build and a synth hook. It starts after a click or key press, follows Settings → Audio, and stops in training and multiplayer. The stereo loop ships as a cached WAV asset; the browser does not synthesize the song during play. To regenerate it after editing `client/src/audio/menuTheme.js`, run `node scripts/render-menu-theme.mjs` before building.
+
 ## Verification
 
 For cloud accounts and rankings, follow [Supabase setup and feature rules](docs/ACCOUNTS_AND_RANKINGS.md). Until configured, guest loadouts save locally and multiplayer remains casual. The backend secret belongs only in `server/.env`; the frontend receives a public publishable key.

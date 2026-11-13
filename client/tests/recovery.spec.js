@@ -1,3 +1,4 @@
+import {openGame,reloadGame} from './helpers.js'
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
 
@@ -11,7 +12,7 @@ async function state(page) {
 }
 test('refresh restores the same arena seat and ammo, accepts new actions, and explicit leave clears recovery',async ({ page }) => {
   test.setTimeout(90000)
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
   await page.getByLabel('YOUR CALLSIGN').fill('Refresh Pilot')
   await page.getByRole('button',{ name:'CREATE PRIVATE ROOM' }).click()
@@ -28,7 +29,7 @@ test('refresh restores the same arena seat and ammo, accepts new actions, and ex
     await page.mouse.click(640,400)
     await expect(page.getByTestId('online-ammo')).toHaveText('14 / 15')
     const before = await state(page)
-    await page.reload()
+    await reloadGame(page)
     await expect.poll(async () => (await state(page)).status).toBe('connected')
     await expect(page.getByRole('button',{ name:'ENTER ARENA',exact:true })).toBeVisible()
     const restored = await state(page)
@@ -45,16 +46,16 @@ test('refresh restores the same arena seat and ammo, accepts new actions, and ex
     await page.keyboard.press('Escape');await page.evaluate(() => document.exitPointerLock())
     await page.getByRole('button',{ name:'RETURN TO LOBBY',exact:true }).click()
     await page.getByRole('button',{ name:'LEAVE ROOM',exact:true }).click()
-    await page.reload()
+    await reloadGame(page)
     expect((await state(page)).status).toBe('idle')
     expect(await page.evaluate(() => sessionStorage.getItem('duel-room-recovery-v1'))).toBeNull()
   } finally { await peer.leave() }
 })
 
 test('an invalid recovery token shows a retryable lobby and never creates a replacement room',async ({ page }) => {
-  await page.goto('/')
+  await openGame(page,'/')
   await page.evaluate(() => sessionStorage.setItem('duel-room-recovery-v1',JSON.stringify({ endpoint:'http://127.0.0.1:2567',token:'BAD234:invalid',expires:Date.now()+30000 })))
-  await page.reload()
+  await reloadGame(page)
   await expect(page.getByRole('alert')).toContainText('reserved seat expired')
   expect((await state(page)).room).toBeNull()
   expect(await page.evaluate(() => sessionStorage.getItem('duel-room-recovery-v1'))).toBeNull()

@@ -1,6 +1,6 @@
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
-import { state,presetLoadout } from './helpers.js'
+import {state,presetLoadout, openGame} from './helpers.js'
 
 const optics=page=>page.evaluate(async ()=> {
   const url=performance.getEntriesByType('resource').find(e=>new URL(e.name).pathname.endsWith('/@react-three_fiber.js')).name
@@ -9,7 +9,7 @@ const optics=page=>page.evaluate(async ()=> {
 })
 for(const id of ['hyperion','railbreaker']) test(`${id} scope has a clear sight picture, zooms and restores the model after ADS`,async ({ page })=> {
   const errors=[];page.on('pageerror',e=>errors.push(e.message))
-  await presetLoadout(page,{ primary:id,startingWeapon:id });await page.goto('/')
+  await presetLoadout(page,{ primary:id,startingWeapon:id });await openGame(page,'/')
   await page.getByRole('button',{ name:/ENTER TRAINING/ }).click();await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
   await expect.poll(async ()=>(await state(page)).mode).toBe('playing')
   await expect.poll(async ()=>(await optics(page)).modelVisible).toBe(true)
@@ -26,7 +26,7 @@ for(const id of ['hyperion','railbreaker']) test(`${id} scope has a clear sight 
 test('multiplayer sniper scope stays clear while firing and returns to hip view on release',async ({ page })=> {
   let peer
   try {
-    await presetLoadout(page,{ primary:'railbreaker',startingWeapon:'railbreaker' });await page.goto('/')
+    await presetLoadout(page,{ primary:'railbreaker',startingWeapon:'railbreaker' });await openGame(page,'/')
     await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click();await page.getByLabel('YOUR CALLSIGN').fill('Scope Pilot')
     await page.getByRole('button',{ name:'CREATE PRIVATE ROOM' }).click()
     const code=await page.getByTestId('invite-code').textContent()

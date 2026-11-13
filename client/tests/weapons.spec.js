@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { equipWeapon, state, lookAt, aimAtTarget, moveUntil } from './helpers.js'
+import {equipWeapon, state, lookAt, aimAtTarget, moveUntil, openGame} from './helpers.js'
 import { TARGETS } from '../src/game/config.js'
 
 const attack = async page => { await page.mouse.down(); await page.mouse.up() }
@@ -7,7 +7,7 @@ const attack = async page => { await page.mouse.down(); await page.mouse.up() }
 test('blade switching, range, melee damage, ammo preservation, pause and restart', async ({ page }) => {
   const errors = []
   page.on('pageerror',error => errors.push(error.message))
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button',{ name:/SETTINGS/ }).click();await page.getByRole('tab',{ name:'Controls',exact:true }).click()
   await expect(page.getByRole('button',{ name:'Rebind Primary weapon' })).toBeVisible()
   await page.getByRole('button',{ name:/^BACK/ }).click()

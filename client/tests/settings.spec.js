@@ -1,6 +1,6 @@
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
-import { state,position,lookAt,moveUntil,aimAtTarget } from './helpers.js'
+import {state,position,lookAt,moveUntil,aimAtTarget, openGame,reloadGame} from './helpers.js'
 
 const settings=async page=> { await page.getByRole('button',{ name:/^.*SETTINGS/,exact:false }).first().click();return page.getByRole('dialog',{ name:'SETTINGS',exact:true }) }
 const tab=async(page,name)=>page.getByRole('tab',{ name,exact:true }).click()
@@ -10,7 +10,7 @@ const camera=page=>page.evaluate(async()=> { const url=performance.getEntriesByT
 const sound=page=>page.evaluate(async()=> { const url=performance.getEntriesByType('resource').find(e=>new URL(e.name).pathname==='/src/audio/synth.js').name;return (await import(url)).audio.diagnostics() })
 
 test('unified settings persist every category, edit crosshair and swap conflicting bindings',async({ page })=> {
-  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/')
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));await openGame(page,'/')
   await expect(page.getByRole('button',{ name:/^CONTROLS/ })).toHaveCount(0)
   const dialog=await settings(page)
   await expect(dialog.getByRole('tab')).toHaveCount(5)
@@ -27,7 +27,7 @@ test('unified settings persist every category, edit crosshair and swap conflicti
   await tab(page,'Graphics');await page.getByLabel('Render quality').selectOption('Low');await page.getByLabel('Flashbang color').selectOption('black');await page.getByLabel('Enemy aura color').fill('#00ff99')
   await tab(page,'Audio');await page.getByLabel('General audio').fill('0.6');await page.getByLabel('Sound effects').fill('0.3');await page.getByLabel('Background music').fill('0.2')
   await page.getByRole('button',{ name:'SAVE ON DEVICE',exact:true }).click();await expect(page.getByRole('status')).toHaveText('Settings saved on this device.')
-  await page.reload();await settings(page)
+  await reloadGame(page);await settings(page)
   await expect(page.getByLabel('Field of view')).toHaveValue('94');await expect(page.getByLabel('Scope input')).toHaveValue('tap');await expect(page.getByLabel('Damage style')).toHaveValue('stacked')
   await tab(page,'Sensitivity');await expect(page.getByLabel('Mouse sensitivity')).toHaveValue('1.7');await expect(page.getByLabel('Rifle ADS sensitivity',{exact:true})).toHaveValue('0.65');await expect(page.getByLabel('Sniper firing sensitivity',{exact:true})).toHaveValue('0.4')
   await tab(page,'Controls');await expect(page.getByRole('button',{ name:'Rebind Dash',exact:true })).toHaveText('V')
@@ -39,7 +39,7 @@ test('unified settings persist every category, edit crosshair and swap conflicti
 })
 
 test('remapped movement, weapon, mouse ability, tap scope and FOV work in training',async({ page })=> {
-  await page.goto('/');await settings(page);await page.getByLabel('Scope input').selectOption('tap');await page.getByLabel('Field of view').fill('90')
+  await openGame(page,'/');await settings(page);await page.getByLabel('Scope input').selectOption('tap');await page.getByLabel('Field of view').fill('90')
   await tab(page,'Graphics');await page.getByLabel('Render quality').selectOption('Low')
   await tab(page,'Controls');await rebind(page,'Move forward','KeyI');await rebind(page,'Secondary pistol','KeyO');await rebind(page,'Training armory','KeyH')
   await page.getByRole('button',{ name:'Rebind Dash',exact:true }).click();await page.mouse.click(100,100,{ button:'middle' })
@@ -55,7 +55,7 @@ test('remapped movement, weapon, mouse ability, tap scope and FOV work in traini
 })
 
 test('black flashbang keeps its blind duration and audio mixers independently mute effects and music',async({ page })=> {
-  await page.goto('/');await settings(page);await tab(page,'Graphics');await page.getByLabel('Render quality').selectOption('Low');await page.getByLabel('Flashbang color').selectOption('black')
+  await openGame(page,'/');await settings(page);await tab(page,'Graphics');await page.getByLabel('Render quality').selectOption('Low');await page.getByLabel('Flashbang color').selectOption('black')
   await tab(page,'Audio');await expect.poll(async()=>(await sound(page)).musicPlaying).toBe(true)
   await page.getByLabel('Sound effects').fill('0');await expect(page.getByRole('button',{ name:'TEST AUDIO' })).toBeDisabled();expect((await sound(page)).musicPlaying).toBe(true)
   await page.getByLabel('Background music').fill('0');await expect.poll(async()=>(await sound(page)).musicPlaying).toBe(false)
@@ -66,7 +66,7 @@ test('black flashbang keeps its blind duration and audio mixers independently mu
 })
 
 test('damage opacity and stacked totals use real hits while disabling numbers preserves the hit marker',async({ page })=> {
-  await page.goto('/');await settings(page);await page.getByLabel('Damage style').selectOption('stacked');await page.getByLabel('Damage opacity').fill('0.4');await tab(page,'Graphics');await page.getByLabel('Render quality').selectOption('Low');await page.getByRole('button',{ name:'BACK →',exact:true }).click();await enter(page)
+  await openGame(page,'/');await settings(page);await page.getByLabel('Damage style').selectOption('stacked');await page.getByLabel('Damage opacity').fill('0.4');await tab(page,'Graphics');await page.getByLabel('Render quality').selectOption('Low');await page.getByRole('button',{ name:'BACK →',exact:true }).click();await enter(page)
   await moveUntil(page,'KeyW',2,-23,-1);await aimAtTarget(page,5)
   await page.evaluate(()=> { window.__damage=[];new MutationObserver(()=> { const el=document.querySelector('[data-testid="damage-numbers"]');if(el) window.__damage.push({ text:el.textContent,opacity:getComputedStyle(el).opacity,style:el.dataset.style }) }).observe(document.body,{ subtree:true,childList:true,characterData:true }) })
   await page.mouse.down();await page.waitForTimeout(550);await page.mouse.up()
@@ -79,7 +79,7 @@ test('damage opacity and stacked totals use real hits while disabling numbers pr
 test('multiplayer keeps running on tab switch, clears held fire and opens settings only on Escape',async({ page,context })=> {
   let peer
   try {
-    await page.goto('/');await settings(page);await page.getByLabel('Scope input').selectOption('tap');await tab(page,'Controls');await rebind(page,'Reload','KeyL');await page.getByRole('button',{ name:'BACK →',exact:true }).click()
+    await openGame(page,'/');await settings(page);await page.getByLabel('Scope input').selectOption('tap');await tab(page,'Controls');await rebind(page,'Reload','KeyL');await page.getByRole('button',{ name:'BACK →',exact:true }).click()
     await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click();await page.getByLabel('YOUR CALLSIGN').fill('Settings Pilot');await page.getByRole('button',{ name:'CREATE PRIVATE ROOM' }).click()
     peer=await new Client('http://127.0.0.1:2567').joinById(await page.getByTestId('invite-code').textContent(),{ name:'Background Peer' });peer.onMessage('shot-trail',()=>{})
     await page.getByLabel('Match format').selectOption('freeplay');peer.send('ready',{ ready:true });await page.getByRole('button',{ name:'READY UP',exact:true }).click();await page.getByRole('button',{ name:'START SHARED ARENA' }).click();await page.getByRole('button',{ name:'ENTER ARENA',exact:true }).click()

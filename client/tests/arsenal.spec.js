@@ -1,9 +1,9 @@
 import { test,expect } from '@playwright/test'
-import { equipWeapon, state,presetLoadout,lookAt,moveUntil,aimAtTarget,observeHitFeedback,observedFeedback,editLoadout } from './helpers.js'
+import {equipWeapon, state,presetLoadout,lookAt,moveUntil,aimAtTarget,observeHitFeedback,observedFeedback,editLoadout, openGame,reloadGame} from './helpers.js'
 import { WEAPONS,WEAPON_IDS } from '../../shared/weapons.js'
 
 async function start(page,gear) {
-  await presetLoadout(page,gear);await page.goto('/')
+  await presetLoadout(page,gear);await openGame(page,'/')
   await page.getByRole('button',{ name:/SETTINGS/ }).click();await page.getByRole('tab',{ name:'Graphics',exact:true }).click();await page.getByLabel('Render quality').selectOption('Low')
   await page.getByRole('button',{ name:'BACK' }).click();await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
   await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
@@ -25,7 +25,7 @@ async function model(page,name) {
 test('all 17 arsenal models and stats are selectable; pistol and melee choices persist',async ({ page })=> {
   test.setTimeout(120000)
   const errors=[];page.on('pageerror',e=>errors.push(e.message))
-  await page.goto('/');await page.getByRole('button',{ name:/^CHARACTER & LOADOUT/ }).click()
+  await openGame(page,'/');await page.getByRole('button',{ name:/^CHARACTER & LOADOUT/ }).click()
   const dialog=page.getByRole('dialog',{name:'CHARACTER & LOADOUT',exact:true})
   for(const id of WEAPON_IDS) {
     const w=WEAPONS[id]
@@ -37,7 +37,7 @@ test('all 17 arsenal models and stats are selectable; pistol and melee choices p
     if(['omega','gravity','fangs','hyperion'].includes(id))await dialog.screenshot({ path:`arsenal-${id}-preview.png` })
   }
   await editLoadout(page,{primary:'omega',secondary:'magnus',melee:'fangs'})
-  await page.reload()
+  await reloadGame(page)
   await page.getByRole('button',{ name:/ENTER TRAINING/ }).click();await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
   expect((await state(page)).loadout).toMatchObject({ primary:'omega',secondary:'magnus',melee:'fangs' })
   await page.keyboard.press('Digit3');await expect.poll(async ()=>(await state(page)).weapon).toBe('fangs')

@@ -1,9 +1,9 @@
 import { test,expect } from '@playwright/test'
-import { state,presetLoadout,lookAt,editLoadout } from './helpers.js'
+import {state,presetLoadout,lookAt,editLoadout, openGame} from './helpers.js'
 
 async function start(page,gear) {
   await presetLoadout(page,gear)
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button',{ name:/SETTINGS/ }).click()
   await page.getByRole('tab',{ name:'Graphics',exact:true }).click();await page.getByLabel('Render quality').selectOption('Low')
   await page.getByRole('button',{ name:'BACK' }).click()
@@ -12,7 +12,7 @@ async function start(page,gear) {
   await expect.poll(async () => (await state(page)).mode).toBe('playing')
 }
 test('character armory shows four distinct operatives, the full arsenal and fits smaller screens',async ({ page }) => {
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button',{ name:/^CHARACTER & LOADOUT/ }).click()
   const dialog=page.getByRole('dialog',{ name:'CHARACTER & LOADOUT' })
   await dialog.getByRole('button',{name:'Change character',exact:true}).click()

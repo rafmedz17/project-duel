@@ -4,6 +4,20 @@ import {WEAPONS} from '../../shared/weapons.js'
 import {CHARACTERS} from '../../shared/characters.js'
 import {ABILITIES} from '../../shared/abilities.js'
 
+export async function dismissFullscreenNotice(page) {
+  await page.getByRole('dialog',{name:'HI, PLAYERS.',exact:true}).getByRole('button',{name:'NO, THANKS',exact:true}).click()
+}
+export async function openGame(page,url='/',options) {
+  const response=await page.goto(url,options)
+  await dismissFullscreenNotice(page)
+  return response
+}
+export async function reloadGame(page,options) {
+  const response=await page.reload(options)
+  await dismissFullscreenNotice(page)
+  return response
+}
+
 export async function editLoadout(page,choices,{wait=true}={}) {
   const labels={character:'character',primary:'primary gun',secondary:'pistol',melee:'melee',unique:'unique skill'}
   for(const [slot,id] of Object.entries(choices)) {

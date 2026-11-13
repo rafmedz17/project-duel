@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { state, aimAtTarget } from './helpers.js'
+import {state, aimAtTarget, openGame} from './helpers.js'
 
 async function resume(page) {
   await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
@@ -10,7 +10,7 @@ async function pause(page) {
   await expect.poll(async () => (await state(page)).mode).toBe('paused')
 }
 async function startRifle(page) {
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button',{ name:/SETTINGS/ }).click()
   await page.getByRole('tab',{ name:'Graphics',exact:true }).click();await page.getByLabel('Render quality').selectOption('Low')
   await page.getByRole('button',{ name:'BACK' }).click()

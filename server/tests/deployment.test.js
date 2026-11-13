@@ -16,6 +16,7 @@ async function fixture(t) {
   await writeFile(join(directory,'assets','app-123.js'),'console.log("duel")')
   await writeFile(join(directory,'assets','app-123.js.gz'),gzipSync('console.log("duel")'))
   await writeFile(join(directory,'assets','large-123.js'),'x'.repeat(200000))
+  await writeFile(join(directory,'assets','theme-123.wav'),Buffer.from('RIFF music fixture'))
   await writeFile(join(directory,'.env'),'must never be served')
   return directory
 }
@@ -31,6 +32,10 @@ test('production static responses compress assets, cache hashes and protect priv
   assert.match(asset.headers.get('cache-control'),/immutable/)
   assert.equal((await request('/assets/app-123.js',{ headers:{ 'accept-encoding':'gzip;q=0' } })).headers.get('content-encoding'),null)
   assert.equal((await request('/assets/missing.js')).status,404)
+  const theme=await request('/assets/theme-123.wav')
+  assert.equal(theme.status,200);assert.equal(theme.headers.get('content-type'),'audio/wav')
+  assert.match(theme.headers.get('cache-control'),/immutable/)
+  assert.equal(await theme.text(),'RIFF music fixture')
   for (const path of ['/.env','/.vite/manifest.json','/%2eenv','/assets/%2e%2e%2f.env','/%5c.env']) assert.equal((await request(path)).status,404,path)
   assert.match(await (await request('/account/recovery')).text(),/PROJECT DUEL/)
   assert.equal(await (await request('/',{ method:'HEAD' })).text(),'')

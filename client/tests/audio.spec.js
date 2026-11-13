@@ -1,6 +1,6 @@
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
-import { state,position,lookAt,moveUntil } from './helpers.js'
+import {state,position,lookAt,moveUntil, openGame,reloadGame,dismissFullscreenNotice} from './helpers.js'
 import { PLAYER,TARGETS } from '../src/game/config.js'
 import { ROBOT_HEAD_Y } from '../../shared/robot.js'
 import { ONLINE } from '../../shared/arena.js'
@@ -19,7 +19,7 @@ const fire=async (page,waitForReady = true) => {
   await page.mouse.down(); await page.mouse.up()
 }
 async function start(page) {
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button',{ name:/SETTINGS/ }).click()
   await page.getByRole('tab',{ name:'Graphics',exact:true }).click();await page.getByLabel('Render quality').selectOption('Low')
   await page.getByRole('button',{ name:'BACK' }).click()
@@ -34,9 +34,12 @@ async function pause(page) {
 }
 
 test('music is limited to the landing page and its settings, never training, pause or multiplayer',async ({page})=> {
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button',{name:/SETTINGS/}).click()
   await expect.poll(async ()=>(await sound(page)).musicPlaying).toBe(true)
+  expect((await sound(page)).musicTrack).toBe('LIMIT BREAK')
+  expect((await sound(page)).musicSources).toBe(1)
+  await expect.poll(async ()=>(await sound(page)).rms).toBeGreaterThan(.00005)
   await page.getByRole('button',{name:'BACK →',exact:true}).click()
   await expect.poll(async ()=>(await sound(page)).musicPlaying).toBe(true)
   await page.getByRole('button',{name:/ENTER TRAINING/}).click()
@@ -57,7 +60,7 @@ test('music is limited to the landing page and its settings, never training, pau
 })
 
 test('all 17 weapon voices render audio and rapid fire respects the voice limit and mute',async ({page})=> {
-  await page.goto('/');await page.getByRole('button',{name:/SETTINGS/}).click()
+  await openGame(page,'/');await page.getByRole('button',{name:/SETTINGS/}).click()
   await page.getByRole('tab',{name:'Audio',exact:true}).click()
   await page.getByLabel('Background music').fill('0')
   await page.getByRole('button',{name:'TEST AUDIO'}).click()
@@ -95,6 +98,7 @@ test('walking, sprinting and jumping play layered movement cues and stop at rest
 test('audio waits for interaction, generates a real waveform, and saves volume and mute',async ({ page }) => {
   await page.goto('/')
   expect((await sound(page)).state).toBe('locked')
+  await dismissFullscreenNotice(page)
   await page.getByRole('button',{ name:/SETTINGS/ }).click()
   await page.getByRole('tab',{ name:'Audio',exact:true }).click();await page.getByRole('button',{ name:'TEST AUDIO' }).click()
   await expect(page.getByRole('status')).toHaveText('Audio test played.')
@@ -106,7 +110,7 @@ test('audio waits for interaction, generates a real waveform, and saves volume a
   await expect(volume).toHaveValue('0.02')
   await page.getByRole('tab',{ name:'Audio',exact:true }).click();await page.getByLabel('Mute all audio').check()
   await expect(page.getByRole('button',{ name:'TEST AUDIO' })).toBeDisabled()
-  await page.reload(); await page.getByRole('button',{ name:/SETTINGS/ }).click()
+  await reloadGame(page); await page.getByRole('button',{ name:/SETTINGS/ }).click()
   await page.getByRole('tab',{ name:'Audio',exact:true }).click();await expect(page.getByLabel('Mute all audio')).toBeChecked()
   await expect(page.getByLabel('General audio')).toHaveValue('0.02')
 })
@@ -173,7 +177,7 @@ test('muting silences real shots, and unmuting does not replay missed sounds',as
 test('browsers without Web Audio can still play and show an actionable audio notice',async ({ page }) => {
   await page.addInitScript(() => { window.AudioContext=undefined; window.webkitAudioContext=undefined })
   const errors=[]; page.on('pageerror',e => errors.push(e.message))
-  await page.goto('/'); await page.getByRole('button',{ name:/SETTINGS/ }).click()
+  await openGame(page,'/'); await page.getByRole('button',{ name:/SETTINGS/ }).click()
   await page.getByRole('tab',{ name:'Audio',exact:true }).click();await page.getByRole('button',{ name:'TEST AUDIO' }).click()
   await expect(page.getByRole('status')).toContainText('unavailable or blocked')
   await page.getByRole('button',{ name:'BACK' }).click()
@@ -187,7 +191,7 @@ test('browsers without Web Audio can still play and show an actionable audio not
 test('online opponent sounds use authoritative positions; replays, focus loss and resuming stay silent',async ({ page }) => {
   test.setTimeout(90000)
   const errors=[]; page.on('pageerror',e => errors.push(e.message))
-  await page.goto('/'); await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
+  await openGame(page,'/'); await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
   await page.getByLabel('YOUR CALLSIGN').fill('Audio Pilot')
   await page.getByRole('button',{ name:'CREATE PRIVATE ROOM' }).click()
   await expect(page.getByTestId('invite-code')).toHaveText(/^[A-HJ-NP-Z2-9]{6}$/)

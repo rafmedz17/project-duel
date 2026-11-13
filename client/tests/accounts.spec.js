@@ -1,5 +1,5 @@
 import { test,expect } from '@playwright/test'
-import { state,editLoadout } from './helpers.js'
+import {state,editLoadout, openGame,reloadGame} from './helpers.js'
 
 const cloudOrigin='http://127.0.0.1:5174'
 const userId='11111111-1111-4111-8111-111111111111'
@@ -47,7 +47,7 @@ async function mockCloud(context,shared=initial()) {
   return shared
 }
 async function signIn(page) {
-  await page.goto(cloudOrigin)
+  await openGame(page,cloudOrigin)
   await page.getByRole('button',{ name:/^PLAYER PROFILE/ }).click()
   const dialog=page.getByRole('dialog',{ name:'PLAYER PROFILE' })
   await dialog.getByLabel('EMAIL',{ exact:true }).fill('nova@example.test')
@@ -107,7 +107,7 @@ test('training auto-saves to the account, retries failures, queues rapid edits a
 })
 test('account settings sync through Auth metadata, restore on another device, retry errors and preserve guest preferences',async ({ page,context,browser })=> {
   const shared=await mockCloud(context)
-  await page.goto(cloudOrigin);await page.getByRole('button',{ name:/SETTINGS/ }).click();await page.getByRole('tab',{name:'Sensitivity',exact:true}).click();await page.getByLabel('Mouse sensitivity').fill('1.8');await page.getByRole('button',{ name:'BACK' }).click()
+  await openGame(page,cloudOrigin);await page.getByRole('button',{ name:/SETTINGS/ }).click();await page.getByRole('tab',{name:'Sensitivity',exact:true}).click();await page.getByLabel('Mouse sensitivity').fill('1.8');await page.getByRole('button',{ name:'BACK' }).click()
   await signIn(page);await page.getByRole('dialog').getByRole('button',{ name:'BACK',exact:true }).click();await page.getByRole('button',{ name:/SETTINGS/ }).click()
   await page.getByLabel('Field of view').fill('99');await page.getByLabel('Scope input').selectOption('tap')
   await page.getByRole('tab',{name:'Sensitivity',exact:true}).click();await page.getByLabel('Mouse sensitivity').fill('1.2');await page.getByLabel('Sniper ADS sensitivity',{exact:true}).fill('0.55');await page.getByLabel('Rifle firing sensitivity',{exact:true}).fill('0.8')
@@ -116,8 +116,8 @@ test('account settings sync through Auth metadata, restore on another device, re
   expect((await state(page)).settings.bindings.reload).toBe('KeyL');shared.failPreferences=false
   await page.getByRole('button',{ name:'SAVE TO ACCOUNT',exact:true }).click();await expect(page.getByRole('status')).toHaveText('Settings saved to your account.')
   expect(shared.metadata.duel_settings).toMatchObject({ fov:99,sensitivity:1.2,weaponSensitivity:{SNIPER:{ads:.55},RIFLE:{firing:.8}},scopeMode:'tap',bindings:{ reload:'KeyL' } })
-  await page.reload();await page.getByRole('button',{ name:/SETTINGS/ }).click();await expect(page.getByLabel('Field of view')).toHaveValue('99')
-  await page.getByLabel('Field of view').fill('101');await page.reload();await page.getByRole('button',{ name:/SETTINGS/ }).click();await expect(page.getByLabel('Field of view')).toHaveValue('101')
+  await reloadGame(page);await page.getByRole('button',{ name:/SETTINGS/ }).click();await expect(page.getByLabel('Field of view')).toHaveValue('99')
+  await page.getByLabel('Field of view').fill('101');await reloadGame(page);await page.getByRole('button',{ name:/SETTINGS/ }).click();await expect(page.getByLabel('Field of view')).toHaveValue('101')
   await page.getByLabel('Field of view').fill('99');await page.getByRole('button',{ name:'SAVE TO ACCOUNT',exact:true }).click();await expect(page.getByRole('status')).toHaveText('Settings saved to your account.')
   const secondContext=await browser.newContext()
   try {
@@ -130,14 +130,14 @@ test('account settings sync through Auth metadata, restore on another device, re
 })
 
 test('guest loadout saves across reloads and controls training weapons and abilities',async ({ page }) => {
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button',{ name:/^CHARACTER & LOADOUT/ }).click()
   const dialog=page.getByRole('dialog',{ name:'CHARACTER & LOADOUT' })
   await expect(dialog.getByRole('status')).toContainText('DEVICE')
   await editLoadout(page,{character:'aegis',primary:'shotgun',unique:'smoke'})
   await expect(dialog.getByRole('status')).toContainText('AUTO-SAVED ON DEVICE')
   await dialog.screenshot({ path:'loadout-preview.png' })
-  await page.reload()
+  await reloadGame(page)
   await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
   await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
   await expect.poll(async () => (await state(page)).weapon).toBe('shotgun')
@@ -167,7 +167,7 @@ test('email sign-in, saved callsign/loadout, restored session, history and leade
   await expect(dialog.getByRole('cell',{ name:'Nova Saved',exact:true })).toBeVisible()
   await expect(dialog.getByRole('cell',{ name:'1064',exact:true })).toBeVisible()
   await dialog.screenshot({ path:'leaderboard-preview.png' })
-  await page.reload()
+  await reloadGame(page)
   await page.getByRole('button',{ name:/^PLAYER PROFILE/ }).click()
   await expect(page.getByLabel('CALLSIGN')).toHaveValue('Nova Saved')
   await page.getByRole('dialog').getByRole('button',{ name:'BACK',exact:true }).click()
@@ -179,7 +179,7 @@ test('email sign-in, saved callsign/loadout, restored session, history and leade
   try {
     await mockCloud(secondContext,shared)
     const second=await secondContext.newPage()
-    await second.goto(cloudOrigin)
+    await openGame(second,cloudOrigin)
     await second.getByRole('button',{ name:/^PLAYER PROFILE/ }).click()
     await second.getByLabel('EMAIL',{ exact:true }).fill('nova@example.test')
     await second.getByLabel('PASSWORD',{ exact:true }).fill('correct-password')
@@ -197,7 +197,7 @@ test('email sign-in, saved callsign/loadout, restored session, history and leade
 })
 test('registration confirmation, invalid credentials and reset email show actionable notices',async ({ page,context }) => {
   const shared=await mockCloud(context)
-  await page.goto(cloudOrigin)
+  await openGame(page,cloudOrigin)
   await page.getByRole('button',{ name:/^PLAYER PROFILE/ }).click()
   const dialog=page.getByRole('dialog')
   await dialog.getByRole('button',{ name:'REGISTER',exact:true }).click()
@@ -217,7 +217,7 @@ test('registration confirmation, invalid credentials and reset email show action
 
 test('a recovery link opens password update and submits the replacement password',async ({ page,context }) => {
   const shared=await mockCloud(context)
-  await page.goto(`${cloudOrigin}/#access_token=${token}&refresh_token=fixture-refresh&expires_in=3600&token_type=bearer&type=recovery`)
+  await openGame(page,`${cloudOrigin}/#access_token=${token}&refresh_token=fixture-refresh&expires_in=3600&token_type=bearer&type=recovery`)
   const dialog=page.getByRole('dialog',{ name:'PLAYER PROFILE' })
   await dialog.getByLabel('NEW PASSWORD',{ exact:true }).fill('replacement-password')
   await dialog.getByRole('button',{ name:'SAVE NEW PASSWORD',exact:true }).click()

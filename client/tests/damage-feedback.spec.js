@@ -1,10 +1,11 @@
+import {openGame} from './helpers.js'
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
 
 for(const style of ['classic','stacked']) test(`${style} damage numbers survive multiplayer timestamp rounding without a blank page`,async({ page })=>{
   const errors=[]
   page.on('pageerror',error=>errors.push(error.message))
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
   await expect(page.getByRole('button',{ name:'RESUME / ENTER ARENA' })).toBeEnabled()
   // Feed the actual HUD the same clock relationship produced by multiplayer:
@@ -32,7 +33,7 @@ test('multiplayer HUD survives confirmed shield hits while both players use skil
   const errors=[]
   page.on('pageerror',error=>errors.push(error.message))
   await page.addInitScript(()=>localStorage.setItem('duel-loadout',JSON.stringify({ character:'ion',primary:'rifle',unique:'scanner' })))
-  await page.goto('/')
+  await openGame(page,'/')
   await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
   await page.getByLabel('YOUR CALLSIGN').fill('Feedback Pilot')
   await page.getByRole('button',{ name:'CREATE PRIVATE ROOM' }).click()

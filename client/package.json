@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "node --test tests/combat.rules.js tests/audio.rules.js tests/celebration.rules.js tests/training-courses.rules.js tests/optics.rules.js tests/settings.rules.js",
+    "test": "node --test tests/combat.rules.js tests/audio.rules.js tests/celebration.rules.js tests/training-courses.rules.js tests/optics.rules.js tests/settings.rules.js tests/menu.rules.js",
     "test:browser": "playwright test"
   },
   "dependencies": {

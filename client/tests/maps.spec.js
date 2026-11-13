@@ -1,3 +1,4 @@
+import {openGame} from './helpers.js'
 import { test,expect } from '@playwright/test'
 
 test('host selects both new maps; players share the map, move, and return to change it',async ({ browser }) => {
@@ -12,13 +13,13 @@ test('host selects both new maps; players share the map, move, and return to cha
     return lobby.get()
   })
   try {
-    await host.goto('/'); await host.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
+    await openGame(host,'/'); await host.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
     await host.getByLabel('YOUR CALLSIGN').fill('Nova')
     await host.getByRole('button',{ name:'CREATE PRIVATE ROOM' }).click()
     await expect(host.getByTestId('invite-code')).toHaveText(/^[A-HJ-NP-Z2-9]{6}$/)
     const code=await host.getByTestId('invite-code').textContent()
     await host.getByLabel('Match format').selectOption('freeplay')
-    await guest.goto('/'); await guest.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
+    await openGame(guest,'/'); await guest.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
     await guest.getByLabel('YOUR CALLSIGN').fill('Echo')
     await guest.getByLabel('INVITE CODE',{ exact:true }).fill(code)
     await guest.getByRole('button',{ name:'JOIN ROOM',exact:true }).click()
