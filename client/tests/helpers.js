@@ -1,5 +1,19 @@
 import { expect } from '@playwright/test'
 import { PLAYER, TARGETS } from '../src/game/config.js'
+import {WEAPONS} from '../../shared/weapons.js'
+import {CHARACTERS} from '../../shared/characters.js'
+import {ABILITIES} from '../../shared/abilities.js'
+
+export async function editLoadout(page,choices,{wait=true}={}) {
+  const labels={character:'character',primary:'primary gun',secondary:'pistol',melee:'melee',unique:'unique skill'}
+  for(const [slot,id] of Object.entries(choices)) {
+    await page.getByRole('button',{name:`Change ${labels[slot]}`,exact:true}).click()
+    const name=slot==='character' ? `Select ${CHARACTERS[id].name}` : `Equip ${slot==='unique' ? ABILITIES[id].name : WEAPONS[id].name}`
+    await page.getByRole('button',{name,exact:true}).click()
+    await expect(page.locator('.loadout-picker-overlay')).toHaveCount(0)
+    if(wait) await expect(page.locator('.loadout-save-state')).toHaveClass(/saved/)
+  }
+}
 
 // Match Vite's active module URL so HMR timestamps cannot create a second store.
 export const state = page => page.evaluate(async () => {

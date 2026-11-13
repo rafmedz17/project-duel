@@ -1,5 +1,5 @@
 import { test,expect } from '@playwright/test'
-import { state,position,lookAt,moveUntil,equipWeapon,observeHitFeedback,observedFeedback } from './helpers.js'
+import { state,position,lookAt,moveUntil,equipWeapon,observeHitFeedback,observedFeedback,editLoadout } from './helpers.js'
 import { PLAYER } from '../src/game/config.js'
 import { ROBOT_HEAD_Y } from '../../shared/robot.js'
 
@@ -61,12 +61,8 @@ test('B edits character, guns, melee and skill in place while freezing an active
   await expect(dialog).toBeVisible();expect(await page.evaluate(()=>document.pointerLockElement===null)).toBe(true)
   const before=await state(page);await page.waitForTimeout(500);expect((await state(page)).time).toBe(before.time)
   await dialog.getByRole('button',{ name:'Loadout slot 2',exact:true }).click()
-  await dialog.getByRole('button',{ name:'Select ION',exact:true }).click()
-  await dialog.getByRole('button',{ name:'SNIPER RIFLES',exact:true }).click();await dialog.getByRole('button',{ name:'Equip HYPERION X',exact:true }).click()
-  await dialog.getByRole('tab',{ name:'PISTOL slot' }).click();await dialog.getByRole('button',{ name:'Equip VOLT-3',exact:true }).click()
-  await dialog.getByRole('tab',{ name:'MELEE slot' }).click();await dialog.getByRole('button',{ name:'Equip GRAVITY BREAKER',exact:true }).click()
-  await dialog.getByRole('button',{ name:'Equip SPECTRAL SMOKE',exact:true }).click()
-  await dialog.getByRole('button',{ name:/SAVE & RETURN/ }).click()
+  await editLoadout(page,{character:'ion',primary:'hyperion',secondary:'volt',melee:'gravity',unique:'smoke'})
+  await dialog.getByRole('button',{ name:/RETURN TO TRAINING/ }).click()
   await expect(dialog).toHaveCount(0);await expect.poll(async ()=>(await state(page)).mode).toBe('playing')
   expect((await state(page)).loadout).toMatchObject({ character:'ion',primary:'hyperion',secondary:'volt',melee:'gravity',unique:'smoke' })
   expect((await state(page)).generation).toBe(before.generation);expect((await state(page)).weapon).toBe('hyperion')
@@ -86,8 +82,10 @@ test('B edits character, guns, melee and skill in place while freezing an active
   })).toBe(1)
   await page.screenshot({ path:'training-reflex-preview.png' })
   await page.keyboard.press('KeyB');await expect(dialog).toBeVisible()
-  await dialog.getByRole('button',{ name:'Select RAZE',exact:true }).click()
-  await dialog.getByRole('button',{ name:'CANCEL / RETURN TO TRAINING',exact:true }).click()
+  await dialog.getByRole('button',{name:'Change character',exact:true}).click()
+  await page.getByRole('button',{name:'Select RAZE',exact:true}).hover()
+  await page.keyboard.press('Escape')
+  await dialog.getByRole('button',{ name:/RETURN TO TRAINING/ }).click()
   expect((await state(page)).loadout.character).toBe('ion')
   await page.keyboard.press('KeyB');await expect(dialog).toBeVisible()
   await page.keyboard.press('KeyB');await expect(dialog).toHaveCount(0)
@@ -100,7 +98,7 @@ test('B edits character, guns, melee and skill in place while freezing an active
   await page.getByRole('button',{name:/^CHARACTER & LOADOUT/}).click()
   const presets=page.getByRole('dialog',{name:'CHARACTER & LOADOUT',exact:true})
   await expect(presets.getByRole('button',{name:'Loadout slot 2',exact:true})).toHaveAttribute('aria-pressed','true')
-  await expect(presets.getByRole('tab',{name:'PRIMARY slot'})).toContainText('HYPERION X')
+  await expect(presets.getByRole('button',{name:'Change primary gun',exact:true})).toContainText('HYPERION X')
   await presets.getByRole('button',{name:'BACK',exact:true}).click()
   await page.reload()
   await page.getByRole('button',{name:/ENTER TRAINING/}).click()
@@ -114,7 +112,7 @@ test('training ammo mode applies to both guns, cancels reloads, survives refresh
   await start(page);await page.keyboard.press('KeyB')
   const dialog=page.getByRole('dialog',{ name:'FIELD ARMORY',exact:true })
   await dialog.getByLabel('Training ammo').selectOption('unlimited')
-  await dialog.getByRole('button',{ name:/SAVE & RETURN/ }).click()
+  await dialog.getByRole('button',{ name:/RETURN TO TRAINING/ }).click()
   await expect.poll(async ()=>(await state(page)).mode).toBe('playing')
   await expect.poll(async ()=>{ const s=await state(page);return s.time>=s.attackReadyAt }).toBe(true)
   await page.mouse.down();await expect.poll(async ()=>(await state(page)).shot,{timeout:15000}).toBeGreaterThan(8);await page.mouse.up()
@@ -122,10 +120,9 @@ test('training ammo mode applies to both guns, cancels reloads, survives refresh
   await page.keyboard.press('KeyR');expect((await state(page)).reloading).toBe(false)
   await equipWeapon(page,'pistol');await fire(page);expect((await state(page)).magazines.pistol).toBe(15)
   await page.keyboard.press('KeyB');await dialog.getByLabel('Training ammo').selectOption('normal')
-  await dialog.getByRole('button',{ name:'CANCEL / RETURN TO TRAINING' }).click()
-  expect((await state(page)).trainingOptions.noReload).toBe(true)
-  await page.keyboard.press('KeyB');await dialog.getByLabel('Training ammo').selectOption('normal')
-  await dialog.getByRole('button',{ name:/SAVE & RETURN/ }).click()
+  expect((await state(page)).trainingOptions.noReload).toBe(false)
+  await dialog.getByRole('button',{ name:/RETURN TO TRAINING/ }).click()
+  await equipWeapon(page,'rifle')
   // An automatic rifle may fire more than once between browser mouse commands.
   // Normal mode must consume ammunition and leave a partial magazine to reload.
   await fire(page)

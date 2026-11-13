@@ -4,7 +4,7 @@ import { makeLoadoutBank } from '../../shared/loadoutBank.js'
 import { validateLoadout } from '../../shared/loadout.js'
 import { PLAYER } from '../../shared/arena.js'
 import { ROBOT_HEAD_Y } from '../../shared/robot.js'
-import { state } from './helpers.js'
+import { state,editLoadout } from './helpers.js'
 
 const gear=(primary,character='vex')=>validateLoadout({ character,primary,secondary:'volt',melee:'gravity',unique:'scanner',startingWeapon:primary })
 function bank() {
@@ -36,7 +36,7 @@ async function aimAtPeer(page,id) {
   },{ id,eye:PLAYER.eye,head:ROBOT_HEAD_Y,sensitivity:PLAYER.sensitivity })
 }
 
-test('five presets keep independent drafts, save together, survive reload and fit a smaller screen',async ({ page })=> {
+test('five presets automatically save independent choices, survive reload and fit a smaller screen',async ({ page })=> {
   test.setTimeout(90000)
   const errors=[];page.on('pageerror',e=>errors.push(e.message))
   await page.goto('/');await page.getByRole('button',{ name:/^CHARACTER & LOADOUT/ }).click()
@@ -44,34 +44,31 @@ test('five presets keep independent drafts, save together, survive reload and fi
   await expect(slots.getByRole('button')).toHaveCount(5)
   await expect(dialog.getByLabel('Starting weapon')).toHaveCount(0)
   await expect(dialog.getByText(/GENERAL SKILLS/)).toHaveCount(0)
-  const configs=[['AEGIS','SHOTGUNS','BREACH-12'],['ION','SNIPER RIFLES','HYPERION X'],['RAZE','SUBMACHINE GUNS','NOVA-9'],['VEX','LIGHT MACHINE GUNS','OMEGA-88']]
+  const configs=[['aegis','shotgun'],['ion','hyperion'],['raze','nova'],['vex','omega']]
   for(let i=0;i<configs.length;i++) {
-    const [character,category,weapon]=configs[i]
+    const [character,primary]=configs[i]
     await slots.getByRole('button',{ name:`Loadout slot ${i+2}`,exact:true }).click()
-    await dialog.getByRole('button',{ name:`Select ${character}`,exact:true }).click()
-    await dialog.getByRole('button',{ name:category,exact:true }).click()
-    await dialog.getByRole('button',{ name:`Equip ${weapon}`,exact:true }).click()
+    await editLoadout(page,{character,primary})
   }
-  await dialog.getByRole('tab',{ name:'PISTOL slot' }).click();await dialog.getByRole('button',{ name:'Equip MAGNUS-45',exact:true }).click()
-  await dialog.getByRole('tab',{ name:'MELEE slot' }).click();await dialog.getByRole('button',{ name:'Equip VOID FANGS',exact:true }).click()
-  await dialog.getByRole('button',{ name:/SAVE & EQUIP/ }).click()
-  await expect(dialog.getByRole('status')).toContainText('Five loadout slots saved')
+  await editLoadout(page,{secondary:'magnus',melee:'fangs'})
+  await expect(dialog.getByRole('button',{name:/SAVE & EQUIP/})).toHaveCount(0)
+  await expect(dialog.getByRole('status')).toContainText('AUTO-SAVED')
   await page.reload();await page.getByRole('button',{ name:/^CHARACTER & LOADOUT/ }).click()
   await expect(dialog.getByRole('button',{ name:'Loadout slot 5',exact:true })).toHaveAttribute('aria-pressed','true')
-  await expect(dialog.getByRole('tab',{ name:'PRIMARY slot' })).toContainText('OMEGA-88')
+  await expect(dialog.getByRole('button',{ name:'Change primary gun',exact:true })).toContainText('OMEGA-88')
   await dialog.getByRole('button',{ name:'Loadout slot 2',exact:true }).click()
-  await expect(dialog.getByRole('button',{ name:'Select AEGIS',exact:true })).toHaveAttribute('aria-pressed','true')
+  await expect(dialog.getByRole('button',{ name:'Change character',exact:true })).toContainText('AEGIS')
   await page.setViewportSize({ width:640,height:670 });await slots.scrollIntoViewIfNeeded()
   const box=await slots.boundingBox();expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(641)
   await page.screenshot({ path:'five-loadouts-preview.png' })
   const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('duel-loadout-bank')))
-  expect(saved.activeSlot).toBe(4);expect(saved.slots.map(slot=>slot.primary)).toEqual(['rifle','shotgun','hyperion','nova','omega'])
+  expect(saved.activeSlot).toBe(1);expect(saved.slots.map(slot=>slot.primary)).toEqual(['rifle','shotgun','hyperion','nova','omega'])
   expect(saved.slots[4]).toMatchObject({ secondary:'magnus',melee:'fangs' })
   expect(saved.slots.every(slot=>slot.startingWeapon===slot.primary)).toBe(true)
   await dialog.getByRole('button',{ name:'BACK',exact:true }).click()
   await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
   await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
-  await expect.poll(async ()=>(await state(page)).weapon).toBe('omega')
+  await expect.poll(async ()=>(await state(page)).weapon).toBe('shotgun')
   expect(errors).toEqual([])
 })
 

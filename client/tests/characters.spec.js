@@ -1,5 +1,5 @@
 import { test,expect } from '@playwright/test'
-import { state,presetLoadout,lookAt } from './helpers.js'
+import { state,presetLoadout,lookAt,editLoadout } from './helpers.js'
 
 async function start(page,gear) {
   await presetLoadout(page,gear)
@@ -15,19 +15,23 @@ test('character armory shows four distinct operatives, the full arsenal and fits
   await page.goto('/')
   await page.getByRole('button',{ name:/^CHARACTER & LOADOUT/ }).click()
   const dialog=page.getByRole('dialog',{ name:'CHARACTER & LOADOUT' })
-  await expect(dialog.locator('.character-card')).toHaveCount(4)
-  for(const category of ['SNIPER RIFLES','SUBMACHINE GUNS','LIGHT MACHINE GUNS']) await expect(dialog.getByRole('button',{ name:category,exact:true })).toBeEnabled()
-  for(const character of ['VEX','AEGIS','ION','RAZE']) {
-    await dialog.getByRole('button',{ name:`Select ${character}` }).click()
-    await expect(dialog.getByRole('button',{ name:`Select ${character}` })).toHaveAttribute('aria-pressed','true')
-    await expect(dialog.locator('.ultimate-dossier')).toContainText('10 SECONDS')
+  await dialog.getByRole('button',{name:'Change character',exact:true}).click()
+  await expect(page.locator('.operative-option')).toHaveCount(4)
+  await page.keyboard.press('Escape')
+  for(const character of ['vex','aegis','ion','raze']) {
+    await editLoadout(page,{character})
+    await expect(dialog.getByRole('button',{name:'Change character',exact:true})).toContainText(character.toUpperCase())
+    await expect(dialog.getByRole('button',{name:'View ultimate skill',exact:true})).toContainText('10s')
   }
+  await dialog.getByRole('button',{name:'Change primary gun',exact:true}).click()
+  for(const category of ['SNIPER RIFLES','SUBMACHINE GUNS','LIGHT MACHINE GUNS']) await expect(page.getByRole('heading',{name:new RegExp(category)})).toBeVisible()
+  await page.keyboard.press('Escape')
   await dialog.evaluate(el=>{ el.scrollTop=0 })
   await dialog.screenshot({ path:'character-armory-preview.png' })
   await page.setViewportSize({ width:640,height:850 })
   expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true)
-  await dialog.getByRole('button',{ name:/SAVE & EQUIP/ }).scrollIntoViewIfNeeded()
-  const button=await dialog.getByRole('button',{ name:/SAVE & EQUIP/ }).boundingBox()
+  await dialog.getByRole('button',{ name:'Change primary gun',exact:true }).scrollIntoViewIfNeeded()
+  const button=await dialog.getByRole('button',{ name:'Change primary gun',exact:true }).boundingBox()
   expect(button.x).toBeGreaterThanOrEqual(0); expect(button.x+button.width).toBeLessThanOrEqual(640)
   await dialog.screenshot({ path:'character-armory-small-preview.png' })
 })

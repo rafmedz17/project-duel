@@ -1,5 +1,5 @@
 import { test,expect } from '@playwright/test'
-import { equipWeapon, state,presetLoadout,lookAt,moveUntil,aimAtTarget,observeHitFeedback,observedFeedback } from './helpers.js'
+import { equipWeapon, state,presetLoadout,lookAt,moveUntil,aimAtTarget,observeHitFeedback,observedFeedback,editLoadout } from './helpers.js'
 import { WEAPONS,WEAPON_IDS } from '../../shared/weapons.js'
 
 async function start(page,gear) {
@@ -26,21 +26,18 @@ test('all 17 arsenal models and stats are selectable; pistol and melee choices p
   test.setTimeout(120000)
   const errors=[];page.on('pageerror',e=>errors.push(e.message))
   await page.goto('/');await page.getByRole('button',{ name:/^CHARACTER & LOADOUT/ }).click()
-  const dialog=page.getByRole('dialog'),labels={ RIFLE:'ASSAULT RIFLES',SNIPER:'SNIPER RIFLES',SMG:'SUBMACHINE GUNS',LMG:'LIGHT MACHINE GUNS',SHOTGUN:'SHOTGUNS' }
+  const dialog=page.getByRole('dialog',{name:'CHARACTER & LOADOUT',exact:true})
   for(const id of WEAPON_IDS) {
     const w=WEAPONS[id]
-    await dialog.getByRole('tab',{ name:w.slot==='1' ? 'PRIMARY slot' : w.slot==='2' ? 'PISTOL slot' : 'MELEE slot' }).click()
-    if(w.slot==='1')await dialog.getByRole('button',{ name:labels[w.category],exact:true }).click()
-    await dialog.getByRole('button',{ name:`Equip ${w.name}`,exact:true }).click()
-    await expect(dialog.getByRole('region',{ name:`${w.name} weapon details` })).toBeVisible()
+    await editLoadout(page,{[w.slot==='1' ? 'primary' : w.slot==='2' ? 'secondary' : 'melee']:id})
+    await dialog.getByRole('button',{name:w.slot==='1' ? 'Change primary gun' : w.slot==='2' ? 'Change pistol' : 'Change melee',exact:true}).hover()
+    await expect(dialog.getByRole('region',{ name:`${w.name} details` })).toBeVisible()
     await expect.poll(()=>model(page,`model-${w.model}`)).not.toBeNull()
-    await dialog.getByRole('button',{ name:'PREVIEW FIRE',exact:true }).click()
+    await dialog.getByRole('button',{ name:'Preview fire',exact:true }).click()
     if(['omega','gravity','fangs','hyperion'].includes(id))await dialog.screenshot({ path:`arsenal-${id}-preview.png` })
   }
-  await dialog.getByRole('tab',{ name:'PRIMARY slot' }).click();await dialog.getByRole('button',{ name:'LIGHT MACHINE GUNS',exact:true }).click();await dialog.getByRole('button',{ name:'Equip OMEGA-88',exact:true }).click()
-  await dialog.getByRole('tab',{ name:'PISTOL slot' }).click();await dialog.getByRole('button',{ name:'Equip MAGNUS-45',exact:true }).click()
-  await dialog.getByRole('tab',{ name:'MELEE slot' }).click();await dialog.getByRole('button',{ name:'Equip VOID FANGS',exact:true }).click()
-  await dialog.getByRole('button',{ name:/SAVE & EQUIP/ }).click();await page.reload()
+  await editLoadout(page,{primary:'omega',secondary:'magnus',melee:'fangs'})
+  await page.reload()
   await page.getByRole('button',{ name:/ENTER TRAINING/ }).click();await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
   expect((await state(page)).loadout).toMatchObject({ primary:'omega',secondary:'magnus',melee:'fangs' })
   await page.keyboard.press('Digit3');await expect.poll(async ()=>(await state(page)).weapon).toBe('fangs')

@@ -57,15 +57,15 @@ export default function AccountPanel({ initial='profile',onClose,onShowProfile }
   const current = s.recovery ? 'profile' : tab
   const titles = { profile:'PLAYER PROFILE',loadout:'CHARACTER & LOADOUT',history:'MATCH HISTORY',leaderboard:'LEADERBOARD' }
   return <div className="overlay modal" onKeyDown={e => {
-    if (e.key==='Escape') { e.preventDefault(); if (!s.recovery) onClose() }
+    if (e.key==='Escape') { e.preventDefault(); if (!s.recovery && !(current==='loadout' && s.busy)) onClose() }
     if (e.key!=='Tab') return
     const items = [...e.currentTarget.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled)')]
     if (e.shiftKey && document.activeElement===items[0]) { e.preventDefault(); items.at(-1)?.focus() }
     else if (!e.shiftKey && document.activeElement===items.at(-1)) { e.preventDefault(); items[0]?.focus() }
-  }}><section className="dialog account-dialog" role="dialog" aria-modal="true" aria-labelledby="account-title"><div className="eyebrow">PROJECT DUEL / PLAYER SERVICES</div><h2 id="account-title">{titles[current]}</h2><div className="account-tabs">{Object.entries(titles).map(([id,label]) => <button key={id} aria-pressed={current===id} disabled={s.busy} onClick={() => { setTab(id); accounts.clear() }}>{label}</button>)}</div>
+  }}><section className={`dialog account-dialog ${current==='loadout' ? 'loadout-account-dialog' : ''}`} role="dialog" aria-modal="true" aria-labelledby="account-title"><div className="eyebrow">PROJECT DUEL / PLAYER SERVICES</div><h2 id="account-title">{titles[current]}</h2>{current==='loadout' && <button ref={closeRef} className="loadout-close" aria-label="Close loadout" disabled={s.busy} onClick={onClose}>×</button>}<div className="account-tabs">{Object.entries(titles).map(([id,label]) => <button key={id} aria-pressed={current===id} disabled={s.busy} onClick={() => { setTab(id); accounts.clear() }}>{label}</button>)}</div>
     {!s.configured && <p className="cloud-notice">Cloud accounts and rankings are not enabled for this game yet. Guest play and device-saved loadouts are available.</p>}
-    {s.error && <p className="error" role="alert">{s.error}</p>}{s.notice && <p className="account-notice" role="status">{s.notice}</p>}{s.loading && <p role="status">Loading your saved profile…</p>}
-    {s.recovery ? <PasswordRecovery s={s} onComplete={onShowProfile} /> : current==='profile' ? <Profile key={`${s.user?.id || 'guest'}-${s.profile?.callsign || ''}`} s={s} /> : current==='loadout' ? <CharacterLoadout key={JSON.stringify(s.bank)} s={s} /> : current==='history' ? <History s={s} /> : <Leaderboard s={s} />}
-    <button ref={closeRef} disabled={s.recovery && s.busy} onClick={s.recovery ? () => { void accounts.signOut().then(() => { if (!accounts.get().recovery) onClose() }) } : onClose}>{s.recovery ? 'CANCEL PASSWORD RESET' : 'BACK'}</button>
+    {current!=='loadout' && s.error && <p className="error" role="alert">{s.error}</p>}{current!=='loadout' && s.notice && <p className="account-notice" role="status">{s.notice}</p>}{s.loading && <p role="status">Loading your saved profile…</p>}
+    {s.recovery ? <PasswordRecovery s={s} onComplete={onShowProfile} /> : current==='profile' ? <Profile key={`${s.user?.id || 'guest'}-${s.profile?.callsign || ''}`} s={s} /> : current==='loadout' ? !s.loading && <CharacterLoadout key={s.user?.id || 'guest'} s={s} /> : current==='history' ? <History s={s} /> : <Leaderboard s={s} />}
+    <button ref={current==='loadout' ? undefined : closeRef} className={current==='loadout' ? 'loadout-back' : undefined} disabled={(s.recovery || current==='loadout') && s.busy} onClick={s.recovery ? () => { void accounts.signOut().then(() => { if (!accounts.get().recovery) onClose() }) } : onClose}>{s.recovery ? 'CANCEL PASSWORD RESET' : 'BACK'}</button>
   </section></div>
 }

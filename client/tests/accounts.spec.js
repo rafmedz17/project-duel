@@ -1,5 +1,5 @@
 import { test,expect } from '@playwright/test'
-import { state } from './helpers.js'
+import { state,editLoadout } from './helpers.js'
 
 const cloudOrigin='http://127.0.0.1:5174'
 const userId='11111111-1111-4111-8111-111111111111'
@@ -56,7 +56,7 @@ async function signIn(page) {
   await expect(dialog.getByLabel('CALLSIGN')).toHaveValue('Nova Cloud')
 }
 
-test('training saves the selected preset to the account, retains edits after failure and restores it on another device',async({page,context,browser})=>{
+test('training auto-saves to the account, retries failures, queues rapid edits and restores the latest choice on another device',async({page,context,browser})=>{
   const shared=await mockCloud(context),errors=[]
   page.on('pageerror',error=>errors.push(error.message))
   await signIn(page)
@@ -67,30 +67,32 @@ test('training saves the selected preset to the account, retains edits after fai
   await page.keyboard.press('KeyB')
   const dialog=page.getByRole('dialog',{name:'FIELD ARMORY',exact:true})
   await expect(dialog).toBeVisible()
-  await expect(dialog.getByText('Saves to your account.',{exact:false})).toBeVisible()
+  await expect(dialog.getByRole('status')).toContainText('ACCOUNT')
   await dialog.getByRole('button',{name:'Loadout slot 3',exact:true}).click()
-  await dialog.getByRole('button',{name:'Select ION',exact:true}).click()
-  await dialog.getByRole('button',{name:'Equip SPECTRAL SMOKE',exact:true}).click()
+  await expect(dialog.getByRole('status')).toContainText('AUTO-SAVED')
   shared.failLoadoutBank=true
-  await dialog.getByRole('button',{name:/SAVE & RETURN/}).click()
+  await editLoadout(page,{character:'ion'},{wait:false})
   await expect(dialog.getByRole('alert')).toContainText('Loadout save unavailable')
-  await expect(dialog.getByRole('button',{name:'Select ION',exact:true})).toHaveAttribute('aria-pressed','true')
+  await expect(dialog.getByRole('button',{name:'Change character',exact:true})).toContainText('ION')
   expect((await state(page)).loadout).toEqual(before.loadout)
   shared.failLoadoutBank=false
   let release
   shared.beforeSaveBank=()=>new Promise(resolve=>{release=resolve})
-  await dialog.getByRole('button',{name:/SAVE & RETURN/}).click()
-  await expect(dialog.getByRole('button',{name:/SAVING/})).toBeDisabled()
+  await dialog.getByRole('button',{name:'RETRY AUTO-SAVE',exact:true}).click()
+  await expect(dialog.getByRole('status')).toContainText('SAVING CHANGES')
   await expect.poll(()=>Boolean(release)).toBe(true)
+  await editLoadout(page,{unique:'smoke'},{wait:false})
   await page.keyboard.press('KeyB');await page.keyboard.press('Escape')
   await expect(dialog).toBeVisible()
-  await expect(dialog.getByRole('button',{name:'CANCEL / RETURN TO TRAINING',exact:true})).toBeDisabled()
+  await expect(dialog.getByRole('button',{name:'RETURN TO TRAINING',exact:false})).toBeDisabled()
   release();delete shared.beforeSaveBank
+  await expect(dialog.getByRole('status')).toContainText('AUTO-SAVED')
+  await dialog.getByRole('button',{name:'RETURN TO TRAINING',exact:false}).click()
   await expect(dialog).toHaveCount(0)
   expect((await state(page)).loadout).toMatchObject({character:'ion',unique:'smoke'})
   expect(shared.loadout).toMatchObject({active_slot:2,character_id:'ion',unique_skill:'smoke'})
   expect(shared.slots[0].character_id).toBe(before.loadout.character)
-  expect(shared.requests.filter(request=>request.path==='/rest/v1/rpc/save_loadout_bank')).toHaveLength(2)
+  expect(shared.requests.filter(request=>request.path==='/rest/v1/rpc/save_loadout_bank').at(-1).body.p_slots[2].unique).toBe('smoke')
   const second=await browser.newContext()
   try {
     await mockCloud(second,shared)
@@ -98,8 +100,8 @@ test('training saves the selected preset to the account, retains edits after fai
     await other.getByRole('dialog').getByRole('button',{name:'BACK',exact:true}).click()
     await other.getByRole('button',{name:/^CHARACTER & LOADOUT/}).click()
     await expect(other.getByRole('button',{name:'Loadout slot 3',exact:true})).toHaveAttribute('aria-pressed','true')
-    await expect(other.getByRole('button',{name:'Select ION',exact:true})).toHaveAttribute('aria-pressed','true')
-    await expect(other.getByRole('button',{name:'Equip SPECTRAL SMOKE',exact:true})).toHaveAttribute('aria-pressed','true')
+    await expect(other.getByRole('button',{name:'Change character',exact:true})).toContainText('ION')
+    await expect(other.getByRole('button',{name:'Change unique skill',exact:true})).toContainText('SPECTRAL SMOKE')
   } finally {await second.close()}
   expect(errors).toEqual([])
 })
@@ -131,13 +133,9 @@ test('guest loadout saves across reloads and controls training weapons and abili
   await page.goto('/')
   await page.getByRole('button',{ name:/^CHARACTER & LOADOUT/ }).click()
   const dialog=page.getByRole('dialog',{ name:'CHARACTER & LOADOUT' })
-  await expect(dialog.getByText(/Saves on this device/)).toBeVisible()
-  await dialog.getByRole('button',{ name:'Select AEGIS' }).click()
-  await dialog.getByRole('button',{ name:'SHOTGUNS',exact:true }).click()
-  await dialog.getByRole('button',{ name:'Equip BREACH-12',exact:true }).click()
-  await dialog.getByRole('button',{ name:'Equip SPECTRAL SMOKE',exact:true }).click()
-  await dialog.getByRole('button',{ name:/SAVE & EQUIP/ }).click()
-  await expect(dialog.getByRole('status')).toContainText('saved on this device')
+  await expect(dialog.getByRole('status')).toContainText('DEVICE')
+  await editLoadout(page,{character:'aegis',primary:'shotgun',unique:'smoke'})
+  await expect(dialog.getByRole('status')).toContainText('AUTO-SAVED ON DEVICE')
   await dialog.screenshot({ path:'loadout-preview.png' })
   await page.reload()
   await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
@@ -160,10 +158,8 @@ test('email sign-in, saved callsign/loadout, restored session, history and leade
   await expect(dialog.getByRole('status')).toContainText('Callsign saved')
   await expect(dialog.getByText(/WIN RATE 60%/)).toBeVisible()
   await dialog.getByRole('button',{ name:'CHARACTER & LOADOUT',exact:true }).click()
-  await dialog.getByRole('button',{ name:'Select ION' }).click()
-  await dialog.getByRole('button',{ name:'Equip SPECTRAL SMOKE',exact:true }).click()
-  await dialog.getByRole('button',{ name:/SAVE & EQUIP/ }).click()
-  await expect(dialog.getByRole('status')).toContainText('saved to your account')
+  await editLoadout(page,{character:'ion',unique:'smoke'})
+  await expect(dialog.getByRole('status')).toContainText('AUTO-SAVED TO ACCOUNT')
   await dialog.getByRole('button',{ name:'MATCH HISTORY',exact:true }).click()
   await expect(dialog.getByText('VICTORY',{ exact:true })).toBeVisible()
   await expect(dialog.getByText(/RANKED · \+16 ELO/)).toBeVisible()
@@ -190,9 +186,9 @@ test('email sign-in, saved callsign/loadout, restored session, history and leade
     await second.getByRole('dialog').getByRole('button',{ name:'SIGN IN',exact:true }).last().click()
     await expect(second.getByLabel('CALLSIGN')).toHaveValue('Nova Saved')
     await second.getByRole('dialog').getByRole('button',{ name:'CHARACTER & LOADOUT',exact:true }).click()
-    await expect(second.getByRole('tab',{ name:'PRIMARY slot' })).toContainText('VXR-9 PHANTOM')
-    await expect(second.getByRole('button',{ name:'Select ION' })).toHaveAttribute('aria-pressed','true')
-    await expect(second.getByRole('button',{ name:'Equip SPECTRAL SMOKE',exact:true })).toHaveAttribute('aria-pressed','true')
+    await expect(second.getByRole('button',{ name:'Change primary gun',exact:true })).toContainText('VXR-9 PHANTOM')
+    await expect(second.getByRole('button',{ name:'Change character',exact:true })).toContainText('ION')
+    await expect(second.getByRole('button',{ name:'Change unique skill',exact:true })).toContainText('SPECTRAL SMOKE')
     await second.getByRole('dialog').getByRole('button',{ name:'PLAYER PROFILE',exact:true }).click()
     await second.getByRole('button',{ name:'SIGN OUT',exact:true }).click()
     await expect(second.getByLabel('EMAIL',{ exact:true })).toBeVisible()
