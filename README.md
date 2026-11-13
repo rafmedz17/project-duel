@@ -16,7 +16,7 @@ npm.cmd run dev:server
 
 Open the Vite address (normally http://localhost:5173). The server is only needed for Multiplayer. `npm.cmd` avoids Windows PowerShell's script execution policy issue; other shells can use `npm`.
 
-Choose **Enter Training**, then **Resume / Enter Arena**. WASD moves, the mouse aims, Shift sprints, Space jumps, and left click attacks. Select primary/pistol/melee with **1 / 2 / 3**, cycle with **Q**, and reload with **R**. Hold left click for automatic weapons, hold right click for red-dot sights on rifles/SMGs/LMGs or precision sniper scopes, and press **T** to inspect. Escape releases the mouse and pauses training. Focus loss also pauses it.
+Choose **Enter Training**, then **Resume / Enter Arena**. WASD moves, the mouse aims, Shift sprints, Space jumps, and left click attacks. Select primary/pistol/melee with **1 / 2 / 3**, cycle with **Q**, and reload with **R**. Hold left click for automatic weapons, hold right click for open energy iron sights on rifles/SMGs/LMGs or precision sniper scopes, and press **T** to inspect. Escape releases the mouse and pauses training. Focus loss also pauses it.
 
 Four courses surround a safe central hub: 10 stationary robots ahead, a 45-second reflex challenge on the right, six strafing robots behind, and five armed robots with obstacles on the left. Press **G** in a course to reset the range, control moving robots, or start/stop a challenge. Combat robots stay disarmed until you start their course; cover blocks their shots, and leaving the course disarms them. All robots use the multiplayer hit zones and stand directly on the floor. See [training grounds](docs/TRAINING_GROUNDS.md).
 

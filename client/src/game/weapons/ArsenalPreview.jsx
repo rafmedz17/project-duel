@@ -12,7 +12,7 @@ function Display({ id,mode }) {
     const lastShot=mode==='fire' ? weapon.fireMode==='auto' && time-start>(weapon.spinUp || 0) ? start+(weapon.spinUp || 0)+Math.floor((time-start-(weapon.spinUp || 0))/weapon.cooldown)*weapon.cooldown : start : -10
     const s={ weapon:id,hp:100,lastShot,lastSwing:mode==='fire' ? start : -10,lastSwitch:-10,shot:Math.floor(time/weapon.cooldown),reloading:mode==='reload',reloadStart:Math.floor(time/(weapon.reload || 2))*(weapon.reload || 2),reloadEnd:(Math.floor(time/(weapon.reload || 2))+1)*(weapon.reload || 2),spinning:mode==='fire',spinStarted:start,windupStart:start,windupEnd:mode==='fire' ? start+(weapon.windup || weapon.spinUp || 0) : 0 }
     const a=weaponAnimation(s,time,weapon)
-    group.current.rotation.y=0.55+Math.sin(time*0.45)*(mode==='inspect' ? 0.7 : 0.15)
+    group.current.rotation.y=-0.85+Math.sin(time*0.45)*(mode==='inspect' ? 0.55 : 0.12)
     group.current.rotation.z=Math.sin(time*0.8)*0.025-a.reloadPose*0.2
     group.current.position.y=Math.sin(time*1.4)*0.018-(weapon.fireMode==='melee' ? 0.28 : 0)
     group.current.position.z=a.kick*0.035

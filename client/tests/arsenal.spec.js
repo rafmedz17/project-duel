@@ -16,7 +16,9 @@ async function model(page,name) {
     const url=performance.getEntriesByType('resource').find(e=>new URL(e.name).pathname.endsWith('/@react-three_fiber.js'))?.name
     if(!url)return null
     const { _roots }=await import(url)
-    const object=[..._roots.values()].map(root=>root.store.getState().scene.getObjectByName(name)).find(Boolean)
+    const scenes=[..._roots.values()].map(root=>root.store.getState().scene)
+    const equipped=scenes.map(scene=>scene.getObjectByName('first-person-weapon')).find(Boolean)
+    const object=equipped?.getObjectByName(name) || scenes.map(scene=>scene.getObjectByName(name)).find(Boolean)
     return object ? { rotation:object.rotation.toArray().slice(0,3),position:object.position.toArray(),children:object.children.length,visible:object.visible } : null
   },name)
 }
@@ -61,12 +63,23 @@ test('rotary spin-up animates before firing, empties the drum and reloads with v
   test.setTimeout(60000)
   const errors=[];page.on('pageerror',e=>errors.push(e.message))
   await start(page,{ primary:'omega',startingWeapon:'omega' });await lookAt(page,0,0.4)
+  // Sample rendered motion in the browser so automation round trips cannot miss
+  // the cell-drop portion of a real reload on a busy software WebGL renderer.
+  await page.evaluate(async()=> {
+    const url=performance.getEntriesByType('resource').find(e=>new URL(e.name).pathname.endsWith('/@react-three_fiber.js')).name
+    const { _roots }=await import(url),scene=_roots.get(document.querySelector('canvas')).store.getState().scene
+    window.__omegaReload={ minimum:0,samples:0 };const started=performance.now()
+    const sample=()=> { const cell=scene.getObjectByName('first-person-weapon')?.getObjectByName('reload-energy-cell');if(cell) { window.__omegaReload.minimum=Math.min(window.__omegaReload.minimum,cell.position.y);window.__omegaReload.samples++ };if(performance.now()-started<30000) requestAnimationFrame(sample) }
+    requestAnimationFrame(sample)
+  })
   await page.mouse.down()
   await expect(page.getByRole('status').filter({ hasText:'SPINNING UP' })).toBeVisible()
   await expect.poll(async ()=>(await state(page)).shot).toBeGreaterThan(0)
-  await expect.poll(async ()=>(await state(page)).magazines.omega,{ timeout:12000 }).toBe(0)
+  // Automatic fire advances with rendered simulation frames; software WebGL can
+  // take longer than real-time to consume the full 100-round drum.
+  await expect.poll(async ()=>(await state(page)).magazines.omega,{ timeout:25000 }).toBe(0)
   await page.mouse.up();await expect(page.getByRole('progressbar',{ name:'Reload progress' })).toBeVisible()
-  await expect.poll(async ()=>(await model(page,'reload-energy-cell'))?.position[1]).toBeLessThan(-0.15)
+  await expect.poll(()=>page.evaluate(()=>window.__omegaReload.minimum)).toBeLessThan(-0.15)
   await page.screenshot({ path:'omega-reload-preview.png' })
   await expect.poll(async ()=>(await state(page)).magazines.omega,{ timeout:6000 }).toBe(100)
   const shots=(await state(page)).shot;await page.waitForTimeout(400);expect((await state(page)).shot).toBe(shots)

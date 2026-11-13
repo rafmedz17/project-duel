@@ -11,7 +11,7 @@ Controls are part of **Settings**, available from the main menu, training pause 
 
 Click a binding, then press a key or mouse button. A conflict swaps the other action into the vacated binding, keeping every action available. Escape cancels rebinding and remains the fixed pause/release key. Default controls can be restored independently of other preferences. Right Shift also sprints while sprint uses its default Left Shift binding. Controls work identically in training and multiplayer.
 
-Hold scope is the default. Tap scope toggles with a press, including a remapped keyboard aim key. Reloading, weapon switching, death or loss of mouse capture removes the optic. Your FOV returns after aiming; dash adds seven degrees up to 117. Sniper and red-dot optics retain their calibrated aim FOVs.
+Hold scope is the default. Tap scope toggles with a press, including a remapped keyboard aim key. Reloading, weapon switching, death or loss of mouse capture removes the optic. Your FOV returns after aiming; dash adds seven degrees up to 117. Sniper and energy iron sights retain their calibrated aim FOVs.
 
 The crosshair editor offers cross, dot and circle shapes; color, size, center gap, thickness, opacity and center dot. The preview updates immediately. Shotguns retain a dotted spread ring, and aiming uses the equipped optic's reticle.
 

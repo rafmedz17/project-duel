@@ -9,6 +9,7 @@ import ArsenalModel from './ArsenalModel.jsx'
 import { activeOptic,REFLEX_AIM_POSITION } from './optics.js'
 
 export default function WeaponView({ source=game }) {
+  const detail=useGame(s=>s.settings.quality!=='Low')
   const local=useGame(s=>s.weapon),online=useLobby(s=>s.room?.players.find(p=>p.id===s.sessionId)?.combat.weapon)
   const selected=source===game ? local : online || 'pistol', weapon=WEAPONS[selected]
   const root=useRef(),rotation=useRef(0),ads=useRef(0),reticle=useRef()
@@ -23,8 +24,8 @@ export default function WeaponView({ source=game }) {
     ads.current=MathUtils.damp(ads.current,optic==='reflex' ? 1 : 0,18,Math.min(delta,0.1))
     const blend=ads.current,steady=1-blend*0.8
     const group=root.current
-    // The screen-space optic supplies the ADS sight; the physical lens must not
-    // sit between the camera and targets during magnification.
+    // Open iron-sight rails remain in the model; the tiny HUD zero stays aligned
+    // with the camera's shot direction through recoil and equip transitions.
     group.visible=s.hp>0 && !scoped; group.position.copy(camera.position); group.quaternion.copy(camera.quaternion)
     group.translateX(melee ? 0.36-a.hit*0.38 : MathUtils.lerp(0.31-a.reloadPose*0.08,REFLEX_AIM_POSITION[0],blend))
     group.translateY((melee ? -0.43+a.hit*0.12 : MathUtils.lerp(-0.3,REFLEX_AIM_POSITION[1],blend))+a.reloadPose*0.22-a.equip*0.3+Math.sin(time*1.8)*0.002*(1-blend))
@@ -52,5 +53,5 @@ export default function WeaponView({ source=game }) {
       else { offhand.current.position.set(-0.04-a.drop*0.1,-0.2+a.drop*0.02,(compact ? 0.13 : -0.33)+a.drop*0.18); offhand.current.rotation.z=-a.drop*0.35 }
     }
   },-1)
-  return <group ref={root} name="first-person-weapon"><ArsenalModel key={selected} weapon={weapon} parts={parts}/></group>
+  return <group ref={root} name="first-person-weapon">{detail && <pointLight position={[-.35,.55,.45]} intensity={2.6} distance={2.2} color="#c5d9f3"/>}<ArsenalModel key={selected} weapon={weapon} parts={parts}/></group>
 }

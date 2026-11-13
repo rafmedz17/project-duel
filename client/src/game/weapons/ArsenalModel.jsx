@@ -1,5 +1,8 @@
 import { forwardRef } from 'react'
-import ReflexSight from './ReflexSight.jsx'
+import MythicIronSight from './MythicIronSight.jsx'
+import GunChassis from './GunChassis.jsx'
+import { Armor,Muzzle } from './ForgedParts.jsx'
+import { weaponFinish } from './weaponFinish.js'
 import { reflexProfile } from './optics.js'
 
 function Plate({ p=[0,0,0],s=[0.1,0.1,0.1],r=[0,0,0],color='#34465d',glow=false }) {
@@ -24,9 +27,10 @@ const Cell=forwardRef(function Cell({ weapon },ref) {
   const drum=['omega','ravager','magnus'].includes(weapon.model)
   return <group position={[0,-0.17,weapon.slot==='2' ? 0.1 : -0.08]}>
     <group ref={ref} name="reload-energy-cell">
-      {drum ? <mesh rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[0.12,0.12,0.19,12]}/><meshStandardMaterial color="#24354b" metalness={0.85} roughness={0.28}/></mesh> : <Plate s={[weapon.category==='LMG' ? 0.19 : 0.095,weapon.slot==='2' ? 0.15 : 0.23,0.14]} color="#203047"/>}
+      {drum ? <group><mesh rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[0.12,0.12,0.19,24]}/><meshStandardMaterial color="#24303e" metalness={0.85} roughness={0.36}/></mesh>{[-1,1].map(side=><mesh key={side} position={[side*.098,0,0]} rotation={[0,Math.PI/2,0]}><torusGeometry args={[.084,.009,6,24]}/><meshStandardMaterial color="#71808b" metalness={.9} roughness={.35}/></mesh>)}</group> : <Armor points={[[.066,.1],[.075,-.074],[.04,-.132],[-.068,-.13],[-.075,.09]]} thickness={weapon.category==='LMG' ? .18 : .09} color="#293646" bevel={.008}/>}
       <Plate p={[0,0,0.075]} s={[0.058,drum ? 0.1 : 0.16,0.012]} color={weapon.color} glow/>
       {[-0.035,0.035].map(x=><Plate key={x} p={[x,0,0.084]} s={[0.008,0.12,0.006]} color="#d2faff" glow/>)}
+      {!drum && [-1,1].flatMap(side=>[0,1,2].map(i=><Plate key={`${side}-${i}`} p={[side*(weapon.category==='LMG' ? .093 : .05),-.075+i*.042,0]} s={[.006,.009,.115]} color="#111c29"/>))}
     </group>
   </group>
 })
@@ -46,6 +50,7 @@ function EnergyBlade({ weapon,short=false }) {
 export default function ArsenalModel({ weapon,parts,preview=false }) {
   const compact=weapon.slot==='2',smg=weapon.category==='SMG',sniper=weapon.category==='SNIPER',lmg=weapon.category==='LMG'
   const rotary=weapon.model==='omega',double=weapon.model==='executor',hammer=weapon.model==='breaker',dual=weapon.model==='fangs'
+  const finish=weaponFinish(weapon)
   const length=compact ? 0.35 : smg ? 0.5 : sniper ? 1.2 : lmg ? 0.86 : 0.74
   if (weapon.fireMode==='melee') return <group name={`model-${weapon.model}`}>
     <group ref={parts?.action}>
@@ -65,38 +70,31 @@ export default function ArsenalModel({ weapon,parts,preview=false }) {
     <mesh ref={parts?.trail} position={[0,0.28,-0.04]} rotation={[0,0,-0.2]}><torusGeometry args={[hammer ? 0.48 : 0.42,0.018,6,28,Math.PI*0.9]}/><meshBasicMaterial color={weapon.color} transparent opacity={0} depthWrite={false} toneMapped={false}/></mesh>
   </group>
   return <group name={`model-${weapon.model}`}>
-    <Plate p={[0,0,0.04]} s={[lmg ? 0.28 : compact ? 0.15 : 0.19,compact ? 0.14 : 0.2,compact ? 0.3 : 0.46]} color={weapon.model==='astral' ? '#44406a' : '#34475c'}/>
-    {[-1,1].map(side=><group key={side}>
-      <Plate p={[side*(lmg ? 0.146 : compact ? 0.08 : 0.103),0.025,-0.015]} s={[0.022,0.1,compact ? 0.18 : 0.31]} r={[0,0,side*0.08]} color="#71899f"/>
-      <Plate p={[side*(lmg ? 0.16 : 0.12),0.025,-0.09]} s={[0.009,0.018,compact ? 0.12 : 0.24]} color={weapon.color} glow/>
-      {[0,1,2].map(i=><Plate key={i} p={[side*0.11,-0.04,0.02+i*0.052]} s={[0.012,0.035,0.02]} r={[0,0,side*0.25]} color="#101b2b"/>)}
-    </group>)}
-    <Plate p={[0,-0.15,0.14]} s={[0.085,0.24,0.12]} r={[-0.2,0,0]} color="#172a3d"/>
-    {!compact && <><Plate p={[0,-0.025,0.36]} s={[0.1,0.13,0.24]} color="#1c2c41"/><Plate p={[0,-0.02,0.48]} s={[0.16,0.23,0.045]} r={[0.12,0,0]} color="#4b627b"/></>}
+    <GunChassis weapon={weapon} length={length} preview={preview}/>
     <group ref={parts?.action}>
       {rotary ? <group ref={parts?.rotor} position={[0,0,-0.37]}>
-        {Array.from({ length:6 },(_,i)=>{ const a=i*Math.PI/3;return <group key={i} position={[Math.cos(a)*0.09,Math.sin(a)*0.09,0]}><Tube length={0.65} radius={0.025}/><Tube p={[0,0,-0.33]} length={0.04} radius={0.031} color={weapon.color} glow/></group> })}
+        {Array.from({ length:6 },(_,i)=>{ const a=i*Math.PI/3;return <group key={i} position={[Math.cos(a)*0.09,Math.sin(a)*0.09,0]}><Tube length={0.65} radius={0.025}/><Muzzle position={[0,0,-.32]} radius={.025} color={finish.edge} accent={finish.accent}/></group> })}
         {[-0.24,0.2].map(z=><Ring key={z} p={[0,0,z]} radius={0.125} color={weapon.color}/>)}
       </group> : double ? <group ref={parts?.hinge} position={[0,-0.02,-0.15]}>
-        {[-0.055,0.055].map(x=><group key={x}><Tube p={[x,0,-0.22]} radius={0.043} length={0.46}/><Ring p={[x,0,-0.46]} radius={0.04} color={weapon.color}/></group>)}
+        {[-0.055,0.055].map(x=><group key={x}><Tube p={[x,0,-0.22]} radius={0.043} length={0.46}/><Muzzle position={[x,0,-.43]} radius={.04} color={finish.edge} accent={finish.accent}/></group>)}
         <Plate p={[0,0.055,-0.22]} s={[0.16,0.025,0.32]} color="#687c91"/>
       </group> : <group>
         <Tube p={[0,0,-length/2-0.14]} radius={sniper ? 0.035 : compact ? 0.035 : 0.045} length={length-0.2}/>
         <Tube p={[0,0,-length+0.02]} radius={sniper ? 0.048 : 0.058} length={0.1} color="#60768d"/>
-        <Ring p={[0,0,-length-0.035]} radius={sniper ? 0.037 : 0.045} color={weapon.color}/>
+        <Muzzle position={[0,0,-length+.005]} radius={sniper ? .037 : .045} color={finish.edge} accent={finish.accent}/>
       </group>}
       {weapon.model==='railbreaker' && [-1,1].map(side=><group key={side}><Plate p={[side*0.075,0.015,-0.67]} s={[0.045,0.07,0.9]} color="#384a61"/><Plate p={[side*0.1,0.02,-0.7]} s={[0.009,0.026,0.85]} color={weapon.color} glow/>{[0,1,2,3,4].map(i=><Ring key={i} p={[0,0,-0.35-i*0.14]} radius={0.065} color={weapon.color}/>)}</group>)}
     </group>
     <group ref={parts?.bolt} position={[0,0.12,-0.02]}>
       <Plate s={[compact ? 0.13 : 0.08,0.035,compact ? 0.31 : 0.35]} color="#768ca2"/>
-      <Plate p={[0,0.022,0]} s={[0.032,0.012,compact ? 0.22 : 0.28]} color={weapon.color} glow/>
+      <Plate p={[0,0.022,0]} s={[0.009,0.006,compact ? 0.15 : 0.18]} color={finish.accent} glow/>
       {sniper && <Plate p={[0.11,-0.025,0.12]} s={[0.15,0.035,0.04]} color="#8094a8"/>}
     </group>
     {weapon.scope ? <group position={[0,0.23,-0.05]}>
       <Plate p={[0,-0.055,0]} s={[0.08,0.11,0.1]}/><Tube radius={0.07} length={0.34} color="#19293d"/>
       <Ring p={[0,0,0.177]} radius={0.055} color={weapon.color}/><Tube p={[0,0,0.173]} radius={0.048} length={0.008} color="#194650" glow/>
       <Plate p={[0,0.09,0]} s={[0.055,0.035,0.08]} color="#5c7189"/>
-    </group> : reflexProfile(weapon) ? <ReflexSight weapon={weapon} reticleRef={parts?.reticle}/> : !compact && <group position={[0,0.19,0.1]}><Plate p={[-0.044,0,0]} s={[0.018,0.09,0.035]}/><Plate p={[0.044,0,0]} s={[0.018,0.09,0.035]}/><Plate p={[0,0.05,0]} s={[0.1,0.02,0.035]} color={weapon.color} glow/></group>}
+    </group> : reflexProfile(weapon) ? <MythicIronSight weapon={weapon} reticleRef={parts?.reticle}/> : !compact && <group position={[0,0.19,0.1]}><Plate p={[-0.044,0,0]} s={[0.018,0.09,0.035]}/><Plate p={[0.044,0,0]} s={[0.018,0.09,0.035]}/><Plate p={[0,0.05,0]} s={[0.1,0.02,0.035]} color={weapon.color} glow/></group>}
     <group ref={parts?.pump} position={[0,-0.06,-0.35]}>
       {!compact && <Plate s={[0.15,0.11,smg ? 0.15 : 0.28]} color="#182b3e"/>}
       {!compact && [-1,0,1].map(i=><Plate key={i} p={[0,-0.062,i*0.07]} s={[0.12,0.016,0.02]} color={weapon.color} glow/>)}
