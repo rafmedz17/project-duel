@@ -21,6 +21,6 @@ export default function ScannerMarkers() {
     return () => cancelAnimationFrame(frame)
   },[active])
   return <div className="scan-markers" aria-hidden="true">{s.targets.map((target,index) => <div ref={element => { refs.current[index] = element }} key={index} data-testid={`scan-target-${index}`} className="scan-marker">
-    <b>{`T-${String(index+1).padStart(2,'0')}`}</b><span>{target.hp} HP {s.time<target.disabledUntil ? ' / JAMMED' : ''}</span><small />
+    <b>{`T-${String(index+1).padStart(2,'0')}`}</b>{s.time<target.disabledUntil && <span>JAMMED</span>}<small />
   </div>)}</div>
 }

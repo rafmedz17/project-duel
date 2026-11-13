@@ -67,7 +67,7 @@ const Structure=memo(function Structure({ quality }) {
 })
 
 function Robot({ index }) {
-  const s=useGame(),target=s.targets[index],body=useRef(),health=useRef(),muzzle=useRef(),rot=useRef(new Quaternion()),lean=useRef(0)
+  const s=useGame(),target=s.targets[index],body=useRef(),muzzle=useRef(),rot=useRef(new Quaternion()),lean=useRef(0)
   const def=TRAINING_TARGETS[index],down=target.hp<=0,combat=def.course==='combat'
   useBeforePhysicsStep(()=> {
     if(!body.current) return
@@ -79,7 +79,6 @@ function Robot({ index }) {
     body.current.setNextKinematicRotation(rot.current)
   })
   useFrame(()=> {
-    if(health.current) health.current.quaternion.copy(rot.current).invert()
     if(muzzle.current) muzzle.current.visible=game.now()-(game.get().targets[index].firedAt ?? -10)<0.08
   })
   const revealed=()=> {
@@ -90,10 +89,6 @@ function Robot({ index }) {
     {ROBOT_PARTS.map(part=><CuboidCollider key={part.id} args={part.size.map(n=>n/2)} position={part.position} enabled={!down}/>)}
     <RobotModel enemy targetId={index} characterId={CHARACTER_IDS[index%4]} down={down} flash={s.time-target.hit<0.12 || s.time<(target.flashUntil || 0)} reveal={revealed}/>
     {combat && <group position={[0.25,-0.12,-0.35]} scale={0.65}><ArsenalModel weapon={WEAPONS.rifle} parts={{ flash:muzzle }} preview/></group>}
-    <group ref={health} visible={!down} position={[0,1.08,0]}>
-      <Box position={[0,0,0]} size={[0.95,0.07,0.04]} color="#23384b"/>
-      <Box position={[-0.475+target.hp/100*0.475,0,0.03]} size={[0.95*target.hp/100,0.045,0.03]} color={target.tracking ? '#ff7660' : COURSES[def.course].color} glow/>
-    </group>
     {s.time<(target.rootedUntil || 0) && <mesh position={[0,-0.7,0]} rotation={[-Math.PI/2,0,0]}><ringGeometry args={[0.45,0.6,6]}/><meshBasicMaterial color="#bd9fff"/></mesh>}
   </RigidBody>
 }

@@ -39,7 +39,7 @@ export default function App() {
     const key=event=> {
       if(canonicalCode(event,game.get().settings)!=='KeyB' || event.repeat || event.ctrlKey || event.metaKey || event.altKey || online || event.target.closest?.('input,textarea,select,[contenteditable="true"]')) return
       if(event.type==='mousedown' && document.pointerLockElement!==document.querySelector('canvas')) return
-      if(panel==='training-loadout') { event.preventDefault();closeArmory(true);return }
+      if(panel==='training-loadout') { event.preventDefault();if(!accounts.get().busy) closeArmory(true);return }
       if(panel || !['playing','paused'].includes(game.get().mode) || !game.get().ready) return
       event.preventDefault();game.cancelAttack();game.set({ mode:'loadout',aiming:false });document.exitPointerLock();setPanel('training-loadout')
     }

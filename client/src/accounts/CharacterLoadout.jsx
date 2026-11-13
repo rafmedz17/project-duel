@@ -21,7 +21,7 @@ export default function CharacterLoadout({ s,onSave,training=false }) {
     return { ...previous,slots:previous.slots.map((gear,i)=>i===previous.activeSlot ? validateLoadout(next) : gear) }
   })
   return <form className="operative-loadout" style={{ '--operative':c.color }} onSubmit={event => { event.preventDefault(); if(onSave) onSave(bank);else void accounts.saveBank(bank) }}>
-    <p className="preset-help">{training ? 'FIELD ARMORY / Edit any preset, then apply it to this training session. Your position and course progress are kept.' : 'FIVE LOADOUT SLOTS / Edit each preset, then Save & Equip to save all five and deploy with the selected slot.'}</p>
+    <p className="preset-help">{training ? 'FIELD ARMORY / Save your presets for training and multiplayer. Deploy with the selected slot while keeping your position and course progress.' : 'FIVE LOADOUT SLOTS / Edit each preset, then Save & Equip to save all five and deploy with the selected slot.'}</p>
     <LoadoutSlots slots={bank.slots} selected={bank.activeSlot} onSelect={activeSlot=>setBank(previous=>({ ...previous,activeSlot }))} disabled={s.busy || s.loading}/>
     <div className="armory-heading"><span>OPERATIVE DIVISION / 04 UNITS</span><span>BUILD YOUR COMBAT IDENTITY</span></div>
     <fieldset className="character-roster" disabled={s.busy || s.loading}><legend>01 / CHOOSE YOUR CHARACTER</legend>
@@ -35,6 +35,6 @@ export default function CharacterLoadout({ s,onSave,training=false }) {
     </section>
     <WeaponPicker value={value} choose={choose} disabled={s.busy || s.loading}/>
     <fieldset disabled={s.busy || s.loading}><legend>03 / UNIQUE SKILL · CHOOSE ANY ONE</legend><div className="unique-cards">{UNIQUE_SKILLS.map(id => <button type="button" key={id} aria-label={`Equip ${ABILITIES[id].name}`} aria-pressed={value.unique===id} className={`unique-card ${value.unique===id ? 'selected' : ''}`} onClick={() => choose({ unique:id })}><span className={`skill-symbol ${id}`} aria-hidden="true">{({ flashbang:'✦',smoke:'◉',stun:'⌁',scanner:'◎' })[id]}</span><strong>{ABILITIES[id].name}</strong><p>{ABILITIES[id].description}</p><small>{abilityKey('unique',settings)} · {ABILITIES[id].cooldown}s COOLDOWN</small></button>)}</div></fieldset>
-    <div className="loadout-footer"><div><strong>{c.name} / {WEAPONS[value.primary].name} / {ABILITIES[value.unique].name}</strong><small>{training ? 'Training session only. Applies fresh ammunition and abilities; health and course progress are preserved.' : s.user ? 'Saves to your account. Choose among these presets during multiplayer loadout phases.' : 'Saves on this device. Choose among these presets during multiplayer loadout phases.'}</small></div><button className="primary" disabled={s.busy || s.loading}>{training ? 'APPLY & RETURN →' : s.busy ? 'SAVING…' : 'SAVE & EQUIP →'}</button></div>
+    <div className="loadout-footer"><div><strong>{c.name} / {WEAPONS[value.primary].name} / {ABILITIES[value.unique].name}</strong><small>{s.user ? 'Saves to your account. Choose among these presets during multiplayer loadout phases.' : 'Saves on this device. Choose among these presets during multiplayer loadout phases.'}</small></div><button className="primary" disabled={s.busy || s.loading}>{s.busy ? 'SAVING…' : training ? 'SAVE & RETURN →' : 'SAVE & EQUIP →'}</button></div>
   </form>
 }

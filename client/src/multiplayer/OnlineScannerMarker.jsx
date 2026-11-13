@@ -17,5 +17,5 @@ export default function OnlineScannerMarker({ other }) {
     update()
     return () => cancelAnimationFrame(frame)
   },[])
-  return <div className="scan-markers" aria-hidden="true"><div ref={element} className="scan-marker" data-testid="online-scan-opponent"><b>{other?.name}</b><span>{other?.combat.hp} HP</span><small /></div></div>
+  return <div className="scan-markers" aria-hidden="true"><div ref={element} className="scan-marker" data-testid="online-scan-opponent"><b>{other?.name}</b><small /></div></div>
 }

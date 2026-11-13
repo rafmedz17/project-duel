@@ -110,19 +110,22 @@ export const accounts = {
     return accounts.saveBank(bank)
   },
   async saveBank(value) {
+    if(state.busy || state.loading) return false
     const bank=validateLoadoutBank(value)
-    if(!bank) { update({ error:'Save exactly five valid loadout slots.' });return }
+    if(!bank) { update({ error:'Save exactly five valid loadout slots.' });return false }
     const loadout=bank.slots[bank.activeSlot]
     if (!state.user) {
-      try { localStorage.setItem('duel-loadout-bank',JSON.stringify(bank));localStorage.setItem('duel-loadout',JSON.stringify(loadout)); update({ bank,loadout,error:'',notice:'Five loadout slots saved on this device.' }) }
-      catch { update({ error:'Browser storage is unavailable. Your loadout could not be saved.' }) }
-      return
+      try { localStorage.setItem('duel-loadout-bank',JSON.stringify(bank));localStorage.setItem('duel-loadout',JSON.stringify(loadout)); update({ bank,loadout,error:'',notice:'Five loadout slots saved on this device.' });return true }
+      catch { update({ error:'Browser storage is unavailable. Your loadout could not be saved.' });return false }
     }
-    return run(async db => {
-      const userId = state.user.id
+    const userId=state.user.id,version=generation
+    let saved=false
+    await run(async db => {
+      if(state.user?.id!==userId || generation!==version) return
       check(await db.rpc('save_loadout_bank',{ p_slots:bank.slots,p_active_slot:bank.activeSlot }))
-      if (state.user?.id===userId) update({ bank,loadout,notice:'Five loadout slots saved to your account.' })
+      if (state.user?.id===userId && generation===version) { update({ bank,loadout,notice:'Five loadout slots saved to your account.' });saved=true }
     })
+    return saved
   },
   refresh() { return state.user ? loadUser(state.user) : Promise.resolve() },
   history() { return run(async db => {

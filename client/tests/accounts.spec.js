@@ -35,6 +35,8 @@ async function mockCloud(context,shared=initial()) {
       response=method==='POST' ? null : shared.loadout
     } else if(url.pathname==='/rest/v1/loadout_slots') response=shared.slots || []
     else if(url.pathname==='/rest/v1/rpc/save_loadout_bank') {
+      if(shared.beforeSaveBank) await shared.beforeSaveBank()
+      if(shared.failLoadoutBank) {await route.fulfill({status:503,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({message:'Loadout save unavailable. Try again.'})});return}
       shared.slots=body.p_slots.map((gear,slot_id)=>({ user_id:userId,slot_id,character_id:gear.character,primary_weapon:gear.primary,secondary_weapon:gear.secondary,melee_weapon:gear.melee,unique_skill:gear.unique,starting_weapon:gear.startingWeapon,weapons:gear.weapons,abilities:gear.abilities }))
       shared.loadout={ ...shared.slots[body.p_active_slot],active_slot:body.p_active_slot };response=null
     } else if (url.pathname==='/rest/v1/profile_stats') response=url.searchParams.has('ranked_games') ? [{ user_id:userId,rating:1064,wins:6,losses:4,ranked_games:4,profiles:shared.profile }] : { games:10,wins:6,losses:4,kills:18,deaths:12,ranked_games:4,rating:1064 }
@@ -53,6 +55,54 @@ async function signIn(page) {
   await dialog.getByRole('button',{ name:'SIGN IN',exact:true }).last().click()
   await expect(dialog.getByLabel('CALLSIGN')).toHaveValue('Nova Cloud')
 }
+
+test('training saves the selected preset to the account, retains edits after failure and restores it on another device',async({page,context,browser})=>{
+  const shared=await mockCloud(context),errors=[]
+  page.on('pageerror',error=>errors.push(error.message))
+  await signIn(page)
+  await page.getByRole('dialog').getByRole('button',{name:'BACK',exact:true}).click()
+  await page.getByRole('button',{name:/ENTER TRAINING/}).click()
+  await page.getByRole('button',{name:'RESUME / ENTER ARENA'}).click()
+  const before=await state(page)
+  await page.keyboard.press('KeyB')
+  const dialog=page.getByRole('dialog',{name:'FIELD ARMORY',exact:true})
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByText('Saves to your account.',{exact:false})).toBeVisible()
+  await dialog.getByRole('button',{name:'Loadout slot 3',exact:true}).click()
+  await dialog.getByRole('button',{name:'Select ION',exact:true}).click()
+  await dialog.getByRole('button',{name:'Equip SPECTRAL SMOKE',exact:true}).click()
+  shared.failLoadoutBank=true
+  await dialog.getByRole('button',{name:/SAVE & RETURN/}).click()
+  await expect(dialog.getByRole('alert')).toContainText('Loadout save unavailable')
+  await expect(dialog.getByRole('button',{name:'Select ION',exact:true})).toHaveAttribute('aria-pressed','true')
+  expect((await state(page)).loadout).toEqual(before.loadout)
+  shared.failLoadoutBank=false
+  let release
+  shared.beforeSaveBank=()=>new Promise(resolve=>{release=resolve})
+  await dialog.getByRole('button',{name:/SAVE & RETURN/}).click()
+  await expect(dialog.getByRole('button',{name:/SAVING/})).toBeDisabled()
+  await expect.poll(()=>Boolean(release)).toBe(true)
+  await page.keyboard.press('KeyB');await page.keyboard.press('Escape')
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByRole('button',{name:'CANCEL / RETURN TO TRAINING',exact:true})).toBeDisabled()
+  release();delete shared.beforeSaveBank
+  await expect(dialog).toHaveCount(0)
+  expect((await state(page)).loadout).toMatchObject({character:'ion',unique:'smoke'})
+  expect(shared.loadout).toMatchObject({active_slot:2,character_id:'ion',unique_skill:'smoke'})
+  expect(shared.slots[0].character_id).toBe(before.loadout.character)
+  expect(shared.requests.filter(request=>request.path==='/rest/v1/rpc/save_loadout_bank')).toHaveLength(2)
+  const second=await browser.newContext()
+  try {
+    await mockCloud(second,shared)
+    const other=await second.newPage();await signIn(other)
+    await other.getByRole('dialog').getByRole('button',{name:'BACK',exact:true}).click()
+    await other.getByRole('button',{name:/^CHARACTER & LOADOUT/}).click()
+    await expect(other.getByRole('button',{name:'Loadout slot 3',exact:true})).toHaveAttribute('aria-pressed','true')
+    await expect(other.getByRole('button',{name:'Select ION',exact:true})).toHaveAttribute('aria-pressed','true')
+    await expect(other.getByRole('button',{name:'Equip SPECTRAL SMOKE',exact:true})).toHaveAttribute('aria-pressed','true')
+  } finally {await second.close()}
+  expect(errors).toEqual([])
+})
 test('account settings sync through Auth metadata, restore on another device, retry errors and preserve guest preferences',async ({ page,context,browser })=> {
   const shared=await mockCloud(context)
   await page.goto(cloudOrigin);await page.getByRole('button',{ name:/SETTINGS/ }).click();await page.getByRole('tab',{name:'Sensitivity',exact:true}).click();await page.getByLabel('Mouse sensitivity').fill('1.8');await page.getByRole('button',{ name:'BACK' }).click()
