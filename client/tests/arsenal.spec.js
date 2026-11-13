@@ -1,5 +1,5 @@
 import { test,expect } from '@playwright/test'
-import { state,presetLoadout,lookAt,moveUntil,aimAtTarget,observeHitFeedback,observedFeedback } from './helpers.js'
+import { equipWeapon, state,presetLoadout,lookAt,moveUntil,aimAtTarget,observeHitFeedback,observedFeedback } from './helpers.js'
 import { WEAPONS,WEAPON_IDS } from '../../shared/weapons.js'
 
 async function start(page,gear) {
@@ -8,6 +8,7 @@ async function start(page,gear) {
   await page.getByRole('button',{ name:'BACK' }).click();await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
   await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
   await expect.poll(async ()=>(await state(page)).mode).toBe('playing')
+  await equipWeapon(page,gear.startingWeapon || gear.primary || 'rifle')
 }
 const shot=async page=>{ await page.mouse.down();await page.mouse.up() }
 async function model(page,name) {

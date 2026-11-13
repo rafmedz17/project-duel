@@ -164,6 +164,7 @@ async function pair(t, format = 'freeplay') {
 async function launch(host,guest) {
   host.send('start')
   await until(() => host.state.arenaActive && guest.state.arenaActive)
+  if(host.state.format==='duel') await until(() => host.state.matchPhase==='live',18000)
 }
 const movement = (sequence,patch = {}) => ({ sequence,x:0,z:0,yaw:0,pitch:0,sprint:false,jump:false,active:true,...patch })
 
@@ -241,6 +242,9 @@ test('real combat messages synchronize regional damage, reject forged hits, kill
     const a = host.state.players.get(host.sessionId), b = host.state.players.get(guest.sessionId)
     send('fire',{ yaw:Math.atan2(a.x-(b.x+x),a.z-b.z),pitch:Math.atan2(b.y+offset-a.y-0.65,Math.hypot(a.x-b.x-x,a.z-b.z)) })
   }
+  send('switch',{ weapon:'pistol' })
+  await until(()=>host.state.players.get(host.sessionId).weapon==='pistol')
+  await delay(300)
   send('fire',{ yaw:0,pitch:0,damage:999,targetId:guest.sessionId })
   await delay(100)
   assert.equal(host.state.players.get(host.sessionId).pistolAmmo,15)
@@ -274,11 +278,14 @@ test('real combat messages synchronize regional damage, reject forged hits, kill
 test('disconnect freezes authoritative reload and combat clocks until reconnection',async t => {
   const { host,guest } = await pair(t)
   await launch(host,guest)
-  host.send('combat',{ sequence:0,epoch:1,action:'fire',yaw:0,pitch:0.5 })
+  host.send('combat',{ sequence:0,epoch:1,action:'switch',weapon:'pistol' })
+  await until(()=>host.state.players.get(host.sessionId).weapon==='pistol')
+  await delay(300)
+  host.send('combat',{ sequence:1,epoch:1,action:'fire',yaw:0,pitch:0.5 })
   await until(() => host.state.players.get(host.sessionId).pistolAmmo===14)
-  host.send('combat',{ sequence:1,epoch:1,action:'reload' })
+  host.send('combat',{ sequence:2,epoch:1,action:'reload' })
   await until(() => host.state.players.get(host.sessionId).reloading)
-  host.send('combat',{ sequence:2,epoch:1,action:'ability',ability:'scanner' })
+  host.send('combat',{ sequence:3,epoch:1,action:'ability',ability:'scanner' })
   await until(() => host.state.players.get(host.sessionId).abilities.get('scanner').uses===1)
   const token = guest.reconnectionToken
   guest.reconnection.enabled = false
@@ -286,7 +293,7 @@ test('disconnect freezes authoritative reload and combat clocks until reconnecti
   await until(() => host.state.phase==='interrupted')
   const tick = host.state.tick, end = host.state.players.get(host.sessionId).reloadEnd
   const scannerEnd = host.state.players.get(host.sessionId).abilities.get('scanner').activeUntil
-  host.send('combat',{ sequence:3,epoch:1,action:'ability',ability:'shield' })
+  host.send('combat',{ sequence:4,epoch:1,action:'ability',ability:'shield' })
   await delay(1700)
   assert.equal(host.state.tick,tick)
   assert.equal(host.state.players.get(host.sessionId).reloading,true)
@@ -317,6 +324,10 @@ test('real sockets replicate chosen arsenal slots, burst ammunition and interrup
   assert.equal(remote().arsenal.meleeWeapon,'fangs')
   let sequence=0
   const send=(action,extra={}) => host.send('combat',{ sequence:sequence++,epoch:1,action,...extra })
+  assert.equal(remote().weapon,'omega')
+  send('switch',{ weapon:'volt' })
+  await until(()=>remote().weapon==='volt')
+  await delay(300)
   send('fire',{ yaw:0,pitch:0.5 })
   await until(() => remote().arsenal.voltAmmo===21)
   await delay(450)
@@ -408,7 +419,7 @@ test('two sockets complete best of three, see resets/countdowns, reject old-roun
   host.send('combat',{ action:'fire',epoch:1,round:1,sequence:99,yaw:0,pitch:0,winnerId:host.sessionId })
   await delay(3100)
   assert.equal(guest.state.players.get(guest.sessionId).hp,0)
-  await until(() => host.state.matchPhase==='countdown')
+  await until(() => host.state.matchPhase==='countdown',18000)
   assert.equal(host.state.roundNumber,2); assert.equal(host.state.roundId,2)
   assert.equal(host.state.players.get(host.sessionId).pistolAmmo,15)
   assert.equal(guest.state.players.get(guest.sessionId).hp,100)

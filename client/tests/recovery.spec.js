@@ -32,6 +32,7 @@ test('refresh restores the same arena seat and ammo, accepts new actions, and ex
     await expect.poll(async () => (await state(page)).status).toBe('connected')
     await expect(page.getByRole('button',{ name:'ENTER ARENA',exact:true })).toBeVisible()
     const restored = await state(page)
+    await expect.poll(async ()=>(await state(page)).bank?.slots.length).toBe(5)
     expect(restored.sessionId).toBe(before.sessionId)
     expect(restored.room.code).toBe(code)
     expect(restored.room.players).toHaveLength(2)

@@ -3,7 +3,7 @@ import { UNIQUE_SKILLS } from './abilities.js'
 import { CHARACTER_IDS } from './characters.js'
 
 export const PRIMARY_WEAPONS=Object.freeze(Object.fromEntries(PRIMARY_IDS.map(id=>[id,WEAPONS[id]])))
-function equipment(character,primary,unique,startingWeapon='pistol',secondary='pistol',melee='blade') {
+function equipment(character,primary,unique,startingWeapon=primary,secondary='pistol',melee='blade') {
   return { character,primary,secondary,melee,unique,startingWeapon,weapons:[secondary,melee,primary],abilities:['dash','shield',unique,'ultimate'] }
 }
 export const DEFAULT_LOADOUT=Object.freeze(equipment('vex','rifle','flashbang'))
@@ -12,7 +12,7 @@ export function validateLoadout(value) {
   if (Object.keys(value).some(key=>!['character','primary','secondary','melee','unique','startingWeapon','weapons','abilities'].includes(key))) return null
   const { character,primary,unique,secondary='pistol',melee='blade' }=value
   if (!CHARACTER_IDS.includes(character) || !PRIMARY_IDS.includes(primary) || !SECONDARY_IDS.includes(secondary) || !MELEE_IDS.includes(melee) || !UNIQUE_SKILLS.includes(unique)) return null
-  const startingWeapon=value.startingWeapon ?? secondary
+  const startingWeapon=value.startingWeapon ?? primary
   if (![primary,secondary,melee].includes(startingWeapon)) return null
   const result=equipment(character,primary,unique,startingWeapon,secondary,melee)
   for (const key of ['weapons','abilities']) {

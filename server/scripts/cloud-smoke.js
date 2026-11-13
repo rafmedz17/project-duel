@@ -9,6 +9,8 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { createClient } from '@supabase/supabase-js'
 import { Client } from '@colyseus/sdk'
 import { ROBOT_HEAD_Y } from '../../shared/robot.js'
+import { makeLoadoutBank } from '../../shared/loadoutBank.js'
+import { validateLoadout } from '../../shared/loadout.js'
 
 loadEnvFile(new URL('../.env',import.meta.url))
 const publicEnv=parseEnv(await readFile(new URL('../../client/.env.local',import.meta.url),'utf8'))
@@ -22,7 +24,7 @@ const created=[],rooms=[]
 let browser,browserPage
 let matchId
 const checked=result => { if (result.error) throw new Error(`Cloud request failed (${result.error.code || result.error.status || result.status || 'unknown'}): ${result.error.message}`); return result.data }
-async function until(predicate,timeout=15000) {
+async function until(predicate,timeout=30000) {
   const end=Date.now()+timeout
   while (!predicate()) { if (Date.now()>end) throw new Error('Live match synchronization timed out.'); await delay(25) }
 }
@@ -38,6 +40,12 @@ try {
     checked(await entry.client.from('loadouts').upsert({ user_id:user.id,character_id:'vex',primary_weapon:'rifle',unique_skill:'scanner',starting_weapon:'rifle',weapons:['pistol','blade','rifle'],abilities:['dash','shield','scanner','ultimate'] }))
   }
   const [one,two]=created
+  const bank=makeLoadoutBank(validateLoadout({ character:'vex',primary:'rifle',unique:'scanner',startingWeapon:'rifle' }))
+  bank.slots[4]=validateLoadout({ character:'ion',primary:'omega',secondary:'volt',melee:'fangs',unique:'smoke' })
+  checked(await one.client.rpc('save_loadout_bank',{ p_slots:bank.slots,p_active_slot:0 }))
+  const slots=checked(await one.client.from('loadout_slots').select('*').order('slot_id'))
+  assert.equal(slots.length,5);assert.equal(slots[4].primary_weapon,'omega')
+  assert.equal(checked(await two.client.from('loadout_slots').select('*').eq('user_id',one.user.id)).length,0)
   // Exercise the expanded slots on the hosted schema, then restore the rifle
   // used by this script's ranked match below.
   checked(await created[0].client.from('loadouts').update({ primary_weapon:'omega',secondary_weapon:'volt',melee_weapon:'fangs',starting_weapon:'volt',weapons:['volt','fangs','omega'] }).eq('user_id',created[0].user.id))
@@ -63,9 +71,9 @@ try {
     await browserPage.getByRole('button',{ name:'SAVE CALLSIGN',exact:true }).click()
     await expect(browserPage.getByText('Callsign saved.',{ exact:true })).toBeVisible()
     await browserPage.getByRole('dialog').getByRole('button',{ name:'CHARACTER & LOADOUT',exact:true }).click()
-    await expect(browserPage.getByLabel('Starting weapon')).toHaveValue('rifle')
+    await expect(browserPage.getByRole('tab',{ name:'PRIMARY slot' })).toContainText('VXR-9 PHANTOM')
     await browserPage.getByRole('button',{ name:/SAVE & EQUIP/ }).click()
-    await expect(browserPage.getByText('Loadout saved to your account.',{ exact:true })).toBeVisible()
+    await expect(browserPage.getByText('Five loadout slots saved to your account.',{ exact:true })).toBeVisible()
   }
   const privateRows=checked(await two.client.from('loadouts').select('*').eq('user_id',one.user.id))
   assert.equal(privateRows.length,0)

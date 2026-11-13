@@ -42,7 +42,7 @@ async function probeTrails(page) {
   })
 }
 
-test('confirmed training kills show escalating badges and all five sound tiers; pausing freezes the badge and reset clears it',async ({ page })=> {
+test('confirmed training kills show escalating badges and all five sound tiers; pausing hides the badge without advancing its timer and reset clears it',async ({ page })=> {
   test.setTimeout(90000)
   const errors=[];page.on('pageerror',e=>errors.push(e.message))
   await start(page,{ primary:'hyperion',startingWeapon:'hyperion' });await probeTrails(page)
@@ -62,7 +62,7 @@ test('confirmed training kills show escalating badges and all five sound tiers; 
   await page.evaluate(()=>document.exitPointerLock())
   await expect.poll(async ()=>(await state(page)).mode).toBe('paused')
   const paused=await state(page);await page.waitForTimeout(2700)
-  expect((await state(page)).time).toBe(paused.time);await expect(page.getByTestId('kill-badge')).toBeVisible()
+  expect((await state(page)).time).toBe(paused.time);await expect(page.getByTestId('kill-badge')).toHaveCount(0)
   await page.getByRole('button',{ name:'RESTART TRAINING',exact:true }).click()
   await expect(page.getByTestId('kill-badge')).toHaveCount(0)
   expect(errors).toEqual([])

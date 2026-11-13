@@ -9,8 +9,8 @@ export class DuelMatch {
     this.onFinish = onFinish
     this.combat = new ArenaCombat(state.players,simulation,state.arenaEpoch,{ respawn:false,round:1 })
     this.roundTicks = MATCH.roundSeconds*ONLINE.tickRate
-    this.phaseTicks = 0
-    Object.assign(state,{ matchPhase:'live',roundNumber:1,roundId:1,roundRemaining:MATCH.roundSeconds,phaseRemaining:0,roundWinnerId:'',winnerId:'',matchReason:'' })
+    this.phaseTicks = MATCH.loadoutSeconds*ONLINE.tickRate
+    Object.assign(state,{ matchPhase:'loadout',roundNumber:1,roundId:1,roundRemaining:MATCH.roundSeconds,phaseRemaining:MATCH.loadoutSeconds,roundWinnerId:'',winnerId:'',matchReason:'' })
     state.roundResults.clear(); state.results.clear()
     for (const player of state.players.values()) { player.roundWins = 0; player.ready = false }
   }
@@ -100,9 +100,14 @@ export class DuelMatch {
       if (s.roundWinnerId) s.roundNumber++
       s.roundId++
       this.combat.resetRound(s.roundId)
-      s.matchPhase = 'countdown'
-      this.phaseTicks = MATCH.countdownSeconds*ONLINE.tickRate
-      s.phaseRemaining = MATCH.countdownSeconds
+      s.matchPhase = 'loadout'
+      this.phaseTicks = MATCH.loadoutSeconds*ONLINE.tickRate
+      s.phaseRemaining = MATCH.loadoutSeconds
+    } else if (s.matchPhase==='loadout') {
+      this.combat.resetRound(s.roundId)
+      s.matchPhase='countdown'
+      this.phaseTicks=MATCH.countdownSeconds*ONLINE.tickRate
+      s.phaseRemaining=MATCH.countdownSeconds
     } else if (s.matchPhase==='countdown') {
       s.matchPhase = 'live'; s.phaseRemaining = 0
       this.roundTicks = MATCH.roundSeconds*ONLINE.tickRate

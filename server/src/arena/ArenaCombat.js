@@ -9,7 +9,7 @@ import { enemies,blocked,launchGrenade,stepGrenade,flashDuration } from '../../.
 import { awardKill } from '../../../shared/killCombo.js'
 import { trailDistance } from '../../../shared/bulletTrails.js'
 
-export const RESPAWN_SECONDS = 3
+export const RESPAWN_SECONDS = 5
 const fields = new Set(['sequence','epoch','round','action','weapon','yaw','pitch','ability'])
 export function validateCombat(value) {
   if (!value || typeof value!=='object' || Array.isArray(value) || Object.keys(value).some(key => !fields.has(key))) return null
@@ -39,6 +39,11 @@ function resetLoadout(player) {
 }
 
 export class ArenaCombat {
+  equipLoadout(id,loadout) {
+    const player=this.players.get(id)
+    this.cancelFiring(id)
+    Object.assign(player,{ startingWeapon:loadout.startingWeapon,weapon:loadout.startingWeapon,characterId:loadout.character,uniqueSkill:loadout.unique,secondaryWeapon:loadout.secondary,meleeWeapon:loadout.melee,allowedWeapons:[...loadout.weapons],allowedAbilities:[...loadout.abilities] })
+  }
   constructor(players,simulation,epoch,{ respawn = true,round = 0 } = {}) {
     this.players = players; this.simulation = simulation; this.epoch = epoch; this.time = 0
     this.allowRespawn = respawn; this.round = round

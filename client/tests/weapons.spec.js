@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { state, lookAt, aimAtTarget, moveUntil } from './helpers.js'
+import { equipWeapon, state, lookAt, aimAtTarget, moveUntil } from './helpers.js'
 import { TARGETS } from '../src/game/config.js'
 
 const attack = async page => { await page.mouse.down(); await page.mouse.up() }
@@ -18,6 +18,7 @@ test('blade switching, range, melee damage, ammo preservation, pause and restart
   await expect(page.getByRole('button',{ name:'RESUME / ENTER ARENA' })).toBeEnabled({ timeout:30000 })
   await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
   await expect.poll(async () => (await state(page)).mode).toBe('playing')
+  await equipWeapon(page,'pistol')
   await attack(page)
   await page.waitForTimeout(300)
   expect((await state(page)).magazines.pistol).toBe(14)
@@ -79,6 +80,6 @@ test('blade switching, range, melee damage, ammo preservation, pause and restart
   await expect.poll(async () => (await state(page)).magazines.pistol).toBe(15)
   await page.evaluate(() => document.exitPointerLock())
   await page.getByRole('button',{ name:'RESTART TRAINING',exact:true }).click()
-  expect(await state(page)).toMatchObject({ weapon:'pistol',magazines:{ pistol:15,rifle:30,shotgun:6 },swings:0,meleeHits:0,score:0,attackReadyAt:0 })
+  expect(await state(page)).toMatchObject({ weapon:'rifle',magazines:{ pistol:15,rifle:30,shotgun:6 },swings:0,meleeHits:0,score:0,attackReadyAt:0 })
   expect(errors).toEqual([])
 })

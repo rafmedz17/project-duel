@@ -67,3 +67,11 @@ export const observedFeedback = page => page.evaluate(() => window.__duelFeedbac
 export async function presetLoadout(page, { character='vex',primary='rifle',secondary='pistol',melee='blade',unique='flashbang',startingWeapon=secondary } = {}) {
   await page.addInitScript(loadout => localStorage.setItem('duel-loadout',JSON.stringify(loadout)),{ character,primary,secondary,melee,unique,startingWeapon })
 }
+
+// Weapon-specific scenarios equip through the same keys as a player after deployment.
+export async function equipWeapon(page,weapon) {
+  const loadout=(await state(page)).loadout
+  const key=weapon===loadout.primary ? 'Digit1' : weapon===loadout.secondary ? 'Digit2' : 'Digit3'
+  await page.keyboard.press(key)
+  await expect.poll(async ()=> { const s=await state(page);return s.weapon===weapon && s.time>=s.attackReadyAt }).toBe(true)
+}

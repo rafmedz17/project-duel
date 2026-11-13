@@ -1,7 +1,7 @@
 import { mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises'
 import { resolve, join } from 'node:path'
 import { createClient } from '@supabase/supabase-js'
-import { DEFAULT_LOADOUT, validateLoadout } from '../../shared/loadout.js'
+import { bankFromRows } from '../../shared/loadoutBank.js'
 import { validateName } from './config.js'
 
 export function createAccountsService({ url=process.env.SUPABASE_URL,key=process.env.SUPABASE_SECRET_KEY,directory=resolve('data/results'),client } = {}) {
@@ -44,17 +44,18 @@ export function createAccountsService({ url=process.env.SUPABASE_URL,key=process
       if (error && (error.name==='AuthRetryableFetchError' || error.status===0 || error.status>=500)) throw new Error('Account verification is temporarily unavailable. Try again shortly.')
       if (error || !data?.user) throw new Error('Your sign-in expired. Sign in again.')
       const userId = data.user.id
-      const [profile,loadout] = await Promise.all([
+      const [profile,loadout,presets] = await Promise.all([
         db.from('profiles').select('callsign').eq('user_id',userId).maybeSingle(),
-        db.from('loadouts').select('character_id,primary_weapon,secondary_weapon,melee_weapon,unique_skill,starting_weapon,weapons,abilities').eq('user_id',userId).maybeSingle(),
+        db.from('loadouts').select('active_slot,character_id,primary_weapon,secondary_weapon,melee_weapon,unique_skill,starting_weapon,weapons,abilities').eq('user_id',userId).maybeSingle(),
+        db.from('loadout_slots').select('*').eq('user_id',userId).order('slot_id'),
       ])
-      if (profile.error || loadout.error) throw new Error('Could not load your saved profile. Try again shortly.')
+      if (profile.error || loadout.error || presets.error) throw new Error('Could not load your saved profile. Try again shortly.')
       const name = validateName(profile.data?.callsign)
       if (!name) throw new Error('Save a valid callsign in Player Profile before joining a room.')
       const saved = loadout.data
-      const equipment = saved ? validateLoadout({ character:saved.character_id,primary:saved.primary_weapon,secondary:saved.secondary_weapon,melee:saved.melee_weapon,unique:saved.unique_skill,startingWeapon:saved.starting_weapon,weapons:saved.weapons,abilities:saved.abilities }) : DEFAULT_LOADOUT
-      if (!equipment) throw new Error('Save your loadout again before joining a room.')
-      return { userId,name,loadout:equipment }
+      const bank=bankFromRows(saved,presets.data)
+      if (!bank) throw new Error('Save your loadouts again before joining a room.')
+      return { userId,name,loadout:bank.slots[bank.activeSlot],loadoutBank:bank }
     },
     async save(result) {
       if (!configured || (!result.player_one && !result.player_two)) return { status:'skipped',ranked:false }

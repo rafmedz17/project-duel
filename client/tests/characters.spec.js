@@ -47,7 +47,7 @@ for(const character of ['vex','aegis','ion','raze']) test(`${character} has a vi
   }
   if(character==='ion') {
     await page.mouse.click(600,350)
-    expect((await state(page)).magazines.pistol).toBe(15)
+    expect((await state(page)).magazines.rifle).toBe(30)
   }
   await page.screenshot({ path:`${character}-ultimate-preview.png` })
   await expect(page.locator('.ultimate-notice')).toHaveCount(0,{ timeout:7000 })

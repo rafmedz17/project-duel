@@ -1,12 +1,18 @@
 import { useSyncExternalStore } from 'react'
 import { DEFAULT_LOADOUT, validateLoadout, migrateLoadout } from '../../../shared/loadout.js'
+import { makeLoadoutBank,validateLoadoutBank,bankFromRows } from '../../../shared/loadoutBank.js'
 
 const configured = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY)
 function deviceLoadout() {
   try { return migrateLoadout(JSON.parse(localStorage.getItem('duel-loadout'))) || DEFAULT_LOADOUT }
   catch { return DEFAULT_LOADOUT }
 }
-let state = { configured,loading:configured,busy:false,user:null,profile:null,loadout:deviceLoadout(),stats:null,history:[],leaderboard:[],error:'',notice:'',recovery:false }
+function deviceBank() {
+  try { return validateLoadoutBank(JSON.parse(localStorage.getItem('duel-loadout-bank'))) || makeLoadoutBank(deviceLoadout()) }
+  catch { return makeLoadoutBank(deviceLoadout()) }
+}
+const initialBank=deviceBank()
+let state = { configured,loading:configured,busy:false,user:null,profile:null,bank:initialBank,loadout:initialBank.slots[initialBank.activeSlot],stats:null,history:[],leaderboard:[],error:'',notice:'',recovery:false }
 let clientPromise, initialized, generation=0
 const listeners = new Set()
 const update = patch => { state = { ...state,...patch }; listeners.forEach(fn => fn()) }
@@ -18,7 +24,8 @@ async function client() {
 function check(result) { if (result.error) throw result.error; return result.data }
 async function loadUser(user) {
   const version = ++generation
-  update({ user:user ? { id:user.id,email:user.email } : null,profile:null,stats:null,history:[],loadout:deviceLoadout(),loading:Boolean(user),error:'' })
+  const bank=deviceBank()
+  update({ user:user ? { id:user.id,email:user.email } : null,profile:null,stats:null,history:[],bank,loadout:bank.slots[bank.activeSlot],loading:Boolean(user),error:'' })
   if (!user) return
   try {
     const db = await client()
@@ -27,14 +34,15 @@ async function loadUser(user) {
       check(await db.from('profiles').upsert({ user_id:user.id,callsign:'Pilot' },{ onConflict:'user_id',ignoreDuplicates:true }))
       profile = check(await db.from('profiles').select('callsign').eq('user_id',user.id).single())
     }
-    const [equipment,stats] = await Promise.all([
-      db.from('loadouts').select('character_id,primary_weapon,secondary_weapon,melee_weapon,unique_skill,starting_weapon,weapons,abilities').eq('user_id',user.id).maybeSingle(),
+    const [equipment,stats,presets] = await Promise.all([
+      db.from('loadouts').select('active_slot,character_id,primary_weapon,secondary_weapon,melee_weapon,unique_skill,starting_weapon,weapons,abilities').eq('user_id',user.id).maybeSingle(),
       db.from('profile_stats').select('games,wins,losses,kills,deaths,ranked_games,rating').eq('user_id',user.id).maybeSingle(),
+      db.from('loadout_slots').select('*').eq('user_id',user.id).order('slot_id'),
     ])
     const row = check(equipment)
-    const loadout = row ? migrateLoadout({ ...(row.character_id ? { character:row.character_id,primary:row.primary_weapon,secondary:row.secondary_weapon,melee:row.melee_weapon,unique:row.unique_skill } : {}),startingWeapon:row.starting_weapon,weapons:row.weapons,abilities:row.abilities }) : DEFAULT_LOADOUT
-    if (!loadout) throw new Error('Your saved loadout is invalid. Save a new loadout to repair it.')
-    if (version===generation) update({ profile,loadout,stats:check(stats),loading:false })
+    const savedBank=bankFromRows(row,check(presets))
+    if (!savedBank) throw new Error('Your saved loadouts are invalid. Save the slots again to repair them.')
+    if (version===generation) update({ profile,bank:savedBank,loadout:savedBank.slots[savedBank.activeSlot],stats:check(stats),loading:false })
   } catch (error) { if (version===generation) update({ loading:false,error:error.message || 'Could not load your profile.' }) }
 }
 async function run(action) {
@@ -82,15 +90,22 @@ export const accounts = {
   async saveLoadout(value) {
     const loadout = validateLoadout(value)
     if (!loadout) { update({ error:'Choose a character, one available primary and one unique skill.' }); return }
+    const bank={ ...state.bank,slots:state.bank.slots.map((gear,i)=>i===state.bank.activeSlot ? loadout : gear) }
+    return accounts.saveBank(bank)
+  },
+  async saveBank(value) {
+    const bank=validateLoadoutBank(value)
+    if(!bank) { update({ error:'Save exactly five valid loadout slots.' });return }
+    const loadout=bank.slots[bank.activeSlot]
     if (!state.user) {
-      try { localStorage.setItem('duel-loadout',JSON.stringify(loadout)); update({ loadout,error:'',notice:'Loadout saved on this device.' }) }
+      try { localStorage.setItem('duel-loadout-bank',JSON.stringify(bank));localStorage.setItem('duel-loadout',JSON.stringify(loadout)); update({ bank,loadout,error:'',notice:'Five loadout slots saved on this device.' }) }
       catch { update({ error:'Browser storage is unavailable. Your loadout could not be saved.' }) }
       return
     }
     return run(async db => {
       const userId = state.user.id
-      check(await db.from('loadouts').upsert({ user_id:userId,character_id:loadout.character,primary_weapon:loadout.primary,secondary_weapon:loadout.secondary,melee_weapon:loadout.melee,unique_skill:loadout.unique,starting_weapon:loadout.startingWeapon,weapons:loadout.weapons,abilities:loadout.abilities },{ onConflict:'user_id' }))
-      if (state.user?.id===userId) update({ loadout,notice:'Loadout saved to your account.' })
+      check(await db.rpc('save_loadout_bank',{ p_slots:bank.slots,p_active_slot:bank.activeSlot }))
+      if (state.user?.id===userId) update({ bank,loadout,notice:'Five loadout slots saved to your account.' })
     })
   },
   refresh() { return state.user ? loadUser(state.user) : Promise.resolve() },
@@ -107,7 +122,7 @@ export const accounts = {
   async joinOptions() {
     await accounts.init()
     if (state.loading) throw new Error('Your profile is still loading. Try again in a moment.')
-    if (!state.user) return { loadout:state.loadout }
+    if (!state.user) return { loadout:state.loadout,loadoutBank:state.bank }
     if (!state.profile) throw new Error('Open Player Profile and reload your saved profile before joining.')
     const db = await client()
     const data = check(await db.auth.getSession())

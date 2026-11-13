@@ -6,6 +6,8 @@ import { ArenaSimulation } from '../src/arena/ArenaSimulation.js'
 function setup(t) {
   const players = new Map([['a',{ slot:0,connected:true }],['b',{ slot:1,connected:true }]])
   const sim = new ArenaSimulation(players), combat = new ArenaCombat(players,sim,1)
+  // These regional-damage scenarios deliberately equip the pistol.
+  for (const player of players.values()) Object.assign(player,{ startingWeapon:'pistol',weapon:'pistol' })
   t.after(() => sim.free())
   for (const player of players.values()) player.allowedAbilities = ['dash','shield','scanner','ultimate','flashbang','stun','smoke']
   let sequence = 0, inputSequence = 0
@@ -115,7 +117,7 @@ test('death cancels effects but preserves cooldowns through respawn; a new arena
   assert.equal(b.abilities.get('scanner').activeUntil,0)
   assert.equal(b.shieldCharge,0)
   assert.equal(ability('b','dash'),false)
-  advance(3.1)
+  advance(5.1)
   assert.equal(b.hp,100); assert.equal(b.abilities.get('scanner').readyAt,readyAt)
   assert.equal(ability('b','scanner'),false)
   assert.equal(combat.time>3,true)

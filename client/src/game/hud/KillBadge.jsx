@@ -1,9 +1,9 @@
 import { KILL_BADGE_SECONDS,KILL_TIERS,killTier } from '../../../../shared/killCombo.js'
 import './killBadge.css'
 
-export default function KillBadge({ state:s }) {
+export default function KillBadge({ state:s,visible=true }) {
   const age=s.time-s.killAt,tier=killTier(s.killCombo)
-  if(!s.killCombo || age<0 || age>=KILL_BADGE_SECONDS) return null
+  if(!visible || s.mode!=='playing' || s.hp<=0 || !s.killCombo || age<0 || age>=KILL_BADGE_SECONDS) return null
   return <div key={`${s.generation}-${s.killBadgeId}`} className={`kill-badge tier-${tier} ${s.mode==='paused' ? 'kill-badge-paused' : ''}`} role="status" aria-live="polite" aria-atomic="true" data-testid="kill-badge" data-combo={s.killCombo}>
     <div className="kill-badge-rays" aria-hidden="true">{Array.from({ length:8 },(_,i)=><i key={i} style={{ '--ray':`${i*45}deg` }}/>)}</div>
     <div className="kill-badge-emblem" aria-hidden="true">

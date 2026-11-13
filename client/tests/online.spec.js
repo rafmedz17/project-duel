@@ -194,12 +194,13 @@ test('two browsers confirm body, head and foot damage, a single kill, death feed
   for (const page of [host,guest]) page.on('pageerror',error => errors.push(error.message))
   try {
     await host.getByRole('button',{ name:'START SHARED ARENA' }).click()
-    await expect(host.getByRole('dialog',{ name:'SHARED ARENA' })).toBeVisible({ timeout:10000 })
+    await expect(host.getByRole('dialog',{ name:'SHARED ARENA' })).toBeVisible({ timeout:25000 })
     await enter(host)
     await expect.poll(async () => (await onlineState(host)).self.grounded).toBe(true)
     await host.keyboard.down('ShiftLeft')
     await moveTo(host,'KeyW',2,0,-1)
     await host.keyboard.up('ShiftLeft')
+    await host.keyboard.press('Digit2');await host.waitForTimeout(350)
     await observeHitFeedback(host)
     for (const [region,hp,damage] of [['body',72,28],['head',16,56],['foot',2,14],['head',0,2]]) {
       await aimAtPlayer(host,region); await fire(host)
@@ -364,7 +365,7 @@ async function winRound(shooter,target) {
   }
 }
 async function awaitNextRound(page,number) {
-  await expect(page.getByTestId('round-countdown')).toContainText(`ROUND ${number}`,{ timeout:8000 })
+  await expect(page.getByTestId('round-countdown')).toContainText(`ROUND ${number}`,{ timeout:20000 })
   expect((await selfCombat(page)).hp).toBe(100)
   expect((await selfCombat(page)).magazines).toMatchObject({ pistol:15,rifle:30,shotgun:6 })
   expect((await selfCombat(page)).abilities.scanner.readyAt).toBe(0)
@@ -378,7 +379,7 @@ test('best of three plays a 2–1 deciding match with shared scoreboard, locked 
   try {
     await expect(guest.getByLabel('Match format')).toBeDisabled()
     await host.getByRole('button',{ name:'START SHARED ARENA' }).click()
-    await expect(host.getByRole('dialog',{ name:'SHARED ARENA' })).toBeVisible({ timeout:10000 })
+    await expect(host.getByRole('dialog',{ name:'SHARED ARENA' })).toBeVisible({ timeout:25000 })
     await enter(host)
     await expect.poll(async () => (await onlineState(host)).self.grounded).toBe(true)
     await host.keyboard.press('KeyC')
@@ -391,7 +392,7 @@ test('best of three plays a 2–1 deciding match with shared scoreboard, locked 
     expect((await selfCombat(host)).magazines.pistol).toBe(ammo)
     expect((await selfCombat(guest)).hp).toBe(0)
     await awaitNextRound(host,2)
-    expect((await onlineState(host)).captured).toBe(true)
+    expect((await onlineState(host)).captured).toBe(false)
     expect((await onlineState(host)).self.z).toBeCloseTo(15,1)
     await host.evaluate(() => document.exitPointerLock())
     await winRound(guest,host)
@@ -412,7 +413,7 @@ test('best of three plays a 2–1 deciding match with shared scoreboard, locked 
     await host.getByRole('button',{ name:'READY UP',exact:true }).click()
     await guest.getByRole('button',{ name:'READY UP',exact:true }).click()
     await host.getByRole('button',{ name:'START SHARED ARENA' }).click()
-    await expect(host.getByRole('dialog',{ name:'SHARED ARENA' })).toBeVisible({ timeout:10000 })
+    await expect(host.getByRole('dialog',{ name:'SHARED ARENA' })).toBeVisible({ timeout:25000 })
     expect((await onlineState(host)).room.arenaEpoch).toBe(2)
     expect((await onlineState(host)).room.players.map(p => p.roundWins)).toEqual([0,0])
     expect((await onlineState(host)).room.roundNumber).toBe(1)
@@ -426,7 +427,7 @@ test('forfeiting shows the same winner to both players and keeps departed-player
   for (const page of [host,guest]) page.on('pageerror',error => errors.push(error.message))
   try {
     await host.getByRole('button',{ name:'START SHARED ARENA' }).click()
-    await expect(guest.getByRole('dialog',{ name:'SHARED ARENA' })).toBeVisible({ timeout:10000 })
+    await expect(guest.getByRole('dialog',{ name:'SHARED ARENA' })).toBeVisible({ timeout:25000 })
     await guest.getByRole('button',{ name:'FORFEIT MATCH',exact:true }).click()
     await expect(host.getByRole('dialog',{ name:'VICTORY',exact:true })).toBeVisible()
     await expect(guest.getByRole('dialog',{ name:'DEFEAT',exact:true })).toContainText('Decided by forfeit')

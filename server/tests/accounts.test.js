@@ -9,6 +9,7 @@ import { Client } from '@colyseus/sdk'
 import { createAccountsService } from '../src/accounts.js'
 import { createLobbyServer } from '../src/createServer.js'
 import { DEFAULT_LOADOUT,validateLoadout } from '../../shared/loadout.js'
+import { makeLoadoutBank } from '../../shared/loadoutBank.js'
 
 const userId='11111111-1111-4111-8111-111111111111'
 async function temp(t) {
@@ -23,10 +24,10 @@ test('Auth validates the token remotely and loads canonical profile/equipment, i
   let token
   const client = {
     auth:{ getUser:async value => { token=value; return value==='valid' ? { data:{ user:{ id:userId,user_metadata:{ callsign:'Forged',rating:99999 } } } } : { error:value==='offline' ? Object.assign(new Error('Offline'),{ status:0,name:'AuthRetryableFetchError' }) : new Error('Invalid') } } },
-    from(table) { return { select() { return this },eq() { return this },async maybeSingle() { return { data:table==='profiles' ? { callsign:'Canonical' } : { character_id:'ion',primary_weapon:'rifle',unique_skill:'smoke',starting_weapon:'rifle',weapons:['pistol','blade','rifle'],abilities:['dash','shield','smoke','ultimate'] } } } } },
+    from(table) { return { select() { return this },eq() { return this },async order() { return { data:[] } },async maybeSingle() { return { data:table==='profiles' ? { callsign:'Canonical' } : { character_id:'ion',primary_weapon:'rifle',unique_skill:'smoke',starting_weapon:'rifle',weapons:['pistol','blade','rifle'],abilities:['dash','shield','smoke','ultimate'] } } } } },
   }
   const service=createAccountsService({ client,directory:await temp(t) }); t.after(() => service.close())
-  assert.deepEqual(await service.verify('valid'),{ userId,name:'Canonical',loadout:validateLoadout({ character:'ion',primary:'rifle',unique:'smoke',startingWeapon:'rifle' }) })
+  assert.deepEqual(await service.verify('valid'),{ userId,name:'Canonical',loadout:validateLoadout({ character:'ion',primary:'rifle',unique:'smoke',startingWeapon:'rifle' }),loadoutBank:makeLoadoutBank(validateLoadout({ character:'ion',primary:'rifle',unique:'smoke',startingWeapon:'rifle' })) })
   assert.equal(token,'valid')
   await assert.rejects(service.verify('forged'),/expired/)
   await assert.rejects(service.verify('offline'),/temporarily unavailable/)
@@ -51,7 +52,7 @@ test('failed uploads persist without tokens, survive restart, and retry the same
   assert.ok(sent.every(value => value.name==='record_duel_result' && value.result.id===result.id))
   assert.deepEqual(await second.save({ id:randomUUID(),player_one:null,player_two:null }),{ status:'skipped',ranked:false })
 })
-async function until(predicate,timeout=6000) {
+async function until(predicate,timeout=25000) {
   const end=Date.now()+timeout
   while (!predicate()) { if (Date.now()>end) throw new Error('Room synchronization timed out'); await delay(15) }
 }

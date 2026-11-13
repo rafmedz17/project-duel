@@ -22,7 +22,7 @@ function loadSettings() {
   } catch { return defaults }
 }
 const fresh = () => ({
-  hp: 100, weapon: 'pistol', loadout:DEFAULT_LOADOUT,
+  hp: 100, weapon: DEFAULT_LOADOUT.startingWeapon, loadout:DEFAULT_LOADOUT,
   magazines: Object.fromEntries(Object.entries(WEAPONS).filter(([,w]) => w.magazine).map(([id,w]) => [id,w.magazine])),
   weaponStats: Object.fromEntries(Object.entries(WEAPONS).filter(([,w]) => w.magazine).map(([id]) => [id,{ shots:0,hits:0 }])),
   spinning:false,spinStarted:-10,windupStart:-10,windupEnd:0,aiming:false,inspectAt:-10,

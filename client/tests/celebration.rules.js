@@ -17,7 +17,7 @@ test('kill combos count confirmed defeats within six simulation seconds, cap the
 })
 test('actual practice eliminations award once, nonlethal hits do not award, pause freezes combos and death/reset clear them',()=> {
   game.reset();game.set({ mode:'playing' })
-  const kill=id=> { for(let n=0;n<4;n++) { assert.equal(game.attack([{ targetId:id,distance:2 }]),true);game.tick(0.21) } }
+  const kill=id=> { for(let n=0;n<5;n++) { assert.equal(game.attack([{ targetId:id,distance:2 }]),true);game.tick(0.21) } }
   kill(0);assert.equal(game.get().killCombo,1);assert.equal(game.get().killBadgeId,1)
   game.attack([{ targetId:0,distance:2 }]);game.tick(0.21)
   assert.equal(game.get().killBadgeId,1)

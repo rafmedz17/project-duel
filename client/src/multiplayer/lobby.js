@@ -6,8 +6,9 @@ import { clearPoses, recordPoses, latestPose } from './poses.js'
 import { accounts } from '../accounts/store.js'
 import { readRecovery, saveRecovery, clearRecovery } from './recovery.js'
 import { queueShotTrail,trailScope } from '../game/effects/shotTrails.js'
+import { validateLoadoutBank,validSlot } from '../../../shared/loadoutBank.js'
 
-const empty = { status:'idle',room:null,sessionId:'',error:'',notice:'',captured:false,captureError:'',arenaReady:false }
+const empty = { status:'idle',room:null,bank:null,sessionId:'',error:'',notice:'',captured:false,captureError:'',arenaReady:false }
 let snapshot = empty
 let activeRoom = null
 let attempt = 0
@@ -49,6 +50,7 @@ function sync(room) {
     player.authenticated = source.authenticated
     Object.assign(player.combat,{ characterId:source.characterId,spinning:source.arsenal.spinning,spinStarted:source.arsenal.spinStarted,windupStart:source.arsenal.windupStart,windupEnd:source.arsenal.windupEnd,swings:source.arsenal.swings,ultimateShield:source.ultimateShield,flashUntil:source.flashUntil,flashStarted:source.flashStarted,rootedUntil:source.rootedUntil,rooted:source.rooted })
     Object.assign(player.combat,{ killCombo:source.arsenal.killCombo,killAt:source.arsenal.killAt,killBadgeId:source.arsenal.killBadgeId,killHeadshot:source.arsenal.killHeadshot })
+    player.combat.activeSlot=source.arsenal.activeSlot
     source.abilities.forEach((ability,id) => Object.assign(player.combat.abilities[id],{ flying:ability.flying,projectile:[ability.projectileX,ability.projectileY,ability.projectileZ],detonatedAt:ability.detonatedAt }))
     player.combat.loadout = { character:source.characterId,primary:[...source.allowedWeapons].find(id => PRIMARY_IDS.includes(id)) || 'rifle',secondary:source.arsenal.secondaryWeapon,melee:source.arsenal.meleeWeapon,unique:source.uniqueSkill,startingWeapon:source.startingWeapon,weapons:[...source.allowedWeapons],abilities:[...source.allowedAbilities] }
   })
@@ -62,6 +64,10 @@ function attach(room,notice = '') {
   Object.assign(room.reconnection,{ minUptime:0,maxRetries:10,minDelay:250,maxDelay:2000,maxEnqueuedMessages:0 })
   saveRecovery(endpoint(),room.reconnectionToken)
   room.onStateChange(() => sync(room))
+  room.onMessage('loadout-bank',value=> {
+    const bank=validateLoadoutBank(value)
+    if(activeRoom===room && bank) update({ bank })
+  })
   room.onMessage('shot-trail',event => {
     const current=room.state
     if(activeRoom!==room || snapshot.status!=='connected' || !current?.arenaActive || current.phase!=='arena' || event?.epoch!==current.arenaEpoch || event.round!==(current.format==='duel' ? current.roundId : 0) || !current.players.has(event.id)) return
@@ -73,6 +79,7 @@ function attach(room,notice = '') {
     saveRecovery(endpoint(),room.reconnectionToken)
     update({ status:'connected',notice:'Connection restored. Select Enter Arena to resume.' })
     sync(room)
+    room.send('loadout-bank')
   })
   room.onError(() => { if (activeRoom===room) update({ notice:'The connection encountered a problem. Reconnecting if needed.' }) })
   room.onLeave(() => {
@@ -82,6 +89,7 @@ function attach(room,notice = '') {
     update({ ...empty,status:'error',error:'You were disconnected from the room. Create or join a room to try again.' })
   })
   update({ status:'connected',sessionId:room.sessionId,error:'',notice })
+  room.send('loadout-bank')
   sync(room)
 }
 
@@ -185,6 +193,10 @@ export const lobby = {
     activeRoom.send('combat',{ action,...details,epoch:snapshot.room.arenaEpoch,round:snapshot.room.roundId,sequence:combatSequence++ })
   },
   self() { return snapshot.room?.players.find(player => player.id===snapshot.sessionId)?.combat },
+  selectLoadout(slot) {
+    if(!activeRoom || snapshot.status!=='connected' || !validSlot(slot) || !snapshot.room?.arenaActive) return
+    activeRoom.send('select-loadout',{ slot,epoch:snapshot.room.arenaEpoch,round:snapshot.room.roundId })
+  },
   setCaptured(captured) { update({ captured,captureError:'' }) },
   setArenaReady(arenaReady) { if (snapshot.arenaReady!==arenaReady) update({ arenaReady }) },
   async capture() {

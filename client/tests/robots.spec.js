@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { state, position, lookAt, moveUntil, observeHitFeedback, observedFeedback } from './helpers.js'
+import { equipWeapon, state, position, lookAt, moveUntil, observeHitFeedback, observedFeedback } from './helpers.js'
 import { PLAYER, TARGETS } from '../src/game/config.js'
 import { ROBOT_HEAD_Y } from '../../shared/robot.js'
 
@@ -11,6 +11,7 @@ async function start(page) {
   await expect(page.getByRole('button',{ name:/TRAINING OPPONENT/ })).toHaveCount(0)
   await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
   await expect.poll(async () => (await state(page)).mode).toBe('playing')
+  await equipWeapon(page,'pistol')
 }
 async function aim(page,region) {
   const p = await position(page), [x,y,z] = TARGETS[1]

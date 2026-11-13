@@ -51,7 +51,7 @@ test('only validated eliminations advance combos; respawn, expiry and new rounds
     const position={ x:0,y:0.87,z:0 },entry=sim.players.get('b')
     entry.body.setTranslation(position,true);entry.body.setNextKinematicTranslation(position);Object.assign(b,position)
   }
-  advance(3.2);resetTarget();assert.equal(shoot(),true)
+  advance(5.2);resetTarget();assert.equal(shoot(),true)
   assert.equal(a.killCombo,2);assert.equal(a.killBadgeId,2)
   advance(6.1);resetTarget();assert.equal(shoot(),true)
   assert.equal(a.killCombo,1);assert.equal(a.killBadgeId,3)

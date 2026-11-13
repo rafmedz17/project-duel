@@ -27,6 +27,10 @@ async function mockCloud(context,shared=initial()) {
     } else if (url.pathname==='/rest/v1/loadouts') {
       if (method==='POST') shared.loadout={ ...body }
       response=method==='POST' ? null : shared.loadout
+    } else if(url.pathname==='/rest/v1/loadout_slots') response=shared.slots || []
+    else if(url.pathname==='/rest/v1/rpc/save_loadout_bank') {
+      shared.slots=body.p_slots.map((gear,slot_id)=>({ user_id:userId,slot_id,character_id:gear.character,primary_weapon:gear.primary,secondary_weapon:gear.secondary,melee_weapon:gear.melee,unique_skill:gear.unique,starting_weapon:gear.startingWeapon,weapons:gear.weapons,abilities:gear.abilities }))
+      shared.loadout={ ...shared.slots[body.p_active_slot],active_slot:body.p_active_slot };response=null
     } else if (url.pathname==='/rest/v1/profile_stats') response=url.searchParams.has('ranked_games') ? [{ user_id:userId,rating:1064,wins:6,losses:4,ranked_games:4,profiles:shared.profile }] : { games:10,wins:6,losses:4,kills:18,deaths:12,ranked_games:4,rating:1064 }
     else if (url.pathname==='/rest/v1/duel_matches') response=[{ id:'33333333-3333-4333-8333-333333333333',player_one:userId,player_two:otherId,name_one:shared.profile.callsign,name_two:'Echo',score_one:2,score_two:1,winner_slot:0,map_id:'neon',reason:'elimination',ended_at:'2026-11-13T00:02:00Z',ranked:true,rating_delta_one:16,rating_delta_two:-16 }]
     else { await route.fulfill({ status:500,body:`Unexpected fixture request: ${url.pathname}` }); return }
@@ -52,7 +56,6 @@ test('guest loadout saves across reloads and controls training weapons and abili
   await dialog.getByRole('button',{ name:'SHOTGUNS',exact:true }).click()
   await dialog.getByRole('button',{ name:'Equip BREACH-12',exact:true }).click()
   await dialog.getByRole('button',{ name:'Equip SPECTRAL SMOKE',exact:true }).click()
-  await dialog.getByLabel('Starting weapon').selectOption('shotgun')
   await dialog.getByRole('button',{ name:/SAVE & EQUIP/ }).click()
   await expect(dialog.getByRole('status')).toContainText('saved on this device')
   await dialog.screenshot({ path:'loadout-preview.png' })
@@ -77,7 +80,6 @@ test('email sign-in, saved callsign/loadout, restored session, history and leade
   await expect(dialog.getByRole('status')).toContainText('Callsign saved')
   await expect(dialog.getByText(/WIN RATE 60%/)).toBeVisible()
   await dialog.getByRole('button',{ name:'CHARACTER & LOADOUT',exact:true }).click()
-  await dialog.getByLabel('Starting weapon').selectOption('rifle')
   await dialog.getByRole('button',{ name:'Select ION' }).click()
   await dialog.getByRole('button',{ name:'Equip SPECTRAL SMOKE',exact:true }).click()
   await dialog.getByRole('button',{ name:/SAVE & EQUIP/ }).click()
@@ -108,7 +110,7 @@ test('email sign-in, saved callsign/loadout, restored session, history and leade
     await second.getByRole('dialog').getByRole('button',{ name:'SIGN IN',exact:true }).last().click()
     await expect(second.getByLabel('CALLSIGN')).toHaveValue('Nova Saved')
     await second.getByRole('dialog').getByRole('button',{ name:'CHARACTER & LOADOUT',exact:true }).click()
-    await expect(second.getByLabel('Starting weapon')).toHaveValue('rifle')
+    await expect(second.getByRole('tab',{ name:'PRIMARY slot' })).toContainText('VXR-9 PHANTOM')
     await expect(second.getByRole('button',{ name:'Select ION' })).toHaveAttribute('aria-pressed','true')
     await expect(second.getByRole('button',{ name:'Equip SPECTRAL SMOKE',exact:true })).toHaveAttribute('aria-pressed','true')
     await second.getByRole('dialog').getByRole('button',{ name:'PLAYER PROFILE',exact:true }).click()

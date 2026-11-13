@@ -5,7 +5,7 @@ import { DuelMatch } from '../src/arena/DuelMatch.js'
 import { ArenaSimulation } from '../src/arena/ArenaSimulation.js'
 import { MATCH } from '../../shared/match.js'
 
-function setup(t) {
+function setup(t,selecting=false) {
   const state = new LobbyState()
   state.arenaEpoch = 1; state.phase = 'arena'
   for (const [id,slot,name] of [['a',0,'Nova'],['b',1,'Echo']]) {
@@ -14,6 +14,7 @@ function setup(t) {
     state.players.set(id,player)
   }
   const sim = new ArenaSimulation(state.players), match = new DuelMatch(state,sim)
+  for (const player of state.players.values()) Object.assign(player,{ startingWeapon:'pistol',weapon:'pistol' })
   t.after(() => sim.free())
   let sequence = 0
   const advance = seconds => { for (let i=0;i<Math.ceil(seconds*60);i++) match.step() }
@@ -25,10 +26,18 @@ function setup(t) {
   const win = id => {
     for (let i=0;i<4;i++) { assert.equal(shoot(id),true); if (i<3) advance(0.24) }
   }
-  const nextRound = () => advance(MATCH.resultSeconds+MATCH.countdownSeconds+0.02)
-  advance(0.2)
+  const nextRound = () => advance(MATCH.resultSeconds+MATCH.loadoutSeconds+MATCH.countdownSeconds+0.02)
+  if(!selecting) advance(MATCH.loadoutSeconds+MATCH.countdownSeconds+0.2)
   return { state,sim,match,advance,send,shoot,win,nextRound,a:state.players.get('a'),b:state.players.get('b') }
 }
+
+test('initial selection lasts ten seconds before the countdown and blocks combat until the round is live',t=> {
+  const { state,advance,shoot }=setup(t,true)
+  assert.equal(state.matchPhase,'loadout');assert.equal(shoot('a'),false)
+  advance(MATCH.loadoutSeconds-0.05);assert.equal(state.matchPhase,'loadout')
+  advance(0.06);assert.equal(state.matchPhase,'countdown');assert.equal(shoot('a'),false)
+  advance(MATCH.countdownSeconds);assert.equal(state.matchPhase,'live');assert.equal(shoot('a'),true)
+})
 
 test('validated kills end a round once, lock actions and reset position/loadout/abilities after a countdown',t => {
   const { state,sim,match,a,b,advance,send,shoot,win } = setup(t)
@@ -43,14 +52,14 @@ test('validated kills end a round once, lock actions and reset position/loadout/
   advance(MATCH.resultSeconds-0.02)
   assert.equal(b.hp,0)
   advance(0.03)
-  assert.equal(state.matchPhase,'countdown'); assert.equal(state.roundNumber,2)
+  assert.equal(state.matchPhase,'loadout'); assert.equal(state.roundNumber,2)
   assert.equal(b.hp,100); assert.equal(a.pistolAmmo,15); assert.equal(a.shieldCharge,0)
   assert.equal(a.abilities.get('scanner').readyAt,0)
   assert.equal(a.abilities.get('scanner').uses,0)
   assert.ok(Math.abs(a.x)<0.001 && a.z===15 && b.z===-15)
   assert.equal(sim.players.get('b').collider.isEnabled(),true)
   assert.equal(shoot('a'),false)
-  advance(MATCH.countdownSeconds)
+  advance(MATCH.loadoutSeconds+MATCH.countdownSeconds)
   assert.equal(state.matchPhase,'live')
   assert.equal(a.roundWins,1); assert.equal(a.kills,1); assert.equal(b.deaths,1)
   assert.equal(shoot('a'),true)

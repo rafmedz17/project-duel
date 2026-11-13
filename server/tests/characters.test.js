@@ -7,7 +7,7 @@ import { CHARACTERS,ultimateModifiers } from '../../shared/characters.js'
 import { flashDuration,throughSmoke } from '../../shared/tactical.js'
 
 function setup(t,character='vex',unique='flashbang') {
-  const gear=validateLoadout({ character,primary:'rifle',unique })
+  const gear=validateLoadout({ character,primary:'rifle',unique,startingWeapon:'pistol' })
   const players=new Map(['a','b','c'].map((id,slot) => [id,{ slot:slot%2,connected:true,startingWeapon:gear.startingWeapon,characterId:character,uniqueSkill:unique,allowedWeapons:[...gear.weapons],allowedAbilities:[...gear.abilities],teamId:id==='b' ? 'enemy' : 'ally' }]))
   const sim=new ArenaSimulation(players),combat=new ArenaCombat(players,sim,1)
   t.after(() => sim.free())

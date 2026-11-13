@@ -11,6 +11,8 @@ function setup(t) {
   const simulation = new ArenaSimulation(players)
   t.after(() => simulation.free())
   const combat = new ArenaCombat(players,simulation,1)
+  // These regional-damage scenarios deliberately equip the pistol.
+  for (const player of players.values()) Object.assign(player,{ startingWeapon:'pistol',weapon:'pistol' })
   // This weapon lifecycle fixture exercises both primaries independently of lobby selection.
   players.get('a').allowedWeapons.push('shotgun')
   const a = players.get('a'), b = players.get('b')
@@ -107,7 +109,7 @@ test('blade and shotgun apply regional damage, kill once, disable dead bodies an
   assert.equal(send('fire',{ yaw:Math.PI,pitch:0 },'b'),false)
   advance(0.7); fire(b.y+ROBOT_HEAD_Y)
   assert.equal(a.kills,1)
-  advance(2.4)
+  advance(4.4)
   assert.equal(b.hp,100); assert.equal(b.weapon,'pistol'); assert.equal(b.pistolAmmo,15)
   assert.equal(b.deaths,1); assert.equal(a.kills,1)
   assert.equal(b.z,-15); assert.equal(simulation.players.get('b').collider.isEnabled(),true)

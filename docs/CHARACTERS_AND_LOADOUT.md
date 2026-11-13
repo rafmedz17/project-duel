@@ -1,6 +1,6 @@
 # Characters and loadouts
 
-Choose **Character & Loadout** before entering training or joining a room. All four operatives use the same 1.7-meter body and hit volumes; their armor, visor and reactor details differ. Practice robots display the four character designs.
+Choose **Character & Loadout** before entering training or joining a room. There are five independent preset tabs. Switching tabs keeps unsaved edits; **Save & Equip** saves all five together and makes the selected tab your default. Each preset holds a complete character, three weapons and unique skill. Guests save locally; signed-in players save privately to their account. Existing single loadouts are copied into all five slots so current equipment is preserved. All four operatives use the same 1.7-meter body and hit volumes; their armor, visor and reactor details differ. Practice robots display the four character designs.
 
 | Character | Ultimate (X) | Effect for exactly 5 seconds |
 | --- | --- | --- |
@@ -11,7 +11,7 @@ Choose **Character & Loadout** before entering training or joining a room. All f
 
 Ultimates have a 45-second cooldown from activation, are available at the start of a run/round, and display a five-second countdown. Death cancels temporary effects. Free Play respawns preserve cooldowns; a new Best of Three round resets them. Training pause and online connection interruptions freeze the simulation clock.
 
-Every loadout has one primary, one pistol, one melee, Dash, Shield, one freely selected unique skill and the character's fixed ultimate. Choose from all 17 playable weapons in the [arsenal](WEAPONS.md), with a live animated preview and fire/reload/inspect controls. The Deploy With selector chooses your starting weapon; default is your selected pistol. Keys **1 / 2 / 3** always select **Primary / Pistol / Melee** and **Q** cycles those three.
+Every loadout has one primary, one pistol, one melee, Dash, Shield, one freely selected unique skill and the character's fixed ultimate. Choose from all 17 playable weapons in the [arsenal](WEAPONS.md), with a live animated preview and fire/reload/inspect controls. Every preset deploys with its selected primary weapon, including older saved presets. Keys **1 / 2 / 3** always select **Primary / Pistol / Melee** and **Q** cycles those three.
 
 | Unique skill (C) | Effect | Cooldown |
 | --- | --- | --- |
@@ -24,4 +24,4 @@ Grenades bounce against solid arena geometry. Their trajectories, fuse, effects,
 
 Dash (E) keeps its 3-second cooldown. Shield (F) absorbs 50 damage for up to 3.5 seconds with a 9-second cooldown. Both are always equipped on every character. AEGIS bonus shield absorbs damage before normal Shield, then health. Shield never heals.
 
-Guest selections save on this device; signed-in selections save in Supabase and load across devices. Existing saved equipment keeps its primary and defaults to ECHO-9 and PHANTOM EDGE. Equipment locks when joining a room; leave the room to change it. The server rejects extra guns, invalid slot combinations, extra skills and client-supplied character effects.
+Guest selections save on this device; signed-in selections save in Supabase and load across devices. Existing saved equipment keeps its primary and defaults to ECHO-9 and PHANTOM EDGE. All five presets are copied into the room when you join. Select among them during the ten-second loadout phase before each Best of Three round, or during the five-second Free Play death window. Editing the presets themselves requires leaving the room. The server rejects extra guns, invalid slot combinations, extra skills and client-supplied character effects.

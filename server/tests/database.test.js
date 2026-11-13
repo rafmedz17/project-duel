@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { PGlite } from '@electric-sql/pglite'
+import { makeLoadoutBank } from '../../shared/loadoutBank.js'
+import { validateLoadout } from '../../shared/loadout.js'
 
 const db = new PGlite()
 const one='11111111-1111-4111-8111-111111111111', two='22222222-2222-4222-8222-222222222222', other='33333333-3333-4333-8333-333333333333'
@@ -24,6 +26,9 @@ before(async () => {
   await db.exec(await readFile(new URL('../../supabase/migrations/20261113074736_full_weapon_arsenal.sql',import.meta.url),'utf8'))
   const expanded=(await db.query('select * from public.loadouts where user_id=$1',[other])).rows[0]
   assert.equal(expanded.secondary_weapon,'pistol');assert.equal(expanded.melee_weapon,'blade')
+  await db.exec(await readFile(new URL('../../supabase/migrations/20261113093159_five_loadout_slots.sql',import.meta.url),'utf8'))
+  const migratedSlots=(await db.query('select * from public.loadout_slots where user_id=$1 order by slot_id',[other])).rows
+  assert.equal(migratedSlots.length,5);assert.ok(migratedSlots.every(row=>row.primary_weapon==='shotgun'))
   await db.query('insert into public.profiles(user_id,callsign) values ($1,$2),($3,$4),($5,$6)',[one,'Nova',two,'Echo',other,'Other'])
 })
 after(async () => { await db.close() })
@@ -67,6 +72,27 @@ test('arsenal loadouts save one primary, one pistol and one melee while keeping 
   assert.equal((await as('authenticated',two,()=>db.query('select * from public.loadouts where user_id=$1',[one]))).rows.length,0)
   for(const sql of ["primary_weapon='magnus'","secondary_weapon='rifle'","melee_weapon='omega'","weapons=array['volt','gravity','railbreaker','nova']","starting_weapon='pistol'"]) await assert.rejects(as('authenticated',one,()=>db.query(`update public.loadouts set ${sql} where user_id=$1`,[one])))
 })
+test('five-slot saves are atomic, private, bounded and keep active equipment synchronized',async () => {
+  const bank=makeLoadoutBank();bank.activeSlot=3
+  bank.slots[3]=validateLoadout({ character:'ion',primary:'omega',secondary:'volt',melee:'fangs',unique:'smoke',startingWeapon:'omega' })
+  const save=value=>as('authenticated',one,()=>db.query('select public.save_loadout_bank($1::jsonb,$2)',[JSON.stringify(value.slots),value.activeSlot]))
+  await save(bank)
+  const active=(await as('authenticated',one,()=>db.query('select * from public.loadouts where user_id=$1',[one]))).rows[0]
+  assert.equal(active.active_slot,3);assert.equal(active.primary_weapon,'omega');assert.equal(active.secondary_weapon,'volt')
+  const before=(await as('authenticated',one,()=>db.query('select * from public.loadout_slots order by slot_id'))).rows
+  assert.equal(before.length,5);assert.equal(before[3].character_id,'ion')
+  assert.equal((await as('authenticated',two,()=>db.query('select * from public.loadout_slots where user_id=$1',[one]))).rows.length,0)
+  const broken=structuredClone(bank);broken.slots[4].primary='forged';broken.slots[0].character='aegis'
+  await assert.rejects(save(broken))
+  assert.deepEqual((await as('authenticated',one,()=>db.query('select * from public.loadout_slots order by slot_id'))).rows,before)
+  await assert.rejects(save({ ...bank,slots:bank.slots.slice(0,4) }))
+  await assert.rejects(save({ ...bank,activeSlot:5 }))
+  await assert.rejects(as('anon',null,()=>db.query('select public.save_loadout_bank($1::jsonb,0)',[JSON.stringify(bank.slots)])))
+  await assert.rejects(as('authenticated',null,()=>db.query('select public.save_loadout_bank($1::jsonb,0)',[JSON.stringify(bank.slots)])))
+  await assert.rejects(as('authenticated',one,()=>db.query('update public.loadout_slots set user_id=$1 where user_id=$2',[two,one])))
+  await assert.rejects(as('authenticated',one,()=>db.query('update public.loadout_slots set slot_id=5 where slot_id=0')))
+})
+
 test('only the service role can record or alter statistics; results are idempotent',async () => {
   const match=result()
   await assert.rejects(as('authenticated',one,() => db.query('select public.record_duel_result($1::jsonb)',[JSON.stringify(match)])))

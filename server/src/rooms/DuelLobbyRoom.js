@@ -9,6 +9,7 @@ import { FORMATS } from '../../../shared/match.js'
 import { DuelMatch } from '../arena/DuelMatch.js'
 import { MAPS } from '../../../shared/maps.js'
 import { DEFAULT_LOADOUT, validateLoadout } from '../../../shared/loadout.js'
+import { makeLoadoutBank,validateLoadoutBank,validSlot } from '../../../shared/loadoutBank.js'
 
 // Synchronous allocation prevents code collisions within this single Node process.
 const activeCodes = new Set()
@@ -29,6 +30,7 @@ export class DuelLobbyRoom extends Room {
   simulation = null
   countdownTimer = null
   identities = new Map()
+  loadoutBanks = new Map()
   accounts = null
 
   async onCreate() {
@@ -114,6 +116,18 @@ export class DuelLobbyRoom extends Room {
       if (this.match) this.match.receiveCombat(client.sessionId,payload)
       else this.combat.receive(client.sessionId,payload)
     })
+    this.onMessage('loadout-bank',client => {
+      const bank=this.loadoutBanks.get(client.sessionId)
+      if(bank) client.send('loadout-bank',bank)
+    })
+    this.onMessage('select-loadout',(client,payload) => {
+      const player=this.state.players.get(client.sessionId),bank=this.loadoutBanks.get(client.sessionId)
+      if(!player?.connected || !bank || this.state.phase!=='arena' || !payload || Object.keys(payload).length!==3 || payload.epoch!==this.state.arenaEpoch || payload.round!==this.state.roundId || !validSlot(payload.slot)) return
+      const allowed=this.match ? this.state.matchPhase==='loadout' : player.hp<=0 && this.combat.time<player.respawnAt
+      if(!allowed) return
+      this.combat.equipLoadout(client.sessionId,bank.slots[payload.slot])
+      bank.activeSlot=payload.slot;player.arsenal.activeSlot=payload.slot
+    })
     this.onMessage('forfeit',client => {
       if (this.state.arenaActive && this.match) this.match.forfeit(client.sessionId)
     })
@@ -140,13 +154,18 @@ export class DuelLobbyRoom extends Room {
     if (!name) throw new ServerError(4400,'Use 2–18 letters, numbers, spaces, hyphens or underscores for your callsign.')
     const loadout = options?.loadout ? validateLoadout(options.loadout) : DEFAULT_LOADOUT
     if (!loadout) throw new ServerError(4400,'Invalid loadout. Choose a character, one available primary and one unique skill.')
-    return { name,loadout,userId:null }
+    const bank=options?.loadoutBank ? validateLoadoutBank(options.loadoutBank) : makeLoadoutBank(loadout)
+    if(!bank) throw new ServerError(4400,'Choose exactly five valid loadout slots.')
+    return { name,loadout:bank.slots[bank.activeSlot],loadoutBank:bank,userId:null }
   }
 
   onJoin(client) {
     if (client.auth.userId && [...this.identities.values()].some(other => other.userId===client.auth.userId)) throw new ServerError(4402,'This account is already in the room.')
     const occupied = new Set([...this.state.players.values()].map(player => player.slot))
     const player = new LobbyPlayer()
+    const bank=client.auth.loadoutBank || makeLoadoutBank(client.auth.loadout)
+    this.loadoutBanks.set(client.sessionId,bank)
+    player.arsenal.activeSlot=bank.activeSlot
     player.name = client.auth.name
     player.authenticated = Boolean(client.auth.userId)
     player.startingWeapon = client.auth.loadout.startingWeapon
@@ -185,6 +204,7 @@ export class DuelLobbyRoom extends Room {
     }
     this.state.players.delete(client.sessionId)
     this.identities.delete(client.sessionId)
+    this.loadoutBanks.delete(client.sessionId)
     if (!this.state.arenaActive && !this.canRank()) this.state.ranked = false
     if (this.state.hostId === client.sessionId) this.state.hostId = this.state.players.keys().next().value || ''
     this.resetReady()

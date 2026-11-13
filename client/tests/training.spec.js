@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { state, diagnostics, position, moveUntil, aimAtTarget } from './helpers.js'
+import { equipWeapon, state, diagnostics, position, moveUntil, aimAtTarget } from './helpers.js'
 async function pause(page) {
   // Browser automation cannot synthesize the browser-owned Escape shortcut.
   await page.evaluate(() => document.exitPointerLock())
@@ -8,6 +8,7 @@ async function pause(page) {
 async function resume(page) {
   await page.getByRole('button', { name: 'RESUME / ENTER ARENA' }).click()
   await expect.poll(async () => (await state(page)).mode).toBe('playing')
+  await equipWeapon(page,'pistol')
 }
 
 test('menus, persistent settings, movement, collisions, combat, pause and reset', async ({ page }) => {
