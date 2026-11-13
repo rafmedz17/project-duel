@@ -4,6 +4,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { Client } from '@colyseus/sdk'
 import { createLobbyServer } from '../src/createServer.js'
 import { LOBBY } from '../src/config.js'
+import { ROBOT_HEAD_Y } from '../../shared/robot.js'
 
 const { server,httpServer } = createLobbyServer()
 let client
@@ -245,15 +246,15 @@ test('real combat messages synchronize regional damage, reject forged hits, kill
   shoot(-0.79,0.13)
   await until(() => guest.state.players.get(guest.sessionId).hp===90)
   assert.equal(host.state.players.get(host.sessionId).hitDamage,10)
-  shoot(0.48) // Same cooldown: rejected even though the aim is valid.
+  shoot(ROBOT_HEAD_Y) // Same cooldown: rejected even though the aim is valid.
   await delay(100)
   assert.equal(host.state.players.get(host.sessionId).pistolAmmo,11)
   await delay(160); shoot(-0.03)
   await until(() => guest.state.players.get(guest.sessionId).hp===70)
-  await delay(240); shoot(0.48)
+  await delay(240); shoot(ROBOT_HEAD_Y)
   await until(() => host.state.players.get(host.sessionId).hitHeadshot)
   assert.equal(guest.state.players.get(guest.sessionId).hp,30)
-  await delay(240); shoot(0.48)
+  await delay(240); shoot(ROBOT_HEAD_Y)
   await until(() => guest.state.players.get(guest.sessionId).hp===0)
   await until(() => host.state.players.get(host.sessionId).kills===1)
   assert.equal(host.state.players.get(host.sessionId).hitDamage,30)

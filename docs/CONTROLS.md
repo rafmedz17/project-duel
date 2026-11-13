@@ -19,7 +19,7 @@ Choose **Enter Training** for stationary robot practice. The drone and Sparring 
 | C | Scanner |
 | V | EMP Blast |
 
-Robot damage is 2× at the head, 1× at the torso, 0.75× at arms/legs, and 0.5× at feet. A pistol deals 40/20/15/10 respectively. Headshots display HEADSHOT and actual HP removed; defeats display ELIMINATED. All weapons respect cover. EMP deals flat area damage. Targets reset after three seconds. Raised platforms keep torso/head practice visible from spawn; move past low cover for foot practice.
+Robot damage is 2× at the head, 1× at the torso, 0.75× at arms/legs, and 0.5× at feet. A pistol deals 40/20/15/10 respectively. Headshots display HEADSHOT and actual HP removed; defeats display ELIMINATED. All weapons respect cover. EMP deals flat area damage. Targets reset after three seconds. Robots match the player's 1.7-meter capsule height and stand on the floor in clear firing lanes. Head, body, limb and foot shots are available from the spawn floor without stepping onto a platform.
 
 Pistol: 12 rounds, 20 base damage, 0.22-second recovery, 1.5-second reload. Rifle: 30 rounds, 14 base damage, 0.12-second minimum recovery, 2-second reload. Shotgun: 6 shells, 8 pellets, 14 base damage per pellet, falloff beyond 6 units, 24-unit range, 0.8-second recovery, 2.3-second reload. The shotgun uses only a dotted ring. Blade: 60 base damage, 2.6-unit reach, 0.65-second recovery, no ammo.
 

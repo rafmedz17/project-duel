@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { observeHitFeedback, observedFeedback } from './helpers.js'
 import { PLAYER } from '../src/game/config.js'
+import { ROBOT_HEAD_Y } from '../../shared/robot.js'
 
 async function onlineState(page) {
   return page.evaluate(async () => {
@@ -122,7 +123,7 @@ test('ready host starts a shared countdown; both see remote movement, jump and l
 async function aimAtPlayer(page,region = 'body') {
   const s = await onlineState(page), other = s.room.players.find(player => player.id!==s.sessionId)
   const target = s.poses[other.id], p = s.self
-  const [x,y] = { body:[0,-0.03],head:[0,0.48],foot:[0.13,-0.8] }[region]
+  const [x,y] = { body:[0,-0.03],head:[0,ROBOT_HEAD_Y],foot:[0.13,-0.8] }[region]
   await look(page,Math.atan2(p.x-target.x-x,p.z-target.z),Math.atan2(target.y+y-p.y-PLAYER.eye,Math.hypot(p.x-target.x-x,p.z-target.z)))
 }
 const selfCombat = async page => { const s = await onlineState(page); return s.room.players.find(player => player.id===s.sessionId).combat }

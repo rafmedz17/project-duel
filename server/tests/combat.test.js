@@ -4,6 +4,7 @@ import { ArenaCombat, validateCombat } from '../src/arena/ArenaCombat.js'
 import { ArenaSimulation } from '../src/arena/ArenaSimulation.js'
 import { WEAPONS, pelletDamage } from '../../shared/weapons.js'
 import { rayRobot } from '../../shared/ballistics.js'
+import { ROBOT_HEAD_Y } from '../../shared/robot.js'
 
 function setup(t) {
   const players = new Map([['a',{ slot:0,connected:true }],['b',{ slot:1,connected:true }]])
@@ -22,7 +23,7 @@ function setup(t) {
 
 test('authoritative robot hits distinguish head, torso, arms and feet with actual removed health',t => {
   const { a,b,fire,advance } = setup(t)
-  for (const [height,x,damage,headshot] of [[1.35,0,40,true],[0.84,0,20,false],[0.77,0.3,15,false],[0.08,0.13,10,false]]) {
+  for (const [height,x,damage,headshot] of [[b.y+ROBOT_HEAD_Y,0,40,true],[0.84,0,20,false],[0.77,0.3,15,false],[0.08,0.13,10,false]]) {
     b.hp = 100
     assert.equal(fire(height,x),true)
     assert.equal(b.hp,100-damage)
@@ -50,7 +51,7 @@ test('forged hit claims, origins, damage, malformed aims and replayed or old-are
 test('cover, range, gaps between legs and missing rays cannot damage a player',t => {
   const { a,b,fire,send,advance } = setup(t)
   Object.assign(a,{ x:8,z:10 }); Object.assign(b,{ x:8,z:2 })
-  assert.equal(fire(1.35),true)
+  assert.equal(fire(b.y+ROBOT_HEAD_Y),true)
   assert.equal(b.hp,100)
   Object.assign(a,{ x:0,z:17 }); Object.assign(b,{ x:0,z:-17 })
   advance(0.3); send('switch',{ weapon:'shotgun' }); advance(0.3)
@@ -97,12 +98,12 @@ test('blade and shotgun apply regional damage, kill once, disable dead bodies an
   const { a,b,simulation,fire,send,advance } = setup(t)
   b.z = 6
   send('switch',{ weapon:'blade' }); advance(0.3)
-  assert.equal(fire(1.35),true)
+  assert.equal(fire(b.y+ROBOT_HEAD_Y),true)
   assert.equal(b.hp,0); assert.equal(a.hitDamage,100); assert.equal(a.hitHeadshot,true)
   assert.equal(a.kills,1); assert.equal(b.deaths,1)
   assert.equal(simulation.players.get('b').collider.isEnabled(),false)
   assert.equal(send('fire',{ yaw:Math.PI,pitch:0 },'b'),false)
-  advance(0.7); fire(1.35)
+  advance(0.7); fire(b.y+ROBOT_HEAD_Y)
   assert.equal(a.kills,1)
   advance(2.4)
   assert.equal(b.hp,100); assert.equal(b.weapon,'pistol'); assert.equal(b.pistolAmmo,12)

@@ -1,7 +1,9 @@
+import { PLAYER } from '../../../shared/arena.js'
 export { PLAYER, COVER } from '../../../shared/arena.js'
 export { PISTOL, BLADE, RIFLE, SHOTGUN, WEAPONS, WEAPON_IDS, WEAPON_SWITCH } from '../../../shared/weapons.js'
 export { ABILITIES } from '../../../shared/abilities.js'
-export const TARGETS = [[-12, 1.6, -14], [-4, 1.6, -16], [4, 1.6, -16], [12, 1.6, -14]]
+// Ground-level robots with clear shooting lanes from the player's spawn.
+export const TARGETS = [[-15, PLAYER.height/2, -14], [-1, PLAYER.height/2, -16], [1, PLAYER.height/2, -16], [15, PLAYER.height/2, -14]]
 export const TARGET = { health: 100, reset: 3 }
 export const OPPONENT = {
   id: 'opponent', health: 100, score: 200, respawn: 6,

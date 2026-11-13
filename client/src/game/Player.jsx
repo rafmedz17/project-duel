@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { CapsuleCollider, RigidBody, useBeforePhysicsStep, useRapier } from '@react-three/rapier'
 import { Euler } from 'three'
+import { ONLINE } from '../../../shared/arena.js'
 import { PLAYER, HAZARD, ABILITIES } from './config.js'
 import { game } from './store.js'
 import { runtime } from './runtime.js'
@@ -120,7 +121,7 @@ export default function Player() {
   },-2)
 
   return <>
-    <RigidBody ref={body} userData={{ entity:'player' }} type="kinematicPosition" colliders={false} position={PLAYER.spawn} enabledRotations={[false,false,false]}><CapsuleCollider ref={collider} args={[0.5,0.35]} /></RigidBody>
+    <RigidBody ref={body} userData={{ entity:'player' }} type="kinematicPosition" colliders={false} position={PLAYER.spawn} enabledRotations={[false,false,false]}><CapsuleCollider ref={collider} args={[ONLINE.capsuleHalfHeight,ONLINE.capsuleRadius]} /></RigidBody>
     <WeaponView />
     <TacticalEffects />
   </>

@@ -66,7 +66,6 @@ function TrainingTargets() {
       const flash = time - target.hit < 0.13
       const disabled = time<target.disabledUntil
       return <group key={`${generation}-${id}`} position={[x,0,z]}>
-        <Box position={[0,0.375,0]} size={[1.2,0.75,1]} color="#36475b" solid />
         <TargetBody down={down} height={y}>
           <group rotation={[0,Math.PI,0]}><RobotModel targetId={id} down={down} flash={flash} color={disabled ? '#af8dff' : '#58dcff'} /></group>
           <Box position={[0,1.06,0]} size={[1.2,0.08,0.1]} color="#283748" />

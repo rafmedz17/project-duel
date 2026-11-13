@@ -2,6 +2,7 @@ import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
 import { state,position,lookAt,moveUntil } from './helpers.js'
 import { PLAYER,TARGETS } from '../src/game/config.js'
+import { ROBOT_HEAD_Y } from '../../shared/robot.js'
 
 const sound=page => page.evaluate(async () => {
   const path='/src/audio/synth.js'
@@ -65,7 +66,7 @@ test('training plays all weapon, reload, hit, ability and footstep cues; pausing
     await page.waitForTimeout(850)
   }
   const p=await position(page),[x,y,z]=TARGETS[1]
-  await lookAt(page,Math.atan2(p[0]-x,p[2]-z),Math.atan2(y+0.48-p[1]-PLAYER.eye,Math.hypot(p[0]-x,p[2]-z)))
+  await lookAt(page,Math.atan2(p[0]-x,p[2]-z),Math.atan2(y+ROBOT_HEAD_Y-p[1]-PLAYER.eye,Math.hypot(p[0]-x,p[2]-z)))
   for (let i=0;i<3;i++) { await fire(page); await page.waitForTimeout(280) }
   await expect.poll(async () => (await sound(page)).counts.headshot || 0).toBeGreaterThan(0)
   await expect.poll(async () => (await sound(page)).counts.elimination || 0).toBe(1)
@@ -137,7 +138,7 @@ test('online opponent sounds use authoritative positions; replays, focus loss an
     const me=() => peer.state.players.get(peer.sessionId)
     const target=() => [...peer.state.players.entries()].find(([id]) => id!==peer.sessionId)[1]
     await expect.poll(() => me().grounded && target().grounded).toBe(true)
-    const head={ yaw:Math.atan2(me().x-target().x,me().z-target().z),pitch:Math.atan2(target().y+0.48-me().y-PLAYER.eye,Math.hypot(me().x-target().x,me().z-target().z)) }
+    const head={ yaw:Math.atan2(me().x-target().x,me().z-target().z),pitch:Math.atan2(target().y+ROBOT_HEAD_Y-me().y-PLAYER.eye,Math.hypot(me().x-target().x,me().z-target().z)) }
     let sequence=0
     const combat=(action,details={}) => { const payload={ action,...details,sequence:sequence++,epoch:peer.state.arenaEpoch,round:peer.state.roundId }; peer.send('combat',payload); return payload }
     const shot=combat('fire',head)

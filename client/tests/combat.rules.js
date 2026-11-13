@@ -1,11 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { game } from '../src/game/store.js'
-import { BLADE, PISTOL, RIFLE, SHOTGUN, ABILITIES, WEAPON_SWITCH, WEAPONS, TARGET, OPPONENT } from '../src/game/config.js'
+import { BLADE, PISTOL, RIFLE, SHOTGUN, ABILITIES, WEAPON_SWITCH, WEAPONS, TARGET, TARGETS, OPPONENT, PLAYER } from '../src/game/config.js'
 import { pelletDamage } from '../src/game/combatRules.js'
 import { BoxGeometry, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, Group } from 'three'
-import { ROBOT_PARTS } from '../../shared/robot.js'
-import { rayRobot } from '../../shared/ballistics.js'
+import { ROBOT_PARTS, ROBOT_HEAD_Y } from '../../shared/robot.js'
+import { rayRobot, rayBox } from '../../shared/ballistics.js'
+import { ARENA_SOLIDS, ONLINE } from '../../shared/arena.js'
 import { createWeaponTracer } from '../src/game/weapons/traceWeapon.js'
 import { freshBrain, stepBrain } from '../src/game/opponents/opponentRules.js'
 import { castTrainingPulse, isPlayerHit } from '../src/game/opponents/physics.js'
@@ -47,13 +48,38 @@ test('rendered robot boxes and authoritative hit volumes agree, including rotate
       root.add(mesh)
     }
     scene.add(root); scene.updateMatrixWorld(true)
-    for (const [x,y] of [[0,1.35],[0,0.84],[0.3,0.77],[0.13,0.08],[0,0.2]]) {
+    for (const [x,y] of [[0,0.87+ROBOT_HEAD_Y],[0,0.84],[0.3,0.77],[0.13,0.08],[0,0.2]]) {
       const camera = new PerspectiveCamera(70,16/9,0.05,100)
       camera.position.set(x,y,0); camera.updateMatrixWorld(true)
       const visual = trace(scene,camera,PISTOL)[0]
       const server = rayRobot([x,y,0],[0,0,-1],{ x:0,y:0.87,z:-8,yaw,pitch })
       assert.equal(visual?.region,server?.region)
       if (visual) assert.ok(Math.abs(visual.distance-server.distance)<1e-6)
+    }
+  }
+})
+
+test('robots match player capsule height and every practice hit region is exposed from the spawn floor',() => {
+  const bottom = Math.min(...ROBOT_PARTS.map(part => part.position[1]-part.size[1]/2))
+  const top = Math.max(...ROBOT_PARTS.map(part => part.position[1]+part.size[1]/2))
+  assert.ok(Math.abs(top-bottom-PLAYER.height)<1e-9)
+  assert.ok(Math.abs(2*(ONLINE.capsuleHalfHeight+ONLINE.capsuleRadius)-PLAYER.height)<1e-9)
+  const head = ROBOT_PARTS.find(part => part.id==='head')
+  assert.ok(Math.abs(PLAYER.eye-head.position[1])<head.size[1]/2)
+  const origin = [PLAYER.spawn[0],PLAYER.height/2+0.02+PLAYER.eye,PLAYER.spawn[2]]
+  for (const [x,y,z] of TARGETS) {
+    assert.ok(Math.abs(y+bottom)<1e-9,'target feet rest on the floor')
+    for (const id of ['head','torso','leg1','foot1']) {
+      const part = ROBOT_PARTS.find(part => part.id===id)
+      const target = [x-part.position[0],y+part.position[1],z-part.position[2]]
+      const offset = target.map((value,axis) => value-origin[axis]), distance = Math.hypot(...offset)
+      const direction = offset.map(value => value/distance)
+      const hit = rayRobot(origin,direction,{ x,y,z,yaw:Math.PI,pitch:0 })
+      assert.equal(hit?.region,part.region,`${x}: ${id}`)
+      for (const solid of ARENA_SOLIDS) {
+        const blocked = rayBox(origin,direction,solid.position,solid.size)
+        assert.ok(blocked===null || blocked>hit.distance,`${x}: cover blocks ${id}`)
+      }
     }
   }
 })

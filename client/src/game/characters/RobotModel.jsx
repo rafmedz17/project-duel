@@ -1,4 +1,5 @@
 import { ROBOT_PARTS } from '../../../../shared/robot.js'
+import { PLAYER } from '../../../../shared/arena.js'
 
 export default function RobotModel({ targetId, color = '#58dcff', flash = false, down = false, headRef }) {
   return <group>
@@ -11,6 +12,6 @@ export default function RobotModel({ targetId, color = '#58dcff', flash = false,
         <planeGeometry args={[0.3,part.id==='head' ? 0.12 : 0.08]} /><meshBasicMaterial color={down ? '#485868' : color} />
       </mesh>}
     </group>)}
-    <mesh position={[0,-0.82,0]} rotation={[-Math.PI/2,0,0]}><ringGeometry args={[0.37,0.4,24]} /><meshBasicMaterial color={color} transparent opacity={down ? 0.2 : 0.7} /></mesh>
+    <mesh position={[0,-PLAYER.height/2+0.025,0]} rotation={[-Math.PI/2,0,0]}><ringGeometry args={[0.37,0.4,24]} /><meshBasicMaterial color={color} transparent opacity={down ? 0.2 : 0.7} /></mesh>
   </group>
 }

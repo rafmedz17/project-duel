@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { state, lookAt, aimAtTarget, moveUntil } from './helpers.js'
+import { TARGETS } from '../src/game/config.js'
 
 const attack = async page => { await page.mouse.down(); await page.mouse.up() }
 
@@ -42,7 +43,7 @@ test('blade switching, range, melee damage, ammo preservation, pause and restart
   await lookAt(page,0,0)
   // Navigate through the open central lane, then approach target 02 from the south.
   await moveUntil(page,'KeyW',2,-12.8,-1)
-  await moveUntil(page,'KeyA',0,-3.9,-1)
+  await moveUntil(page,'KeyA',0,TARGETS[1][0]+0.1,-1)
   await moveUntil(page,'KeyW',2,-14,-1)
   await aimAtTarget(page)
   await page.screenshot({ path:'blade-preview.png' })

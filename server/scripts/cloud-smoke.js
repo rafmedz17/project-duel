@@ -8,6 +8,7 @@ import { parseEnv } from 'node:util'
 import { setTimeout as delay } from 'node:timers/promises'
 import { createClient } from '@supabase/supabase-js'
 import { Client } from '@colyseus/sdk'
+import { ROBOT_HEAD_Y } from '../../shared/robot.js'
 
 loadEnvFile(new URL('../.env',import.meta.url))
 const publicEnv=parseEnv(await readFile(new URL('../../client/.env.local',import.meta.url),'utf8'))
@@ -72,7 +73,7 @@ try {
   const winRound=async () => {
     for (let i=0;i<4;i++) {
       const a=host.state.players.get(host.sessionId),b=host.state.players.get(guest.sessionId)
-      host.send('combat',{ action:'fire',epoch:host.state.arenaEpoch,round:host.state.roundId,sequence:sequence++,yaw:Math.atan2(a.x-b.x,a.z-b.z),pitch:Math.atan2(b.y+0.48-a.y-0.65,Math.hypot(a.x-b.x,a.z-b.z)) })
+      host.send('combat',{ action:'fire',epoch:host.state.arenaEpoch,round:host.state.roundId,sequence:sequence++,yaw:Math.atan2(a.x-b.x,a.z-b.z),pitch:Math.atan2(b.y+ROBOT_HEAD_Y-a.y-0.65,Math.hypot(a.x-b.x,a.z-b.z)) })
       await delay(180)
     }
   }

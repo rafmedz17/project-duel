@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { state, position, lookAt, aimAtTarget, moveUntil } from './helpers.js'
+import { TARGETS } from '../src/game/config.js'
 
 async function start(page) {
   await page.goto('/')
@@ -34,7 +35,7 @@ test('shotgun has finite spread/range, close-range pellet damage, semi-auto fire
   expect((await state(page)).magazines.shotgun).toBe(5)
   await lookAt(page,0,0)
   await moveUntil(page,'KeyW',2,-12.8,-1)
-  await moveUntil(page,'KeyA',0,-3.9,-1)
+  await moveUntil(page,'KeyA',0,TARGETS[1][0]+0.1,-1)
   await moveUntil(page,'KeyW',2,-14,-1)
   await aimAtTarget(page)
   await page.screenshot({ path:'shotgun-preview.png' })

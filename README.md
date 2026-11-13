@@ -18,7 +18,7 @@ Open the Vite address (normally http://localhost:5173). The server is only neede
 
 Choose **Enter Training**, then **Resume / Enter Arena**. WASD moves, the mouse aims, Shift sprints, Space jumps, and left click attacks. Select pistol/blade/rifle/shotgun with **1–4**, cycle with **Q**, and reload with **R**. Hold left click for the rifle. Escape releases the mouse and pauses training. Focus loss also pauses it.
 
-The practice drone and Sparring entry have been removed. Four stationary robots use the same model and body proportions as multiplayer players. They stand on raised platforms so torso shots remain visible above low cover. Each has 100 HP, awards 100 points when defeated, and resets after three seconds. Approach beyond cover to practice foot shots.
+The practice drone and Sparring entry have been removed. Four stationary robots use the same 1.7-meter model and body proportions as multiplayer players, with the camera aligned inside the head. Practice robots stand directly on the floor in clear firing lanes; no raised platforms or jumping are needed for head, body, limb or foot shots. Each has 100 HP, awards 100 points when defeated, and resets after three seconds.
 
 | Hit region | Damage multiplier | Pistol example |
 | --- | --- | --- |
@@ -63,7 +63,7 @@ npm.cmd run lint:server
 npm.cmd run test:server
 ```
 
-There are 38 local combat/audio/geometry/physics tests and 59 backend cases, including actual PostgreSQL RLS, result transactions, delayed-network prediction and production HTTP/WebSocket hosting. The 34 browser scenarios cover gameplay, audio, maps, account fixtures, refresh recovery and paused rendering. They use actual mouse capture and inputs for regional hits, reloads, online combat, complete matches, collision and connection lifecycle. See the account guide for local/mock/live-cloud test boundaries. Test-only fixtures never supply gameplay hit results.
+There are 39 local combat/audio/geometry/physics tests and 59 backend cases, including actual PostgreSQL RLS, result transactions, delayed-network prediction and production HTTP/WebSocket hosting. The 34 browser scenarios cover gameplay, audio, maps, account fixtures, refresh recovery and paused rendering. They use actual mouse capture and inputs for regional hits, reloads, online combat, complete matches, collision and connection lifecycle. Geometry checks also verify player/capsule height and clear shots to every practice hit region from the spawn floor. See the account guide for local/mock/live-cloud test boundaries. Test-only fixtures never supply gameplay hit results.
 
 Browser tests start both services if needed. Install Chromium with `npx.cmd playwright install chromium`, or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to an installed browser. Restart an older running backend after updating code.
 

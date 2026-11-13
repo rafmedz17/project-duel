@@ -1,6 +1,6 @@
 ﻿# PROJECT DUEL design
 
-The training facility is a symmetric 40 × 40 arena with dark metallic cover, cyan navigation strips, violet accents and four raised robot targets at the north end. Shared solid geometry supplies both the client scene and authoritative server physics. Training has amber hazard pads; multiplayer replaces targets/hazards with a second player and opposite spawns.
+The training facility is a symmetric 40 × 40 arena with dark metallic cover, cyan navigation strips, violet accents and four floor-standing robot targets at the north end. The robots share the multiplayer model, match the 1.7-meter player capsule and occupy clear firing lanes without raised platforms. Shared solid geometry supplies both the client scene and authoritative server physics. Training has amber hazard pads; multiplayer replaces targets/hazards with a second player and opposite spawns.
 
 The practice drone and Sparring entry are removed. Stationary training robots and multiplayer opponents use the same procedural model and body proportions, defined as shared boxes. Head hits deal 2× base damage, torso 1×, arms/legs 0.75× and feet 0.5×. Rendered parts carry region labels for offline raycasts; the server intersects matching rotated boxes and independently validates online hits. Cover blocks each ray. EMP is flat area damage without regional scaling. Training robots have 100 HP, award 100 points once, fold down when defeated, and reset after three seconds. Platforms keep torso/head practice visible above low cover; foot practice requires an unobstructed lane.
 

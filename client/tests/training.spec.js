@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { state, diagnostics, position, moveUntil } from './helpers.js'
+import { state, diagnostics, position, moveUntil, aimAtTarget } from './helpers.js'
 async function pause(page) {
   // Browser automation cannot synthesize the browser-owned Escape shortcut.
   await page.evaluate(() => document.exitPointerLock())
@@ -53,9 +53,7 @@ test('menus, persistent settings, movement, collisions, combat, pause and reset'
   await page.waitForTimeout(200)
   expect((await position(page))[2]).toBeCloseTo(15,0)
   // Real mouse look aims at target 02 from the spawn. No hit result is injected.
-  const p = await position(page)
-  const yaw = Math.atan2(4,31), pitch = Math.atan2(1.72-(p[1]+0.65),Math.hypot(4,31))
-  await page.evaluate(({ yaw,pitch }) => document.dispatchEvent(new MouseEvent('mousemove',{ movementX:-yaw/0.002, movementY:-pitch/0.002 })),{ yaw,pitch })
+  await aimAtTarget(page)
   await page.screenshot({ path:'training-preview.png' })
   for (let i=0;i<5;i++) { await page.mouse.down(); await page.mouse.up(); await page.waitForTimeout(280) }
   let s = await state(page)

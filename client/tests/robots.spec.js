@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { state, position, lookAt, moveUntil, observeHitFeedback, observedFeedback } from './helpers.js'
 import { PLAYER, TARGETS } from '../src/game/config.js'
+import { ROBOT_HEAD_Y } from '../../shared/robot.js'
 
 async function start(page) {
   await page.goto('/')
@@ -13,7 +14,7 @@ async function start(page) {
 }
 async function aim(page,region) {
   const p = await position(page), [x,y,z] = TARGETS[1]
-  const offsets = { head:[0,0.48],body:[0,-0.03],foot:[-0.13,-0.79] }
+  const offsets = { head:[0,ROBOT_HEAD_Y],body:[0,0.075],foot:[-0.13,-0.79] }
   const [ox,oy] = offsets[region], dx = p[0]-(x+ox), dz = p[2]-z
   await lookAt(page,Math.atan2(dx,dz),Math.atan2(y+oy-p[1]-PLAYER.eye,Math.hypot(dx,dz)))
 }
@@ -24,8 +25,9 @@ test('practice uses robot hit zones, distinguishes headshots and feet, and reset
   await start(page)
   await observeHitFeedback(page)
   expect((await state(page)).opponent.enabled).toBe(false)
-  // Approach through the center lane, past low cover, for an unobstructed foot shot.
-  await moveUntil(page,'KeyW',2,-8,-1)
+  // Every hit region is reachable from the spawn floor, without a raised pad.
+  const floor = (await position(page))[1]
+  expect(floor).toBeLessThan(0.92)
   await aim(page,'head'); await fire(page)
   await expect.poll(async () => (await state(page)).targets[1].hp).toBe(60)
   expect(await observedFeedback(page)).toMatchObject({ damage:40,headshot:true })
@@ -48,5 +50,8 @@ test('practice uses robot hit zones, distinguishes headshots and feet, and reset
   await aim(page,'body'); await fire(page)
   await expect.poll(async () => (await state(page)).targets[1].hp).toBe(80)
   expect((await state(page)).opponent.enabled).toBe(false)
+  await lookAt(page,0,0)
+  await moveUntil(page,'KeyW',2,-13,-1)
+  expect((await position(page))[1]).toBeCloseTo(floor,1)
   expect(errors).toEqual([])
 })
