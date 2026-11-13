@@ -20,6 +20,8 @@ The crosshair editor offers cross, dot and circle shapes; color, size, center ga
 
 Classic damage shows separate recent confirmed hit amounts. Stacked damage adds hits within an 0.8-second chain window; a gap starts a new total. Turning numbers off preserves hit markers, headshot/kill feedback and audio. Opacity applies to numbers. Damage totals are cosmetic and do not change server validation or weapon statistics.
 
+Damage feedback tracks the last snapshot clock separately from the last hit timestamp. A server hit can be slightly ahead of the displayed clock due to floating-point timing or network encoding; this must not repeatedly reset the feed during rendering. Repeated renders of one snapshot keep the same feed, including shield-only hits, while session changes and actual clock rewinds still clear it.
+
 The enemy aura adds a subtle emissive color and armor outline across the whole body. It respects depth and walls. Scanner and spectral-smoke reveals retain their existing ability rules. Black flashbang uses the same timing and opacity as white, with a black background.
 
 Audio is generated locally using one lazily unlocked Web Audio context. Master volume affects both buses; SFX and background music mix independently. Music is a quiet evolving sci-fi pad limited to the landing page and its menu panels. Training, training pause/settings and multiplayer have no background music. Muting or setting a bus to zero silences that bus. Focus loss stops audio. Returning does not replay missed combat cues.

@@ -80,6 +80,32 @@ test('damage feeds accept confirmed hits once, stack only within the window and 
   assert.equal(third.total,15);assert.equal(third.entries.length,1)
   assert.equal(advanceDamageFeed(third,{ generation:2,time:0,hit:-10,hitId:0 }).entries.length,0)
 })
+
+test('damage feedback settles when a multiplayer hit timestamp is ahead of the snapshot clock',()=> {
+  for(const offset of [Number.EPSILON*10,1e-12,1/60]) {
+    const hit={ generation:4,time:10,hit:10+offset,hitId:7,hitDamage:24 }
+    const feed=advanceDamageFeed(emptyDamageFeed(),hit)
+    assert.equal(feed.total,24)
+    // CombatFeedback requests another render when the feed object changes.
+    // The same snapshot must settle instead of repeatedly resetting its feed.
+    for(let render=0;render<30;render++) assert.equal(advanceDamageFeed(feed,hit),feed)
+    const next=advanceDamageFeed(feed,{ ...hit,time:10.2,hit:10.2+offset,hitId:8,hitDamage:48 })
+    assert.equal(next.total,72)
+    assert.equal(advanceDamageFeed(next,{ ...hit,time:10.2,hit:10.2+offset,hitId:8,hitDamage:48 }),next)
+  }
+})
+
+test('shield feedback also settles with an ahead-of-clock hit and still resets on a clock rewind',()=> {
+  const hit={ generation:4,time:10,hit:10+1e-12,hitId:9,hitDamage:0,hitShieldDamage:15 }
+  const feed=advanceDamageFeed(emptyDamageFeed(),hit)
+  assert.equal(feed.total,15)
+  assert.equal(advanceDamageFeed(feed,hit),feed)
+  const restarted={ ...hit,time:0,hit:-10,hitId:0 }
+  const reset=advanceDamageFeed(feed,restarted)
+  assert.equal(reset.entries.length,0)
+  assert.equal(reset.total,0)
+  assert.equal(advanceDamageFeed(reset,restarted),reset)
+})
 test('custom FOV restores after ADS and caps the dash boost without changing precision optics',()=> {
   const s={ weapon:'rifle',hp:100,lastSwitch:-10 }
   assert.equal(aimFov(s,1,false,false,100),100);assert.equal(aimFov(s,1,false,true,110),117)
