@@ -1,6 +1,7 @@
 import RAPIER from '@dimforge/rapier3d-compat'
 import { getMap } from '../../../shared/maps.js'
 import { ONLINE } from '../../../shared/arena.js'
+import { movementMultiplier } from '../../../shared/weapons.js'
 import { ABILITIES } from '../../../shared/abilities.js'
 import { createMovementWorld, createCharacter, stepCharacter } from '../../../shared/movement.js'
 
@@ -70,6 +71,12 @@ export class ArenaSimulation {
     if (ability) ability.activeUntil = 0
   }
 
+  knockback(id,direction,distance) {
+    const entry=this.players.get(id)
+    if (!entry || entry.player.hp<=0) return
+    entry.knockX=direction[0]*distance*12; entry.knockZ=direction[2]*distance*12
+  }
+
   stopAll() { for (const id of this.players.keys()) this.stop(id) }
 
   setAlive(id,alive) {
@@ -87,6 +94,7 @@ export class ArenaSimulation {
     this.setAlive(id,true)
     entry.body.setTranslation({ x,y,z },true)
     entry.body.setNextKinematicTranslation({ x,y,z })
+    entry.knockX=0; entry.knockZ=0
     entry.grounded = false
     Object.assign(entry.player,{ x,y,z,yaw:spawn.yaw,pitch:0,grounded:false,vx:0,vy:0,vz:0,dashRemaining:0 })
   }
@@ -98,6 +106,7 @@ export class ArenaSimulation {
       if (player.hp===0) continue
       let input = entry.input
       if (input && now-input.receivedAt > ONLINE.inputTimeoutMs) { this.stop(id); input = null }
+      entry.movement=movementMultiplier(player.weapon)
       const active = Boolean(input?.active && player.connected)
       const yaw = input?.yaw ?? player.yaw
       if (player.rooted) { entry.vx = 0; entry.vz = 0; entry.dash = null; entry.jumpPending = false }
@@ -119,10 +128,10 @@ export class ArenaSimulation {
       }
     }
     this.world.step()
-    for (const { player,body,vx,vy,vz,dash } of this.players.values()) {
+    for (const { player,body,vx,vy,vz,dash,knockX,knockZ } of this.players.values()) {
       const p = body.translation()
       player.x = p.x; player.y = p.y; player.z = p.z
-      Object.assign(player,{ vx,vy,vz,dashRemaining:dash?.remaining || 0,dashX:dash?.direction[0] || 0,dashZ:dash?.direction[1] || 0 })
+      Object.assign(player,{ knockX:knockX || 0,knockZ:knockZ || 0,vx,vy,vz,dashRemaining:dash?.remaining || 0,dashX:dash?.direction[0] || 0,dashZ:dash?.direction[1] || 0 })
     }
   }
 

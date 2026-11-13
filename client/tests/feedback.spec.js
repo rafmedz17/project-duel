@@ -35,7 +35,7 @@ const weaponPose = (page, waitForCell = false) => page.evaluate(async waitForCel
       sample()
     })
   }
-  return { rotation:weapon.quaternion.toArray(),cellY:cell.position.y }
+  return { rotation:weapon.quaternion.clone().premultiply(_roots.get(document.querySelector('canvas')).store.getState().camera.quaternion.clone().invert()).toArray().map(n=>Math.round(n*1e6)/1e6 || 0),cellY:cell.position.y }
 },waitForCell)
 
 test('every firearm animates its reload, shows progress, freezes on pause and returns to its ready pose', async ({ page }) => {
@@ -66,7 +66,7 @@ test('every firearm animates its reload, shows progress, freezes on pause and re
     }
     await expect(page.getByRole('progressbar',{ name:'Reload progress' })).toHaveCount(0)
     const loaded = await state(page)
-    expect(loaded.magazines[id]).toBe(id === 'pistol' ? 12 : id === 'rifle' ? 30 : 6)
+    expect(loaded.magazines[id]).toBe(id === 'pistol' ? 15 : id === 'rifle' ? 30 : 6)
     await expect.poll(async () => Math.abs((await weaponPose(page)).cellY)).toBeLessThan(0.000001)
     expect((await weaponPose(page)).rotation).toEqual(ready.rotation)
   }
@@ -98,20 +98,20 @@ test('shotgun uses only a dotted ring; hit feedback shows damage, distinct elimi
   await attack(page)
   const marker = page.getByTestId('hit-feedback')
   await expect.poll(() => page.evaluate(() => window.__feedbackEvents.length)).toBe(1)
-  expect(await page.evaluate(() => window.__feedbackEvents[0])).toMatchObject({ damage:'20',defeated:'false',strokes:4 })
+  expect(await page.evaluate(() => window.__feedbackEvents[0])).toMatchObject({ damage:'28',defeated:'false',strokes:4 })
   const firstHit = (await state(page)).hitId
-  for (let i=0;i<4;i++) {
+  for (let i=0;i<3;i++) {
     await expect.poll(async () => { const s = await state(page); return s.time >= s.attackReadyAt },{ intervals:[20] }).toBe(true)
-    await attack(page)
+    await aimAtTarget(page); await attack(page)
   }
   await page.screenshot({ path:'hitmarker-preview.png' })
-  await expect.poll(() => page.evaluate(() => window.__feedbackEvents.length)).toBe(5)
-  expect(await page.evaluate(() => window.__feedbackEvents.at(-1))).toMatchObject({ damage:'20',defeated:'true',text:'20ELIMINATED',strokes:4 })
-  expect((await state(page)).hitId).toBe(firstHit+4)
+  await expect.poll(() => page.evaluate(() => window.__feedbackEvents.length)).toBe(4)
+  expect(await page.evaluate(() => window.__feedbackEvents.at(-1))).toMatchObject({ damage:'16',defeated:'true',text:'16ELIMINATED',strokes:4 })
+  expect((await state(page)).hitId).toBe(firstHit+3)
   await page.waitForTimeout(650)
   await attack(page) // The folded target cannot generate another hit or defeat.
   await expect(marker).toHaveCount(0)
-  expect((await state(page)).hitId).toBe(firstHit+4)
+  expect((await state(page)).hitId).toBe(firstHit+3)
   expect((await state(page)).score).toBe(100)
   expect(errors).toEqual([])
 })

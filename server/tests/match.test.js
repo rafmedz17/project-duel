@@ -23,7 +23,7 @@ function setup(t) {
     return send(id,'fire',{ yaw:Math.atan2(a.x-b.x,a.z-b.z),pitch:Math.atan2(b.y-0.03-a.y-0.65,Math.hypot(a.x-b.x,a.z-b.z)) })
   }
   const win = id => {
-    for (let i=0;i<5;i++) { assert.equal(shoot(id),true); if (i<4) advance(0.24) }
+    for (let i=0;i<4;i++) { assert.equal(shoot(id),true); if (i<3) advance(0.24) }
   }
   const nextRound = () => advance(MATCH.resultSeconds+MATCH.countdownSeconds+0.02)
   advance(0.2)
@@ -44,7 +44,7 @@ test('validated kills end a round once, lock actions and reset position/loadout/
   assert.equal(b.hp,0)
   advance(0.03)
   assert.equal(state.matchPhase,'countdown'); assert.equal(state.roundNumber,2)
-  assert.equal(b.hp,100); assert.equal(a.pistolAmmo,12); assert.equal(a.shieldCharge,0)
+  assert.equal(b.hp,100); assert.equal(a.pistolAmmo,15); assert.equal(a.shieldCharge,0)
   assert.equal(a.abilities.get('scanner').readyAt,0)
   assert.equal(a.abilities.get('scanner').uses,0)
   assert.ok(Math.abs(a.x)<0.001 && a.z===15 && b.z===-15)
@@ -98,7 +98,7 @@ test('stale round, forged score/winner, replayed and malformed messages cannot a
   assert.equal(match.receiveMove('a',{ round:1,sequence:500,x:1,z:0,yaw:0,pitch:0,sprint:true,jump:false,active:true }),false)
   for (const patch of [{ winnerId:'a' },{ roundWins:2 },{ hp:0 },{ round:'2' },{ round:-1 },{ round:Infinity }]) assert.equal(send('a','fire',{ yaw:0,pitch:0,...patch }),false)
   assert.equal(state.winnerId,''); assert.equal(state.matchPhase,'live')
-  assert.equal(a.roundWins,1); assert.equal(b.hp,100); assert.equal(a.pistolAmmo,12)
+  assert.equal(a.roundWins,1); assert.equal(b.hp,100); assert.equal(a.pistolAmmo,15)
   assert.equal(match.receiveCombat('a',{ ...packet,round:state.roundId }),true)
   assert.equal(match.receiveCombat('a',{ ...packet,round:state.roundId }),false)
 })

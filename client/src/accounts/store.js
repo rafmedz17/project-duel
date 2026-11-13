@@ -28,11 +28,11 @@ async function loadUser(user) {
       profile = check(await db.from('profiles').select('callsign').eq('user_id',user.id).single())
     }
     const [equipment,stats] = await Promise.all([
-      db.from('loadouts').select('character_id,primary_weapon,unique_skill,starting_weapon,weapons,abilities').eq('user_id',user.id).maybeSingle(),
+      db.from('loadouts').select('character_id,primary_weapon,secondary_weapon,melee_weapon,unique_skill,starting_weapon,weapons,abilities').eq('user_id',user.id).maybeSingle(),
       db.from('profile_stats').select('games,wins,losses,kills,deaths,ranked_games,rating').eq('user_id',user.id).maybeSingle(),
     ])
     const row = check(equipment)
-    const loadout = row ? migrateLoadout({ ...(row.character_id ? { character:row.character_id,primary:row.primary_weapon,unique:row.unique_skill } : {}),startingWeapon:row.starting_weapon,weapons:row.weapons,abilities:row.abilities }) : DEFAULT_LOADOUT
+    const loadout = row ? migrateLoadout({ ...(row.character_id ? { character:row.character_id,primary:row.primary_weapon,secondary:row.secondary_weapon,melee:row.melee_weapon,unique:row.unique_skill } : {}),startingWeapon:row.starting_weapon,weapons:row.weapons,abilities:row.abilities }) : DEFAULT_LOADOUT
     if (!loadout) throw new Error('Your saved loadout is invalid. Save a new loadout to repair it.')
     if (version===generation) update({ profile,loadout,stats:check(stats),loading:false })
   } catch (error) { if (version===generation) update({ loading:false,error:error.message || 'Could not load your profile.' }) }
@@ -89,7 +89,7 @@ export const accounts = {
     }
     return run(async db => {
       const userId = state.user.id
-      check(await db.from('loadouts').upsert({ user_id:userId,character_id:loadout.character,primary_weapon:loadout.primary,unique_skill:loadout.unique,starting_weapon:loadout.startingWeapon,weapons:loadout.weapons,abilities:loadout.abilities },{ onConflict:'user_id' }))
+      check(await db.from('loadouts').upsert({ user_id:userId,character_id:loadout.character,primary_weapon:loadout.primary,secondary_weapon:loadout.secondary,melee_weapon:loadout.melee,unique_skill:loadout.unique,starting_weapon:loadout.startingWeapon,weapons:loadout.weapons,abilities:loadout.abilities },{ onConflict:'user_id' }))
       if (state.user?.id===userId) update({ loadout,notice:'Loadout saved to your account.' })
     })
   },

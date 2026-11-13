@@ -91,6 +91,7 @@ export class DuelLobbyRoom extends Room {
             this.combat = new ArenaCombat(this.state.players,this.simulation,this.state.arenaEpoch)
             this.state.matchPhase = 'freeplay'
           }
+          this.combat.onShot=event => this.broadcast('shot-trail',event)
           this.state.tick = 0
           this.refreshPhase()
           this.setFixedTimestep(() => {
@@ -149,6 +150,8 @@ export class DuelLobbyRoom extends Room {
     player.name = client.auth.name
     player.authenticated = Boolean(client.auth.userId)
     player.startingWeapon = client.auth.loadout.startingWeapon
+    player.secondaryWeapon=client.auth.loadout.secondary
+    player.meleeWeapon=client.auth.loadout.melee
     player.characterId = client.auth.loadout.character
     player.uniqueSkill = client.auth.loadout.unique
     player.allowedWeapons = [...client.auth.loadout.weapons]

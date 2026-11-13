@@ -25,7 +25,7 @@ function setup(t) {
 
 test('authoritative robot hits distinguish head, torso, arms and feet with actual removed health',t => {
   const { a,b,fire,advance } = setup(t)
-  for (const [height,x,damage,headshot] of [[b.y+ROBOT_HEAD_Y,0,40,true],[0.84,0,20,false],[0.77,0.3,15,false],[0.08,0.13,10,false]]) {
+  for (const [height,x,damage,headshot] of [[b.y+ROBOT_HEAD_Y,0,56,true],[0.84,0,28,false],[0.77,0.3,21,false],[0.08,0.13,14,false]]) {
     b.hp = 100
     assert.equal(fire(height,x),true)
     assert.equal(b.hp,100-damage)
@@ -33,7 +33,7 @@ test('authoritative robot hits distinguish head, torso, arms and feet with actua
     assert.equal(a.hitHeadshot,headshot)
     advance(0.24)
   }
-  assert.equal(a.pistolAmmo,8)
+  assert.equal(a.pistolAmmo,11)
   assert.equal(a.hitId,4)
 })
 
@@ -45,7 +45,7 @@ test('forged hit claims, origins, damage, malformed aims and replayed or old-are
   assert.equal(validateCombat([]),null)
   assert.equal(combat.receive('a',packet),true)
   assert.equal(combat.receive('a',packet),false)
-  assert.equal(a.pistolAmmo,11)
+  assert.equal(a.pistolAmmo,14)
   assert.equal(b.hp,100)
   assert.equal(combat.receive('unknown',{ ...packet,sequence:2 }),false)
 })
@@ -66,12 +66,12 @@ test('cover, range, gaps between legs and missing rays cannot damage a player',t
 test('server cooldown and equip recovery reject spam without spending ammunition',t => {
   const { a,b,fire,send,advance } = setup(t)
   fire(); for (let i=0;i<20;i++) assert.equal(fire(),false)
-  assert.equal(a.pistolAmmo,11); assert.equal(b.hp,80)
+  assert.equal(a.pistolAmmo,14); assert.equal(b.hp,72)
   assert.equal(send('switch',{ weapon:'rifle' }),true)
   assert.equal(fire(),false)
   assert.equal(send('switch',{ weapon:'shotgun' }),false)
   advance(0.26); assert.equal(fire(),true)
-  assert.equal(a.rifleAmmo,29); assert.equal(b.hp,66)
+  assert.equal(a.rifleAmmo,29); assert.equal(b.hp,48)
   assert.equal(fire(),false)
   advance(0.13); assert.equal(fire(),true)
 })
@@ -91,9 +91,9 @@ test('all firearm magazines auto reload on empty; manual reload and cancelled re
   advance(1); send('switch',{ weapon:'pistol' }); advance(0.3); fire(5,0)
   assert.equal(send('reload'),true); advance(0.5)
   send('switch',{ weapon:'blade' }); advance(3)
-  assert.equal(a.pistolAmmo,11); assert.equal(a.rifleAmmo,30)
+  assert.equal(a.pistolAmmo,14); assert.equal(a.rifleAmmo,30)
   send('switch',{ weapon:'pistol' }); advance(0.3); send('reload'); advance(1.51)
-  assert.equal(a.pistolAmmo,12)
+  assert.equal(a.pistolAmmo,15)
 })
 
 test('blade and shotgun apply regional damage, kill once, disable dead bodies and respawn with a fresh loadout',t => {
@@ -108,13 +108,13 @@ test('blade and shotgun apply regional damage, kill once, disable dead bodies an
   advance(0.7); fire(b.y+ROBOT_HEAD_Y)
   assert.equal(a.kills,1)
   advance(2.4)
-  assert.equal(b.hp,100); assert.equal(b.weapon,'pistol'); assert.equal(b.pistolAmmo,12)
+  assert.equal(b.hp,100); assert.equal(b.weapon,'pistol'); assert.equal(b.pistolAmmo,15)
   assert.equal(b.deaths,1); assert.equal(a.kills,1)
   assert.equal(b.z,-15); assert.equal(simulation.players.get('b').collider.isEnabled(),true)
   b.z = 5; b.y = 0.87
   send('switch',{ weapon:'shotgun' }); advance(0.3)
   fire()
   assert.ok(b.hp<100); assert.equal(a.shotgunAmmo,5)
-  assert.equal(pelletDamage(WEAPONS.shotgun,24,'head'),10)
+  assert.equal(pelletDamage(WEAPONS.shotgun,24,'head'),2)
   assert.equal(pelletDamage(WEAPONS.pistol,4,'invalid'),0)
 })

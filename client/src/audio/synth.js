@@ -1,3 +1,4 @@
+import { WEAPONS } from '../../../shared/weapons.js'
 import { audioSettings } from './settings.js'
 
 const tone=(frequency,end,duration,gain=0.1,delay=0,type='sine') => ({ frequency,end,duration,gain,delay,type })
@@ -32,6 +33,17 @@ const recipes = {
   'round-win':melody([660,880]),'round-loss':melody([330,220]),draw:melody([440,440]),
   victory:melody([523,659,784,1046]),defeat:melody([392,330,261,196]),
   preview:melody([523,659,784]),
+}
+
+for (const [id,weapon] of Object.entries(WEAPONS)) {
+  if (recipes[id]) continue
+  const base=220+Number(weapon.number)*37
+  recipes[id]=weapon.fireMode==='melee' ? [tone(180,1200,0.2,0.09,0,'triangle'),noise(weapon.model==='breaker' ? 150 : 2400,0.18,0.12,weapon.windup || 0)] : [tone(base,weapon.category==='SNIPER' ? 35 : 100,weapon.category==='SNIPER' ? 0.32 : 0.1,0.075,0,'triangle'),noise(weapon.pellets ? 900 : 2300,0.09,0.07)]
+}
+recipes['spin-up']=[tone(60,480,0.6,0.07,0,'sawtooth')]
+for(let tier=2;tier<=5;tier++) {
+  const root=330+tier*70,notes=[root,root*1.25,root*1.5,root*2].slice(0,tier===2 ? 3 : 4)
+  recipes[`kill-combo-${tier}`]=[tone(95,38,0.25,0.12,0,'triangle'),...notes.map((frequency,i)=>tone(frequency,frequency*1.015,0.18,0.085,i*0.075,'triangle')),tone(root*2,root*2,0.28,0.045,0.24)]
 }
 
 // One lazy AudioContext, bounded voices and one reused noise buffer. Nothing is

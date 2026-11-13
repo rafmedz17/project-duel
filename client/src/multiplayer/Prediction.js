@@ -35,7 +35,7 @@ export class Prediction {
     const entry = this.entry
     entry.body.setTranslation({ x:pose.x,y:pose.y,z:pose.z },true)
     entry.body.setNextKinematicTranslation({ x:pose.x,y:pose.y,z:pose.z })
-    Object.assign(entry,{ vx:pose.vx || 0,vy:pose.vy || 0,vz:pose.vz || 0,grounded:pose.grounded,dash:pose.dashRemaining>0 ? { remaining:pose.dashRemaining,direction:[pose.dashX,pose.dashZ] } : null })
+    Object.assign(entry,{ knockX:pose.knockX || 0,knockZ:pose.knockZ || 0,vx:pose.vx || 0,vy:pose.vy || 0,vz:pose.vz || 0,grounded:pose.grounded,dash:pose.dashRemaining>0 ? { remaining:pose.dashRemaining,direction:[pose.dashX,pose.dashZ] } : null })
     this.world.propagateModifiedBodyPositionsToColliders()
   }
   reconcile(pose,other) {

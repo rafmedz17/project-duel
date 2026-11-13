@@ -29,7 +29,7 @@ test('shotgun has finite spread/range, close-range pellet damage, semi-auto fire
   const errors = errorsFor(page)
   await start(page,'shotgun')
   await page.keyboard.press('Digit1')
-  await expect(page.getByText('1 / PLASMA SHOTGUN',{ exact:true })).toBeVisible()
+  await expect(page.getByText('1 / BREACH-12',{ exact:true })).toBeVisible()
   await page.waitForTimeout(300)
   await aimAtTarget(page); await attack(page)
   expect((await state(page)).targets[1].hp).toBe(100) // outside the 24-unit cone
@@ -47,7 +47,7 @@ test('shotgun has finite spread/range, close-range pellet damage, semi-auto fire
   expect((await state(page)).magazines.shotgun).toBe(4)
   await page.keyboard.press('KeyR')
   await expect.poll(async () => (await state(page)).magazines.shotgun).toBe(6)
-  expect((await state(page)).magazines.pistol).toBe(12)
+  expect((await state(page)).magazines.pistol).toBe(15)
   expect((await state(page)).magazines.rifle).toBe(30)
   expect(errors).toEqual([])
 })

@@ -9,6 +9,7 @@ export const ARENA_SOLIDS = [
     ...[-16,-8,0,8,16].flatMap(x => [box([x,3,v*0.96],[0.6,6,0.8],'#354d62'),box([v*0.96,3,x],[0.8,6,0.6],'#354d62')]),
   ]),
   ...COVER.flatMap(([x,y,z,w,h,d]) => [box([x,y,z],[w,h,d]),box([x,y+h/2+0.06,z],[w+0.1,0.12,d+0.1],'#40566b')]),
+  ...[-12,12].map(x=>box([x,1.1,0],[3,2.2,0.18],'#49778b')),
   ...[-12,12].map(x => box([x,5.5,0],[0.5,0.5,38],'#354d62')),
 ]
 export const ONLINE = Object.freeze({

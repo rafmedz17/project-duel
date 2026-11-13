@@ -27,7 +27,7 @@ These are **hosted** operations. The implementation does not run them without an
 
 ## Equipment and maps
 
-Choose one of four characters, one primary and any one unique skill. Pistol, melee, Dash and Shield are always equipped, along with the character ultimate. Keys 1 / 2 / 3 select Primary / Pistol / Melee; Q cycles those three. Rifle and shotgun are playable; sniper, SMG and LMG are Coming Soon. Each round restores the selected starting weapon. Selections lock on room join; leave the room to change them. See [characters and loadouts](CHARACTERS_AND_LOADOUT.md).
+Choose one of four characters, one of 11 primaries, one of three pistols, one of three melee weapons and any one unique skill. Dash and Shield are always equipped, along with the character ultimate. Keys 1 / 2 / 3 select Primary / Pistol / Melee; Q cycles those three. Each round restores the selected starting weapon. Selections lock on room join; leave the room to change them. See [characters and loadouts](CHARACTERS_AND_LOADOUT.md) and the [weapon arsenal](WEAPONS.md).
 
 The host selects **Training Facility**, **Neon District**, or **Orbital Station**. Neon District has tall street kiosks and offset cover; Orbital Station has reactor cover and cargo lanes. The server and renderer consume the same static solids, including hitscan occlusion. Both spawn points remain clear. Map/format changes clear readiness, and map changes are blocked after launch. Training remains in the Facility.
 

@@ -25,7 +25,7 @@ export function stepCharacter(entry, input, jump = false) {
   let x = input?.active ? input.x : 0, z = input?.active ? input.z : 0
   const length = Math.max(1,Math.hypot(x,z))
   x /= length; z /= length
-  const speed = input?.sprint ? PLAYER.sprint : PLAYER.speed, yaw = input?.yaw || 0
+  const speed = (input?.sprint ? PLAYER.sprint : PLAYER.speed)*(entry.movement || 1), yaw = input?.yaw || 0
   const smooth = 1-Math.exp(-14*dt)
   entry.vx += ((x*Math.cos(yaw)+z*Math.sin(yaw))*speed-entry.vx)*smooth
   entry.vz += ((z*Math.cos(yaw)-x*Math.sin(yaw))*speed-entry.vz)*smooth
@@ -34,10 +34,11 @@ export function stepCharacter(entry, input, jump = false) {
   entry.vy -= PLAYER.gravity*dt
   const dash = entry.dash, dashTime = dash ? Math.min(dt,dash.remaining) : 0
   entry.controller.computeColliderMovement(entry.collider,{
-    x:dash ? dash.direction[0]*ABILITIES.dash.speed*dashTime : entry.vx*dt,
+    x:(dash ? dash.direction[0]*ABILITIES.dash.speed*dashTime : entry.vx*dt)+(entry.knockX || 0)*dt,
     y:entry.vy*dt,
-    z:dash ? dash.direction[1]*ABILITIES.dash.speed*dashTime : entry.vz*dt,
+    z:(dash ? dash.direction[1]*ABILITIES.dash.speed*dashTime : entry.vz*dt)+(entry.knockZ || 0)*dt,
   })
+  entry.knockX=(entry.knockX || 0)*Math.exp(-12*dt); entry.knockZ=(entry.knockZ || 0)*Math.exp(-12*dt)
   if (dash) {
     dash.remaining -= dashTime
     entry.vx = 0; entry.vz = 0

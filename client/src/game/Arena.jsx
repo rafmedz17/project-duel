@@ -11,10 +11,10 @@ import { ROBOT_PARTS } from '../../../shared/robot.js'
 import { getMap } from '../../../shared/maps.js'
 
 function Box({ position, size, color = '#263849', glow = false, solid = false }) {
-  const mesh = <mesh position={position} userData={{ blocksShot: solid }}><boxGeometry args={size} /><meshStandardMaterial color={color} roughness={0.65} metalness={0.45} emissive={glow ? color : '#000000'} emissiveIntensity={glow ? 2 : 0} /></mesh>
+  const mesh = <mesh position={position} userData={{ blocksShot: solid,coverSolid:solid ? { position,size } : undefined }}><boxGeometry args={size} /><meshStandardMaterial color={color} roughness={0.65} metalness={0.45} emissive={glow ? color : '#000000'} emissiveIntensity={glow ? 2 : 0} /></mesh>
   return solid ? <RigidBody type="fixed" colliders={false}><CuboidCollider args={size.map(n => n / 2)} position={position} />{mesh}</RigidBody> : mesh
 }
-function TargetBody({ down, height, children }) {
+function TargetBody({ down, height, position, children }) {
   const body = useRef(), angle = useRef(0), rotation = useRef(new Quaternion())
   useBeforePhysicsStep(() => {
     if (!body.current) return
@@ -22,9 +22,9 @@ function TargetBody({ down, height, children }) {
     angle.current = MathUtils.damp(angle.current, down ? -1.25 : 0, 12, 1/60)
     rotation.current.set(Math.sin(angle.current/2),0,0,Math.cos(angle.current/2))
     body.current.setNextKinematicRotation(rotation.current)
-    body.current.setNextKinematicTranslation({ x:p.x,y:MathUtils.damp(p.y,down ? 0.5 : height,12,1/60),z:p.z })
+    body.current.setNextKinematicTranslation({ x:MathUtils.damp(p.x,position[0],18,1/60),y:MathUtils.damp(p.y,down ? 0.5 : height,12,1/60),z:MathUtils.damp(p.z,position[2],18,1/60) })
   })
-  return <RigidBody ref={body} type="kinematicPosition" colliders={false} position={[0,height,0]}>{ROBOT_PARTS.map(part => <CuboidCollider key={part.id} args={part.size.map(n => n/2)} position={[-part.position[0],part.position[1],-part.position[2]]} />)}{children}</RigidBody>
+  return <RigidBody ref={body} type="kinematicPosition" colliders={false} position={position}>{ROBOT_PARTS.map(part => <CuboidCollider key={part.id} args={part.size.map(n => n/2)} position={[-part.position[0],part.position[1],-part.position[2]]} />)}{children}</RigidBody>
 }
 const ArenaLayout = memo(function ArenaLayout({ training,mapId,quality }) {
   const map = getMap(mapId)
@@ -68,8 +68,8 @@ function TrainingTargets() {
       const down = target.hp === 0
       const flash = time - target.hit < 0.13
       const disabled = time<target.disabledUntil
-      return <group key={`${generation}-${id}`} position={[x,0,z]}>
-        <TargetBody down={down} height={y}>
+      return <group key={`${generation}-${id}`} position={[0,0,0]}>
+        <TargetBody down={down} height={y} position={[x+(target.offsetX || 0),y,z+(target.offsetZ || 0)]}>
           <group rotation={[0,Math.PI,0]}><RobotModel targetId={id} characterId={CHARACTER_IDS[id%4]} down={down} flash={flash || time<target.flashUntil} color={disabled ? '#af8dff' : undefined} reveal={() => {
             const s = game.get(), now = game.now(), origin = runtime.position.map((v,i) => v+(i===1 ? 0.65 : 0)), smoke = s.abilities.smoke
             return now<s.abilities.scanner.activeUntil || (now<smoke.activeUntil && throughSmoke(origin,[x,y,z],[{ origin:smoke.origin.map((v,i)=>v+(i===1 ? 1 : 0)),radius:4 }]) && !blocked(origin,[x,y,z],getMap('facility').solids))

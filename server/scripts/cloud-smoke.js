@@ -38,11 +38,18 @@ try {
     checked(await entry.client.from('loadouts').upsert({ user_id:user.id,character_id:'vex',primary_weapon:'rifle',unique_skill:'scanner',starting_weapon:'rifle',weapons:['pistol','blade','rifle'],abilities:['dash','shield','scanner','ultimate'] }))
   }
   const [one,two]=created
+  // Exercise the expanded slots on the hosted schema, then restore the rifle
+  // used by this script's ranked match below.
+  checked(await created[0].client.from('loadouts').update({ primary_weapon:'omega',secondary_weapon:'volt',melee_weapon:'fangs',starting_weapon:'volt',weapons:['volt','fangs','omega'] }).eq('user_id',created[0].user.id))
+  const expanded=checked(await created[0].client.from('loadouts').select('primary_weapon,secondary_weapon,melee_weapon,weapons').eq('user_id',created[0].user.id).single())
+  assert.equal(expanded.primary_weapon,'omega'); assert.equal(expanded.secondary_weapon,'volt'); assert.equal(expanded.melee_weapon,'fangs')
+  assert.deepEqual(expanded.weapons,['volt','fangs','omega'])
+  checked(await created[0].client.from('loadouts').update({ primary_weapon:'rifle',secondary_weapon:'pistol',melee_weapon:'blade',starting_weapon:'rifle',weapons:['pistol','blade','rifle'] }).eq('user_id',created[0].user.id))
   const savedGear=checked(await one.client.from('loadouts').select('character_id,primary_weapon,unique_skill,weapons,abilities').eq('user_id',one.user.id).single())
   assert.equal(savedGear.character_id,'vex'); assert.equal(savedGear.unique_skill,'scanner')
   assert.deepEqual(savedGear.weapons,['pistol','blade','rifle'])
   const invalidGear=await one.client.from('loadouts').update({ primary_weapon:'sniper' }).eq('user_id',one.user.id)
-  assert.ok(invalidGear.error,'Coming Soon primaries must be rejected by the database.')
+  assert.ok(invalidGear.error,'Unknown weapon identifiers must be rejected by the database.')
   if (process.argv.includes('--browser')) {
     const { chromium,expect }=await import('../../client/node_modules/@playwright/test/index.mjs')
     browser=await chromium.launch({ executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined,args:['--enable-unsafe-swiftshader'] })

@@ -54,7 +54,7 @@ test('selected online shotgun uses a dotted ring and automatically reloads its e
     expect((await selfCombat(host)).reloadReason).toBe('auto')
     await expect(host.getByRole('progressbar',{ name:'Reload progress' })).toBeVisible()
     await expect.poll(async () => (await selfCombat(host)).magazines.shotgun,{ timeout:5000 }).toBe(6)
-    expect((await selfCombat(host)).magazines.pistol).toBe(12)
+    expect((await selfCombat(host)).magazines.pistol).toBe(15)
   } finally { await Promise.all(contexts.map(context=>context.close())) }
 })
 
@@ -201,7 +201,7 @@ test('two browsers confirm body, head and foot damage, a single kill, death feed
     await moveTo(host,'KeyW',2,0,-1)
     await host.keyboard.up('ShiftLeft')
     await observeHitFeedback(host)
-    for (const [region,hp,damage] of [['body',80,20],['head',40,40],['foot',30,10],['head',0,30]]) {
+    for (const [region,hp,damage] of [['body',72,28],['head',16,56],['foot',2,14],['head',0,2]]) {
       await aimAtPlayer(host,region); await fire(host)
       await expect.poll(async () => (await selfCombat(guest)).hp).toBe(hp)
       await expect.poll(async () => (await selfCombat(host)).hitDamage).toBe(damage)
@@ -214,7 +214,7 @@ test('two browsers confirm body, head and foot damage, a single kill, death feed
     await expect(guest.getByText('SYSTEM OFFLINE',{ exact:true })).toBeVisible()
     await host.screenshot({ path:'online-combat-preview.png' })
     await expect.poll(async () => (await selfCombat(guest)).hp,{ timeout:6000 }).toBe(100)
-    expect((await selfCombat(guest)).magazines).toEqual({ pistol:12,rifle:30,shotgun:6 })
+    expect((await selfCombat(guest)).magazines).toMatchObject({ pistol:15,rifle:30,shotgun:6 })
     expect((await selfCombat(host)).kills).toBe(1)
     await enter(guest)
     await expect(guest.getByTestId('online-health')).toContainText('100')
@@ -342,9 +342,9 @@ test('online shields absorb actual hits and VEX overdrive allows repeated dash w
     await expect(guest.getByTestId('online-shield-charge')).toContainText('50 / 50')
     await guest.evaluate(() => document.exitPointerLock())
     await enter(host); await fire(host)
-    await expect.poll(async () => (await selfCombat(guest)).shieldCharge).toBe(30)
+    await expect.poll(async () => (await selfCombat(guest)).shieldCharge).toBe(22)
     expect((await selfCombat(guest)).hp).toBe(100)
-    expect((await selfCombat(host)).hitShieldDamage).toBe(20)
+    expect((await selfCombat(host)).hitShieldDamage).toBe(28)
     await host.keyboard.press('KeyX')
     await expect(host.getByTestId('ability-ultimate')).toContainText('ACTIVE')
     await host.keyboard.press('KeyE'); await host.waitForTimeout(250); await host.keyboard.press('KeyE')
@@ -357,16 +357,16 @@ test('online shields absorb actual hits and VEX overdrive allows repeated dash w
 async function winRound(shooter,target) {
   await shooter.bringToFront()
   if (!(await onlineState(shooter)).captured) await enter(shooter)
-  await aimAtPlayer(shooter)
-  for (let i=0;i<5;i++) {
+  for (let i=0;i<4;i++) {
+    await aimAtPlayer(shooter)
     await fire(shooter)
-    await expect.poll(async () => (await selfCombat(target)).hp).toBe(100-(i+1)*20)
+    await expect.poll(async () => (await selfCombat(target)).hp).toBe(Math.max(0,100-(i+1)*28))
   }
 }
 async function awaitNextRound(page,number) {
   await expect(page.getByTestId('round-countdown')).toContainText(`ROUND ${number}`,{ timeout:8000 })
   expect((await selfCombat(page)).hp).toBe(100)
-  expect((await selfCombat(page)).magazines).toEqual({ pistol:12,rifle:30,shotgun:6 })
+  expect((await selfCombat(page)).magazines).toMatchObject({ pistol:15,rifle:30,shotgun:6 })
   expect((await selfCombat(page)).abilities.scanner.readyAt).toBe(0)
   await expect.poll(async () => (await onlineState(page)).room.matchPhase,{ timeout:6000 }).toBe('live')
 }

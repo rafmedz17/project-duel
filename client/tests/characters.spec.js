@@ -11,12 +11,12 @@ async function start(page,gear) {
   await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
   await expect.poll(async () => (await state(page)).mode).toBe('playing')
 }
-test('character armory shows four distinct operatives, three Coming Soon guns and fits smaller screens',async ({ page }) => {
+test('character armory shows four distinct operatives, the full arsenal and fits smaller screens',async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button',{ name:/^CHARACTER & LOADOUT/ }).click()
   const dialog=page.getByRole('dialog',{ name:'CHARACTER & LOADOUT' })
   await expect(dialog.locator('.character-card')).toHaveCount(4)
-  for(const gun of ['SNIPER','SMG','LMG']) await expect(dialog.getByRole('button',{ name:`Equip ${gun}`,exact:true })).toBeDisabled()
+  for(const category of ['SNIPER RIFLES','SUBMACHINE GUNS','LIGHT MACHINE GUNS']) await expect(dialog.getByRole('button',{ name:category,exact:true })).toBeEnabled()
   for(const character of ['VEX','AEGIS','ION','RAZE']) {
     await dialog.getByRole('button',{ name:`Select ${character}` }).click()
     await expect(dialog.getByRole('button',{ name:`Select ${character}` })).toHaveAttribute('aria-pressed','true')
@@ -47,7 +47,7 @@ for(const character of ['vex','aegis','ion','raze']) test(`${character} has a vi
   }
   if(character==='ion') {
     await page.mouse.click(600,350)
-    expect((await state(page)).magazines.pistol).toBe(12)
+    expect((await state(page)).magazines.pistol).toBe(15)
   }
   await page.screenshot({ path:`${character}-ultimate-preview.png` })
   await expect(page.locator('.ultimate-notice')).toHaveCount(0,{ timeout:7000 })

@@ -66,8 +66,10 @@ test('training plays equipped weapon, reload, hit, ability and footstep cues; pa
     await page.waitForTimeout(850)
   }
   const p=await position(page),[x,y,z]=TARGETS[1]
-  await lookAt(page,Math.atan2(p[0]-x,p[2]-z),Math.atan2(y+ROBOT_HEAD_Y-p[1]-PLAYER.eye,Math.hypot(p[0]-x,p[2]-z)))
-  for (let i=0;i<3;i++) { await fire(page); await page.waitForTimeout(280) }
+  for (let i=0;i<3;i++) {
+    await lookAt(page,Math.atan2(p[0]-x,p[2]-z),Math.atan2(y+ROBOT_HEAD_Y-p[1]-PLAYER.eye,Math.hypot(p[0]-x,p[2]-z)))
+    await fire(page); await page.waitForTimeout(280)
+  }
   await expect.poll(async () => (await sound(page)).counts.headshot || 0).toBeGreaterThan(0)
   await expect.poll(async () => (await sound(page)).counts.elimination || 0).toBe(1)
   await lookAt(page,0,0)
@@ -142,7 +144,7 @@ test('online opponent sounds use authoritative positions; replays, focus loss an
     let sequence=0
     const combat=(action,details={}) => { const payload={ action,...details,sequence:sequence++,epoch:peer.state.arenaEpoch,round:peer.state.roundId }; peer.send('combat',payload); return payload }
     const shot=combat('fire',head)
-    await expect(page.getByTestId('online-health')).toContainText('60')
+    await expect(page.getByTestId('online-health')).toContainText('44')
     await expect.poll(async () => (await sound(page)).counts.hurt || 0).toBe(1)
     const first=await sound(page)
     expect(first.counts.pistol).toBe(1); expect(first.spatial).toBeGreaterThan(0)

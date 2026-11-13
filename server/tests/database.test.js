@@ -21,6 +21,9 @@ before(async () => {
   const migrated=(await db.query('select * from public.loadouts where user_id=$1',[other])).rows[0]
   assert.equal(migrated.primary_weapon,'shotgun'); assert.equal(migrated.unique_skill,'scanner')
   assert.deepEqual(migrated.weapons,['pistol','blade','shotgun']); assert.deepEqual(migrated.abilities,['dash','shield','scanner','ultimate'])
+  await db.exec(await readFile(new URL('../../supabase/migrations/20261113074736_full_weapon_arsenal.sql',import.meta.url),'utf8'))
+  const expanded=(await db.query('select * from public.loadouts where user_id=$1',[other])).rows[0]
+  assert.equal(expanded.secondary_weapon,'pistol');assert.equal(expanded.melee_weapon,'blade')
   await db.query('insert into public.profiles(user_id,callsign) values ($1,$2),($3,$4),($5,$6)',[one,'Nova',two,'Echo',other,'Other'])
 })
 after(async () => { await db.close() })
@@ -55,6 +58,14 @@ test('saved loadouts are private and reject invalid or duplicate equipment',asyn
   assert.equal((await as('authenticated',two,() => db.query("update public.loadouts set weapons=array['pistol'] where user_id=$1 returning *",[one]))).rows.length,0)
   await assert.rejects(as('authenticated',one,() => db.query("update public.loadouts set weapons=array['rifle','rifle'] where user_id=$1",[one])))
   await assert.rejects(as('authenticated',one,() => db.query("update public.loadouts set abilities=array['flight'] where user_id=$1",[one])))
+})
+
+test('arsenal loadouts save one primary, one pistol and one melee while keeping owner privacy and enforcing slots',async () => {
+  await as('authenticated',one,()=>db.query("update public.loadouts set primary_weapon='railbreaker',secondary_weapon='volt',melee_weapon='gravity',starting_weapon='volt',weapons=array['volt','gravity','railbreaker'] where user_id=$1",[one]))
+  const row=(await as('authenticated',one,()=>db.query('select * from public.loadouts where user_id=$1',[one]))).rows[0]
+  assert.deepEqual(row.weapons,['volt','gravity','railbreaker'])
+  assert.equal((await as('authenticated',two,()=>db.query('select * from public.loadouts where user_id=$1',[one]))).rows.length,0)
+  for(const sql of ["primary_weapon='magnus'","secondary_weapon='rifle'","melee_weapon='omega'","weapons=array['volt','gravity','railbreaker','nova']","starting_weapon='pistol'"]) await assert.rejects(as('authenticated',one,()=>db.query(`update public.loadouts set ${sql} where user_id=$1`,[one])))
 })
 test('only the service role can record or alter statistics; results are idempotent',async () => {
   const match=result()

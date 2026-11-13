@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { CapsuleCollider, RigidBody, useBeforePhysicsStep, useRapier } from '@react-three/rapier'
 import { Euler } from 'three'
+import { movementMultiplier,WEAPONS } from '../../../shared/weapons.js'
 import { ONLINE } from '../../../shared/arena.js'
 import { PLAYER, HAZARD, ABILITIES } from './config.js'
 import { game } from './store.js'
@@ -12,7 +13,7 @@ import { useAbilityInput } from './abilities/useAbilityInput.js'
 import TacticalEffects from './abilities/TacticalEffects.jsx'
 
 export default function Player() {
-  const body = useRef(), collider = useRef()
+  const body = useRef(), collider = useRef(), seenShot=useRef(0)
   const keys = useRef(new Set()), look = useRef({ yaw: 0, pitch: 0 }), motion = useRef({ x: 0, z: 0, y: 0, jump: false, dashUses:0, dashRemaining:0 })
   const { camera, gl, scene } = useThree()
   const { world } = useRapier()
@@ -74,7 +75,7 @@ export default function Player() {
     if (game.now()<game.get().rootedUntil) { x=0; z=0; m.x=0; m.z=0; m.jump=false; m.dashRemaining=0 }
     const length = Math.hypot(x,z) || 1
     x /= length; z /= length
-    const speed = pressed.has('ShiftLeft') || pressed.has('ShiftRight') ? PLAYER.sprint : PLAYER.speed
+    const speed = (pressed.has('ShiftLeft') || pressed.has('ShiftRight') ? PLAYER.sprint : PLAYER.speed)*movementMultiplier(game.get().weapon)
     const yaw = look.current.yaw, smooth = 1-Math.exp(-14*dt)
     m.x += ((x*Math.cos(yaw)+z*Math.sin(yaw))*speed-m.x)*smooth
     m.z += ((z*Math.cos(yaw)-x*Math.sin(yaw))*speed-m.z)*smooth
@@ -107,6 +108,12 @@ export default function Player() {
   useFrame((_, delta) => {
     if (!body.current) return
     const state = game.get(), p = body.current.translation()
+    if (state.shot>seenShot.current && state.mode==='playing') {
+      const weapon=WEAPONS[state.weapon],count=Math.min(3,state.shot-seenShot.current)
+      look.current.pitch=Math.min(1.48,look.current.pitch+weapon.recoil*count)
+      look.current.yaw+=Math.sin(state.shot*2.4)*weapon.recoil*0.3
+    }
+    seenShot.current=state.shot
     camera.position.set(p.x,p.y+PLAYER.eye,p.z)
     camera.quaternion.setFromEuler(new Euler(look.current.pitch,look.current.yaw,0,'YXZ'))
     runtime.yaw = look.current.yaw; runtime.pitch = look.current.pitch

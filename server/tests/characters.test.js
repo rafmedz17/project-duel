@@ -20,7 +20,7 @@ function setup(t,character='vex',unique='flashbang') {
   return { players,a:players.get('a'),b:players.get('b'),c:players.get('c'),sim,combat,send,ability,advance,detonate }
 }
 
-test('all character/unique combinations produce exactly three weapons and four abilities; prototype guns and forged gear are rejected',() => {
+test('all character/unique combinations produce exactly three weapons and four abilities; invalid category labels and forged gear are rejected',() => {
   for(const character of Object.keys(CHARACTERS)) for(const unique of ['flashbang','smoke','stun','scanner']) {
     const loadout=validateLoadout({ character,primary:'shotgun',unique })
     assert.deepEqual(loadout.weapons,['pistol','blade','shotgun'])
@@ -69,22 +69,22 @@ test('AEGIS absorbs bonus shield before general shield, spills damage and expire
 test('ION refills and cancels reloads, consumes no ammunition for five seconds and resumes normal fire afterward',t => {
   const { a,ability,send,combat }=setup(t,'ion')
   a.pistolAmmo=0; assert.equal(send('a','reload'),true)
-  ability('ultimate'); assert.equal(a.reloading,false); assert.equal(a.pistolAmmo,12)
+  ability('ultimate'); assert.equal(a.reloading,false); assert.equal(a.pistolAmmo,15)
   for(let i=0;i<12;i++) { combat.time=i*0.23; assert.equal(send('a','fire',{ yaw:Math.PI/2,pitch:0 }),true) }
-  assert.equal(a.pistolAmmo,12); assert.equal(send('a','reload'),false)
+  assert.equal(a.pistolAmmo,15); assert.equal(send('a','reload'),false)
   combat.time=5; assert.equal(send('a','fire',{ yaw:Math.PI/2,pitch:0 }),true)
-  assert.equal(a.pistolAmmo,11)
+  assert.equal(a.pistolAmmo,14)
 })
 test('RAZE boosts server damage and attack speed by 50 percent and restores both after expiry',t => {
   const { a,b,ability,send,combat }=setup(t,'raze')
   ability('ultimate')
   const pitch=Math.atan2(b.y+0.075-a.y-0.65,4)
   send('a','fire',{ yaw:0,pitch })
-  assert.equal(b.hp,70); assert.ok(Math.abs(a.attackReadyAt-0.22/1.5)<1e-9)
+  assert.equal(b.hp,58); assert.ok(Math.abs(a.attackReadyAt-0.2/1.5)<1e-9)
   combat.time=0.1; assert.equal(send('a','fire',{ yaw:0,pitch }),false)
-  combat.time=0.15; assert.equal(send('a','fire',{ yaw:0,pitch }),true); assert.equal(b.hp,40)
-  combat.time=5; send('a','fire',{ yaw:0,pitch }); assert.equal(b.hp,20)
-  assert.equal(a.attackReadyAt,5.22)
+  combat.time=0.15; assert.equal(send('a','fire',{ yaw:0,pitch }),true); assert.equal(b.hp,16)
+  combat.time=5; b.hp=100; send('a','fire',{ yaw:0,pitch }); assert.equal(b.hp,72)
+  assert.equal(a.attackReadyAt,5.2)
 })
 test('flashbang blinds self and enemies, never a teammate, and cannot accept claimed targets',t => {
   const { a,b,c,ability,detonate,send }=setup(t)

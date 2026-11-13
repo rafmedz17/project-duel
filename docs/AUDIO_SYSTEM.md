@@ -7,6 +7,7 @@ Audio now works in training and multiplayer. Open **Settings** to adjust **Sound
 - Each weapon has a distinct generated energy shot or blade sweep. Automatic rifle fire follows accepted shots, rather than a looping sound.
 - Equip, reload start and reload completion have separate cues. Cancelling or switching during a reload does not play a successful refill.
 - Confirmed hits, headshots, eliminations and shield hits have different sounds. Damage, shield absorption and player death also have cues.
+- Confirmed kills within six simulation seconds escalate through Double Kill, Triple Kill, Overdrive and Rampage. Each tier has a distinct rising energy sting, replacing the ordinary elimination sound. Only the shooter hears their combo confirmation. These sounds follow the same mute, volume, focus and pause controls; delayed updates play only the latest tier.
 - Dash, Shield, Scanner and EMP play once per accepted activation, including casts that affect no target.
 - Grounded movement produces footsteps. Standing still, jumping, dashing and round/spawn teleports do not produce a backlog of steps.
 - Best of Three has round win/loss/draw, countdown, round start and victory/defeat cues.
@@ -30,7 +31,7 @@ The implementation uses oscillators, envelopes and one reused noise buffer. It d
 | `client/src/audio/useGameAudio.js` | Store subscriptions, listener pose, focus/visibility handling and event baselines |
 | `client/src/audio/settings.js` | Safe volume/mute defaults and normalization |
 
-`npm.cmd test` includes seven audio rule tests alongside the existing 31 local combat cases. Five browser audio scenarios verify actual nonzero Web Audio output, autoplay gating, saved preferences, all weapon/ability cues, hit feedback, footsteps, reloads, mute/pause silence and missing-API fallback. The online test uses a normal SDK peer sending validated actions to the real game server. It checks positional opponent sounds, replay rejection and focus/resume behavior; it never supplies hit results.
+`npm.cmd test` includes combat, audio and celebration rules. Browser audio scenarios verify actual nonzero Web Audio output, autoplay gating, saved preferences, weapon/ability cues, all five kill sound tiers, hit feedback, footsteps, reloads, mute/pause silence and missing-API fallback. The online tests use normal SDK peers sending validated actions to the real game server. They check positional opponent sounds, combo/death handling, replay rejection and focus/resume behavior; they never supply hit results.
 
 `audio.diagnostics()` exposes read-only counters, active voices, recent cue names, spatial source position and analyser RMS for development checks. It does not change gameplay state or inject hits. Browser tests also run the existing account, training and multiplayer scenarios for regressions.
 

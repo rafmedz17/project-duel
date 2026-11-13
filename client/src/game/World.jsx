@@ -6,6 +6,7 @@ import Player from './Player.jsx'
 import { game, useGame } from './store.js'
 import OnlinePlayers from '../multiplayer/OnlinePlayers.jsx'
 import { useLobby } from '../multiplayer/lobby.js'
+import BulletTrails from './effects/BulletTrails.jsx'
 
 class RenderBoundary extends Component {
   state = { error: null }
@@ -36,6 +37,7 @@ export default function World({ online = false, arenaEpoch = 0 }) {
         {online && <OnlinePlayers key={arenaEpoch} />}
         {!online && mode !== 'menu' && <Player key={generation} />}
       </Physics>
+      <BulletTrails online={online} />
     </Suspense>
   </Canvas></RenderBoundary>
 }

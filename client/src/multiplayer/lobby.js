@@ -1,9 +1,11 @@
 import { useSyncExternalStore } from 'react'
 import { canPlayArena } from '../../../shared/match.js'
+import { PRIMARY_IDS,freshMagazines } from '../../../shared/weapons.js'
 import { ONLINE } from '../../../shared/arena.js'
 import { clearPoses, recordPoses, latestPose } from './poses.js'
 import { accounts } from '../accounts/store.js'
 import { readRecovery, saveRecovery, clearRecovery } from './recovery.js'
+import { queueShotTrail,trailScope } from '../game/effects/shotTrails.js'
 
 const empty = { status:'idle',room:null,sessionId:'',error:'',notice:'',captured:false,captureError:'',arenaReady:false }
 let snapshot = empty
@@ -39,15 +41,16 @@ function sync(room) {
   recordPoses(state)
   const metadata = { mapId:state.mapId,ranked:state.ranked,saveStatus:state.saveStatus,resultRanked:state.resultRanked }
   const next = { format:state.format,matchPhase:state.matchPhase,roundNumber:state.roundNumber,roundId:state.roundId,roundRemaining:state.roundRemaining,phaseRemaining:state.phaseRemaining,roundWinnerId:state.roundWinnerId,winnerId:state.winnerId,matchReason:state.matchReason,roundResults:[...state.roundResults].map(r => ({ number:r.number,winnerId:r.winnerId,reason:r.reason })),results:[...state.results].map(r => ({ id:r.id,name:r.name,slot:r.slot,roundWins:r.roundWins,kills:r.kills,deaths:r.deaths })),code:state.code,hostId:state.hostId,phase:state.phase,arenaActive:state.arenaActive,arenaEpoch:state.arenaEpoch,countdown:state.countdown,note:state.note,time:state.tick/ONLINE.tickRate,
-    players:[...state.players.entries()].map(([id,player]) => ({ id,name:player.name,slot:player.slot,roundWins:player.roundWins,ready:player.ready,connected:player.connected,combat:{ abilities:Object.fromEntries([...player.abilities.entries()].map(([id,a]) => [id,{ readyAt:a.readyAt,activeUntil:a.activeUntil,startedAt:a.startedAt,uses:a.uses,result:a.result,origin:[a.originX,a.originY,a.originZ],direction:[a.directionX,a.directionZ] }])),disabledUntil:player.disabledUntil,shieldCharge:player.shieldCharge,shieldHit:player.shieldHit,hitShieldDamage:player.hitShieldDamage,hp:player.hp,weapon:player.weapon,magazines:{ pistol:player.pistolAmmo,rifle:player.rifleAmmo,shotgun:player.shotgunAmmo },reloading:player.reloading,reloadWeapon:player.reloading ? player.weapon : null,reloadStart:player.reloadStart,reloadEnd:player.reloadEnd,reloadReason:player.reloadReason,attackReadyAt:player.attackReadyAt,lastSwitch:player.lastSwitch,lastShot:player.lastShot,lastSwing:player.lastSwing,shot:player.shot,hit:player.hit,hitId:player.hitId,hitDamage:player.hitDamage,hitDefeated:player.hitDefeated,hitHeadshot:player.hitHeadshot,hurt:player.hurt,kills:player.kills,deaths:player.deaths,respawnAt:player.respawnAt } })).sort((a,b) => a.slot-b.slot),
+    players:[...state.players.entries()].map(([id,player]) => ({ id,name:player.name,slot:player.slot,roundWins:player.roundWins,ready:player.ready,connected:player.connected,combat:{ abilities:Object.fromEntries([...player.abilities.entries()].map(([id,a]) => [id,{ readyAt:a.readyAt,activeUntil:a.activeUntil,startedAt:a.startedAt,uses:a.uses,result:a.result,origin:[a.originX,a.originY,a.originZ],direction:[a.directionX,a.directionZ] }])),disabledUntil:player.disabledUntil,shieldCharge:player.shieldCharge,shieldHit:player.shieldHit,hitShieldDamage:player.hitShieldDamage,hp:player.hp,weapon:player.weapon,magazines:Object.fromEntries(Object.keys(freshMagazines()).map(id=>[id,['pistol','rifle','shotgun'].includes(id) ? player[id+'Ammo'] : player.arsenal[id+'Ammo']])),reloading:player.reloading,reloadWeapon:player.reloading ? player.weapon : null,reloadStart:player.reloadStart,reloadEnd:player.reloadEnd,reloadReason:player.reloadReason,attackReadyAt:player.attackReadyAt,lastSwitch:player.lastSwitch,lastShot:player.lastShot,lastSwing:player.lastSwing,shot:player.shot,hit:player.hit,hitId:player.hitId,hitDamage:player.hitDamage,hitDefeated:player.hitDefeated,hitHeadshot:player.hitHeadshot,hurt:player.hurt,kills:player.kills,deaths:player.deaths,respawnAt:player.respawnAt } })).sort((a,b) => a.slot-b.slot),
   }
   Object.assign(next,metadata)
   next.players.forEach(player => {
     const source = state.players.get(player.id)
     player.authenticated = source.authenticated
-    Object.assign(player.combat,{ characterId:source.characterId,ultimateShield:source.ultimateShield,flashUntil:source.flashUntil,flashStarted:source.flashStarted,rootedUntil:source.rootedUntil,rooted:source.rooted })
+    Object.assign(player.combat,{ characterId:source.characterId,spinning:source.arsenal.spinning,spinStarted:source.arsenal.spinStarted,windupStart:source.arsenal.windupStart,windupEnd:source.arsenal.windupEnd,swings:source.arsenal.swings,ultimateShield:source.ultimateShield,flashUntil:source.flashUntil,flashStarted:source.flashStarted,rootedUntil:source.rootedUntil,rooted:source.rooted })
+    Object.assign(player.combat,{ killCombo:source.arsenal.killCombo,killAt:source.arsenal.killAt,killBadgeId:source.arsenal.killBadgeId,killHeadshot:source.arsenal.killHeadshot })
     source.abilities.forEach((ability,id) => Object.assign(player.combat.abilities[id],{ flying:ability.flying,projectile:[ability.projectileX,ability.projectileY,ability.projectileZ],detonatedAt:ability.detonatedAt }))
-    player.combat.loadout = { character:source.characterId,primary:[...source.allowedWeapons].find(id => ['rifle','shotgun'].includes(id)) || 'rifle',unique:source.uniqueSkill,startingWeapon:source.startingWeapon,weapons:[...source.allowedWeapons],abilities:[...source.allowedAbilities] }
+    player.combat.loadout = { character:source.characterId,primary:[...source.allowedWeapons].find(id => PRIMARY_IDS.includes(id)) || 'rifle',secondary:source.arsenal.secondaryWeapon,melee:source.arsenal.meleeWeapon,unique:source.uniqueSkill,startingWeapon:source.startingWeapon,weapons:[...source.allowedWeapons],abilities:[...source.allowedAbilities] }
   })
   // Positions stay outside React; combat HUD receives authoritative 20 Hz snapshots.
   if (JSON.stringify(next) !== JSON.stringify(snapshot.room)) update({ room:next })
@@ -59,6 +62,11 @@ function attach(room,notice = '') {
   Object.assign(room.reconnection,{ minUptime:0,maxRetries:10,minDelay:250,maxDelay:2000,maxEnqueuedMessages:0 })
   saveRecovery(endpoint(),room.reconnectionToken)
   room.onStateChange(() => sync(room))
+  room.onMessage('shot-trail',event => {
+    const current=room.state
+    if(activeRoom!==room || snapshot.status!=='connected' || !current?.arenaActive || current.phase!=='arena' || event?.epoch!==current.arenaEpoch || event.round!==(current.format==='duel' ? current.roundId : 0) || !current.players.has(event.id)) return
+    queueShotTrail({ ...event,scope:trailScope(current) })
+  })
   room.onDrop(() => { if (activeRoom===room) update({ status:'reconnecting',captured:false,notice:'Connection interrupted. Reconnecting…' }) })
   room.onReconnect(() => {
     if (activeRoom!==room) return

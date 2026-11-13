@@ -64,6 +64,6 @@ export async function observeHitFeedback(page) {
 }
 export const observedFeedback = page => page.evaluate(() => window.__duelFeedback)
 
-export async function presetLoadout(page, { character='vex',primary='rifle',unique='flashbang',startingWeapon='pistol' } = {}) {
-  await page.addInitScript(loadout => localStorage.setItem('duel-loadout',JSON.stringify(loadout)),{ character,primary,unique,startingWeapon })
+export async function presetLoadout(page, { character='vex',primary='rifle',secondary='pistol',melee='blade',unique='flashbang',startingWeapon=secondary } = {}) {
+  await page.addInitScript(loadout => localStorage.setItem('duel-loadout',JSON.stringify(loadout)),{ character,primary,secondary,melee,unique,startingWeapon })
 }

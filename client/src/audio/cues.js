@@ -1,15 +1,17 @@
+import { killTier } from '../../../shared/killCombo.js'
 // Read accepted state transitions. Never replay a backlog of missed shots.
 export function combatCues(previous,current,self = true) {
   if (!previous || !current) return []
   const cues=[]
   if (current.shot>previous.shot) cues.push(current.weapon)
-  if (current.lastSwing>previous.lastSwing) cues.push('blade')
+  if (current.lastSwing>previous.lastSwing) cues.push(current.weapon)
   if (current.weapon!==previous.weapon) cues.push('equip')
   if (current.reloading && (!previous.reloading || current.reloadStart!==previous.reloadStart)) cues.push('reload-start')
   if (previous.reloading && !current.reloading && current.weapon===previous.weapon && current.magazines[current.weapon]>previous.magazines[current.weapon]) cues.push('reload-end')
   for (const [id,ability] of Object.entries(current.abilities || {})) if (ability.uses>(previous.abilities?.[id]?.uses ?? ability.uses)) cues.push(id)
+  if (current.spinning && !previous.spinning) cues.push('spin-up')
   if (self) {
-    if (current.hitId>previous.hitId) cues.push(current.hitDefeated ? 'elimination' : current.hitHeadshot ? 'headshot' : current.hitShieldDamage && !current.hitDamage ? 'shield-hit' : 'hit')
+    if (current.hitId>previous.hitId) cues.push(current.hitDefeated ? (current.killCombo>1 ? `kill-combo-${killTier(current.killCombo)}` : 'elimination') : current.hitHeadshot ? 'headshot' : current.hitShieldDamage && !current.hitDamage ? 'shield-hit' : 'hit')
     if (current.hp<previous.hp) cues.push(current.hp<=0 ? 'death' : 'hurt')
     if (current.shieldHit>previous.shieldHit) cues.push('shield-impact')
   }

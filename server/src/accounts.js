@@ -46,13 +46,13 @@ export function createAccountsService({ url=process.env.SUPABASE_URL,key=process
       const userId = data.user.id
       const [profile,loadout] = await Promise.all([
         db.from('profiles').select('callsign').eq('user_id',userId).maybeSingle(),
-        db.from('loadouts').select('character_id,primary_weapon,unique_skill,starting_weapon,weapons,abilities').eq('user_id',userId).maybeSingle(),
+        db.from('loadouts').select('character_id,primary_weapon,secondary_weapon,melee_weapon,unique_skill,starting_weapon,weapons,abilities').eq('user_id',userId).maybeSingle(),
       ])
       if (profile.error || loadout.error) throw new Error('Could not load your saved profile. Try again shortly.')
       const name = validateName(profile.data?.callsign)
       if (!name) throw new Error('Save a valid callsign in Player Profile before joining a room.')
       const saved = loadout.data
-      const equipment = saved ? validateLoadout({ character:saved.character_id,primary:saved.primary_weapon,unique:saved.unique_skill,startingWeapon:saved.starting_weapon,weapons:saved.weapons,abilities:saved.abilities }) : DEFAULT_LOADOUT
+      const equipment = saved ? validateLoadout({ character:saved.character_id,primary:saved.primary_weapon,secondary:saved.secondary_weapon,melee:saved.melee_weapon,unique:saved.unique_skill,startingWeapon:saved.starting_weapon,weapons:saved.weapons,abilities:saved.abilities }) : DEFAULT_LOADOUT
       if (!equipment) throw new Error('Save your loadout again before joining a room.')
       return { userId,name,loadout:equipment }
     },

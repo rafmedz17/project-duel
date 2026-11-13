@@ -1,5 +1,7 @@
 ﻿import { WEAPONS } from '../../../shared/weapons.js'
+import WeaponStatus from '../game/hud/WeaponStatus.jsx'
 import CombatFeedback from '../game/hud/CombatFeedback.jsx'
+import KillBadge from '../game/hud/KillBadge.jsx'
 import { getMap } from '../../../shared/maps.js'
 import { AbilityBar, TacticalStatus } from '../game/hud/AbilityHud.jsx'
 import { weaponSlots } from '../../../shared/loadout.js'
@@ -19,7 +21,7 @@ export default function OnlineOverlay({ onLeave }) {
   const other = s.room.players.find(player => player.id!==s.sessionId)
   const combat = self?.combat
   if (!combat) return null
-  const weapon = WEAPONS[combat.weapon], melee = combat.weapon==='blade', dead = combat.hp===0
+  const weapon = WEAPONS[combat.weapon], melee = weapon.fireMode==='melee', dead = combat.hp===0
   const feedback = { ...combat,time:s.room.time,generation:s.room.arenaEpoch,mode:interrupted ? 'paused' : 'playing' }
   const shield = combat.shieldCharge>0 && s.room.time<combat.abilities.shield.activeUntil
   const obscured = s.room.players.some(player => player.id!==s.sessionId && s.room.time<player.combat.abilities.smoke.activeUntil && Math.hypot(...arenaView.position.map((v,i) => v-player.combat.abilities.smoke.origin[i]-(i===1 ? 1 : 0)))<ABILITIES.smoke.radius)
@@ -27,8 +29,10 @@ export default function OnlineOverlay({ onLeave }) {
     <div className={`online-hud ${s.room.time-combat.hurt<0.3 ? 'damage' : ''} ${shield ? 'shield-active' : ''} ${s.room.time<combat.abilities.dash.activeUntil ? 'dash-active' : ''}`}>
       <div className="online-top"><span className="eyebrow">PRIVATE ARENA / {s.room.code}</span><strong>{getMap(s.room.mapId).name}<small>{s.room.ranked ? 'RANKED' : 'CASUAL'} · SERVER VALIDATED COMBAT</small></strong><span className="online-link">{interrupted ? 'LINK INTERRUPTED' : 'CONNECTED · 2 PLAYERS'}</span></div>
       <div className="online-names"><span>{self.name} <small>YOU · {combat.kills} KILLS / {combat.deaths} DEATHS</small></span><span>{other?.name || 'OPEN SLOT'} <small>{other?.connected ? `CHALLENGER · ${other.combat.kills} KILLS` : 'RECONNECTING'}</small></span></div>
-      {s.captured && !dead && live && <div className={`crosshair ${melee ? 'melee-crosshair' : combat.weapon==='shotgun' ? 'shotgun-crosshair' : ''}`} aria-hidden="true">{combat.weapon==='shotgun' ? null : '+'}</div>}
+      {s.captured && !dead && live && <div className={`crosshair ${melee ? 'melee-crosshair' : weapon.pellets ? 'shotgun-crosshair' : ''}`} aria-hidden="true">{weapon.pellets ? null : '+'}</div>}
       <CombatFeedback state={feedback} />
+      <KillBadge state={feedback} />
+      <WeaponStatus state={feedback} />
       <AbilityBar state={feedback} />
       <OnlineScannerMarker other={other} />
       {s.room.time<combat.abilities.scanner.activeUntil && !dead && <div className="scan-status">GLOBAL SCAN / ENEMY REVEALED</div>}

@@ -1,6 +1,6 @@
 ﻿# PROJECT DUEL
 
-A playable FPS training facility and private two-player arena built with React, Three.js, React Three Fiber, Rapier, and Colyseus. Training has four character robots, rifle/shotgun primaries, pistol, melee, four selectable unique skills, four character ultimates, hazards, scoring and saved settings. Multiplayer has server-owned combat, best-of-three matches, three selectable maps and customizable loadouts. Optional Supabase accounts add saved profiles, cross-device equipment, match history, statistics, Elo rankings and a leaderboard. Training and guest play work without cloud accounts.
+A playable FPS training facility and private two-player arena built with React, Three.js, React Three Fiber, Rapier, and Colyseus. Training has four character robots, 17 weapons, four selectable unique skills, four character ultimates, hazards, scoring and saved settings. Multiplayer has server-owned combat, best-of-three matches, three selectable maps and customizable loadouts. Optional Supabase accounts add saved profiles, cross-device equipment, match history, statistics, Elo rankings and a leaderboard. Training and guest play work without cloud accounts.
 
 ## Launch
 
@@ -16,22 +16,24 @@ npm.cmd run dev:server
 
 Open the Vite address (normally http://localhost:5173). The server is only needed for Multiplayer. `npm.cmd` avoids Windows PowerShell's script execution policy issue; other shells can use `npm`.
 
-Choose **Enter Training**, then **Resume / Enter Arena**. WASD moves, the mouse aims, Shift sprints, Space jumps, and left click attacks. Select primary/pistol/melee with **1 / 2 / 3**, cycle with **Q**, and reload with **R**. Hold left click for the rifle. Escape releases the mouse and pauses training. Focus loss also pauses it.
+Choose **Enter Training**, then **Resume / Enter Arena**. WASD moves, the mouse aims, Shift sprints, Space jumps, and left click attacks. Select primary/pistol/melee with **1 / 2 / 3**, cycle with **Q**, and reload with **R**. Hold left click for automatic weapons, hold right click for sniper scopes, and press **T** to inspect. Escape releases the mouse and pauses training. Focus loss also pauses it.
 
 The practice drone and Sparring entry have been removed. Four stationary robots use the same 1.7-meter model and body proportions as multiplayer players, with the camera aligned inside the head. Practice robots stand directly on the floor in clear firing lanes; no raised platforms or jumping are needed for head, body, limb or foot shots. Each has 100 HP, awards 100 points when defeated, and resets after three seconds.
 
 | Hit region | Damage multiplier | Pistol example |
 | --- | --- | --- |
-| Head | 2× | 40 |
-| Torso | 1× | 20 |
-| Arms / legs | 0.75× | 15 |
-| Feet | 0.5× | 10 |
+| Head | 2× | 56 |
+| Torso | 1× | 28 |
+| Arms / legs | 0.75× | 21 |
+| Feet | 0.5× | 14 |
 
-All four weapons use these multipliers; shotgun falloff is applied before regional scaling and rounding. The number shown is actual remaining HP removed. Headshots show coral feedback and **HEADSHOT**; defeats show **ELIMINATED**. Cover blocks shots.
+All 17 weapons use these regional rules; RAILBREAKER headshots use 1.5×. Shotgun falloff is applied before regional scaling and rounding. The number shown is actual remaining HP removed. Headshots show coral feedback and **HEADSHOT**; defeats show **ELIMINATED**. Cover blocks shots except RAILBREAKER's limited thin-cover penetration. See the [weapon arsenal](docs/WEAPONS.md) for statistics and special behavior.
 
 Firearms keep separate magazines and unlimited reserve ammo. Empty magazines auto reload, with a weapon/cell animation, notice, progress bar, and countdown. R reloads partial magazines. Switching cancels a reload without refilling it; re-equipping an empty firearm starts again after the equip delay. The shotgun has only a dotted ring crosshair.
 
-Every character has **E** Dash, **F** Shield, **C** a freely selected unique skill, and **X** a fixed five-second ultimate. Choose VEX, AEGIS, ION or RAZE in **Character & Loadout**. Rifle and shotgun are available; sniper, SMG and LMG are Coming Soon. Amber pads deal damage and shields absorb it. See [characters and loadouts](docs/CHARACTERS_AND_LOADOUT.md), [controls](docs/CONTROLS.md) and [tactical systems](docs/TACTICAL_SYSTEMS.md).
+Confirmed kills display animated sci-fi badges with escalating combo sounds: Elimination, Double Kill, Triple Kill, Overdrive and Rampage. Keep kills within six seconds to chain them. Firearms draw short colored trails, including shotgun pellets and opponent shots online, with cover and thin-cover penetration matching the accepted shot. Death and new rounds reset combos; pause and mute controls apply to the new effects too.
+
+Every character has **E** Dash, **F** Shield, **C** a freely selected unique skill, and **X** a fixed five-second ultimate. Choose VEX, AEGIS, ION or RAZE in **Character & Loadout**, then equip one of 11 primaries, three pistols and three melee weapons with animated previews. Amber pads deal damage and shields absorb it. See [characters and loadouts](docs/CHARACTERS_AND_LOADOUT.md), [controls](docs/CONTROLS.md) and [tactical systems](docs/TACTICAL_SYSTEMS.md).
 
 Combat audio includes distinct weapons, reloads, confirmed hits/headshots, eliminations, damage, abilities, footsteps and round results. Opponent sounds use distance and direction in multiplayer. **Settings → Test Audio** previews the current volume. Training pause and tab/focus loss silence active sounds, and resuming does not replay missed events. All sounds are generated locally without asset downloads. See [audio behavior and controls](docs/AUDIO_SYSTEM.md).
 
@@ -63,7 +65,7 @@ npm.cmd run lint:server
 npm.cmd run test:server
 ```
 
-There are 39 local combat/audio/geometry/physics tests and 59 backend cases, including actual PostgreSQL RLS, result transactions, delayed-network prediction and production HTTP/WebSocket hosting. The 34 browser scenarios cover gameplay, audio, maps, account fixtures, refresh recovery and paused rendering. They use actual mouse capture and inputs for regional hits, reloads, online combat, complete matches, collision and connection lifecycle. Geometry checks also verify player/capsule height and clear shots to every practice hit region from the spawn floor. See the account guide for local/mock/live-cloud test boundaries. Test-only fixtures never supply gameplay hit results.
+Local combat/audio/geometry/physics tests and backend cases cover all 17 weapon specifications, burst scheduling, rotary spin-up, penetration, heavy-melee knockback, loadout slots, PostgreSQL RLS, result transactions, delayed-network prediction and production HTTP/WebSocket hosting. Browser scenarios cover gameplay, model previews, clear sniper scopes, audio, maps, account fixtures, refresh recovery and paused rendering. They use actual mouse capture and inputs for regional hits, reloads, online combat, complete matches, collision and connection lifecycle. Geometry checks also verify player/capsule height and clear shots to every practice hit region from the spawn floor. See the account guide for local/mock/live-cloud test boundaries. Test-only fixtures never supply gameplay hit results.
 
 Browser tests start both services if needed. Install Chromium with `npx.cmd playwright install chromium`, or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to an installed browser. Restart an older running backend after updating code.
 
@@ -74,7 +76,7 @@ Browser tests start both services if needed. Install Chromium with `npx.cmd play
 | `shared/arena.js` | Facility solids, movement, capsule and network values |
 | `shared/maps.js` | Three shared collision layouts, spawns and visual themes |
 | `shared/loadout.js` | Shared equipment defaults and validation |
-| `shared/weapons.js` | Four weapon configurations, falloff, regional damage |
+| `shared/weapons.js` | Seventeen weapon configurations, falloff, regional damage |
 | `shared/match.js` | Match formats, round timing and gameplay gating |
 | `shared/abilities.js` | Shared ability bindings, cooldowns and tuning |
 | `shared/robot.js` | Robot geometry and matching hit boxes |
