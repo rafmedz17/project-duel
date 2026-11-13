@@ -4,6 +4,7 @@ import { CapsuleCollider, RigidBody, useBeforePhysicsStep, useRapier } from '@re
 import { Euler } from 'three'
 import { movementMultiplier,WEAPONS } from '../../../shared/weapons.js'
 import { ONLINE } from '../../../shared/arena.js'
+import { CROUCH,eyeHeight,updateStance } from '../../../shared/stance.js'
 import { PLAYER, ABILITIES } from './config.js'
 import { TRAINING_SPAWN } from './training/config.js'
 import { ultimateModifiers } from '../../../shared/characters.js'
@@ -18,9 +19,9 @@ import { lookMultiplier } from '../settings/sensitivity.js'
 
 export default function Player() {
   const body = useRef(), collider = useRef(), seenShot=useRef(0),fireInput=useRef(false)
-  const keys = useRef(new Set()), look = useRef({ yaw: 0, pitch: 0 }), motion = useRef({ x: 0, z: 0, y: 0, jump: false, dashUses:0, dashRemaining:0 })
+  const keys = useRef(new Set()), look = useRef({ yaw: 0, pitch: 0 }), motion = useRef({ x: 0, z: 0, y: 0, jump: false, crouched:false,dashUses:0, dashRemaining:0 })
   const { camera, gl, scene } = useThree()
-  const { world } = useRapier()
+  const { world,rapier } = useRapier()
   const controller = useRef()
   const accumulated = useRef(0), frames = useRef({ count: 0, time: 0 })
   useCombatInput(camera,gl.domElement,scene,look,fireInput)
@@ -35,15 +36,17 @@ export default function Player() {
     runtime.peakHeight = TRAINING_SPAWN[1]
     runtime.position=[...TRAINING_SPAWN]
     runtime.velocity=[0,0,0]
+    runtime.crouched=false
+    Object.assign(motion.current,{world,standingShape:new rapier.Capsule(ONLINE.capsuleHalfHeight,ONLINE.capsuleRadius)})
     game.set({ ready: true })
     return () => { world.removeCharacterController(character); controller.current = null; game.set({ ready: false }) }
-  }, [world])
+  }, [world,rapier])
 
   useEffect(() => {
     const down = event => {
       if (game.get().mode !== 'playing' || document.pointerLockElement!==gl.domElement) return
       const code=canonicalCode(event,game.get().settings)
-      if (['Space','KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight','KeyR'].includes(code)) event.preventDefault()
+      if (['Space','KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight','ControlLeft','ControlRight','KeyR'].includes(code)) event.preventDefault()
       keys.current.add(code)
       if (code === 'Space' && !event.repeat) motion.current.jump = true
       if (code === 'KeyG' && !event.repeat) { event.preventDefault();game.toggleCourse() }
@@ -80,12 +83,15 @@ export default function Player() {
   useBeforePhysicsStep(() => {
     if (!body.current || !collider.current || !controller.current || game.get().mode !== 'playing') return
     const dt = 1/60, m = motion.current, pressed = keys.current, c = controller.current
+    Object.assign(m,{body:body.current,collider:collider.current})
+    updateStance(m,pressed.has('ControlLeft') || pressed.has('ControlRight'))
+    runtime.crouched=m.crouched
     let x = Number(pressed.has('KeyD')) - Number(pressed.has('KeyA'))
     let z = Number(pressed.has('KeyS')) - Number(pressed.has('KeyW'))
     if (game.now()<game.get().rootedUntil) { x=0; z=0; m.x=0; m.z=0; m.jump=false; m.dashRemaining=0 }
     const length = Math.hypot(x,z) || 1
     x /= length; z /= length
-    const speed = (pressed.has('ShiftLeft') || pressed.has('ShiftRight') ? PLAYER.sprint : PLAYER.speed)*movementMultiplier(game.get().weapon)*ultimateModifiers(game.get(),game.now()).movement
+    const speed = (m.crouched ? PLAYER.speed*CROUCH.speed : pressed.has('ShiftLeft') || pressed.has('ShiftRight') ? PLAYER.sprint : PLAYER.speed)*movementMultiplier(game.get().weapon)*ultimateModifiers(game.get(),game.now()).movement
     const yaw = look.current.yaw, smooth = 1-Math.exp(-14*dt)
     m.x += ((x*Math.cos(yaw)+z*Math.sin(yaw))*speed-m.x)*smooth
     m.z += ((z*Math.cos(yaw)-x*Math.sin(yaw))*speed-m.z)*smooth
@@ -124,7 +130,7 @@ export default function Player() {
       look.current.yaw+=Math.sin(state.shot*2.4)*weapon.recoil*0.3
     }
     seenShot.current=state.shot
-    camera.position.set(p.x,p.y+PLAYER.eye,p.z)
+    camera.position.set(p.x,p.y+eyeHeight(motion.current.crouched),p.z)
     camera.quaternion.setFromEuler(new Euler(look.current.pitch,look.current.yaw,0,'YXZ'))
     runtime.yaw = look.current.yaw; runtime.pitch = look.current.pitch
     if (state.mode === 'playing') {

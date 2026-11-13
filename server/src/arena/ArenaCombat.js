@@ -1,4 +1,5 @@
-import { ARENA_SOLIDS, PLAYER, ONLINE } from '../../../shared/arena.js'
+import { ARENA_SOLIDS, ONLINE } from '../../../shared/arena.js'
+import { eyeHeight } from '../../../shared/stance.js'
 import { WEAPONS, pelletDamage, freshMagazines, equipTime, isMelee, shotOffsets } from '../../../shared/weapons.js'
 import { rayRobot, shotDirections, coverTransmission } from '../../../shared/ballistics.js'
 import { DEFAULT_LOADOUT } from '../../../shared/loadout.js'
@@ -136,7 +137,7 @@ export class ArenaCombat {
       if (effect==='ammo') { Object.assign(player,clearReload); for (const weapon of Object.keys(WEAPONS)) if (WEAPONS[weapon].magazine) player[ammoField(weapon)] = WEAPONS[weapon].magazine }
     }
     if (tuning.fuse) {
-      const grenade = launchGrenade([player.x,player.y,player.z],aim.yaw ?? player.yaw,aim.pitch ?? player.pitch)
+      const grenade = launchGrenade([player.x,player.y,player.z],aim.yaw ?? player.yaw,aim.pitch ?? player.pitch,player.crouched)
       this.grenades.set(id,{ ...grenade,abilityId })
       Object.assign(ability,{ activeUntil:0,flying:true,projectileX:grenade.position[0],projectileY:grenade.position[1],projectileZ:grenade.position[2] })
     }
@@ -195,9 +196,9 @@ export class ArenaCombat {
     else { if (!modifiers.noReload) player[ammoField(player.weapon)]--; player.lastShot=now; player.shot++ }
     if (weapon.spinUp) player.attackReadyAt=now+weapon.cooldown/modifiers.fireRate
     player.windupEnd=0
-    const origin = [player.x,player.y+PLAYER.eye,player.z], damage = new Map(),ends=[]
+    const origin = [player.x,player.y+eyeHeight(player.crouched),player.z], damage = new Map(),ends=[]
     const solids=this.simulation.map?.solids || ARENA_SOLIDS
-    for (const direction of shotDirections(intent.yaw,intent.pitch,weapon,player.shot)) {
+    for (const direction of shotDirections(intent.yaw,intent.pitch,weapon,player.shot,this.simulation.shotMotion(id))) {
       let limit = weapon.range, hit = null
       for (const [otherId,other] of this.players) {
         if (otherId===id || other.hp<=0 || !other.connected) continue

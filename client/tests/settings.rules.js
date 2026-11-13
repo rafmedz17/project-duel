@@ -44,6 +44,19 @@ test('scoreboard defaults to Tab, preserves existing Tab bindings and supports r
   assert.equal(canonicalCode({ type:'keydown',code:'KeyP' },{ bindings:rebound }),'Tab')
   assert.equal(canonicalCode({ type:'keyup',code:'Tab' },{ bindings:rebound }),null)
 })
+
+test('crouch migrates into saved controls and supports both Ctrl keys or a custom keyboard/mouse binding',()=>{
+  const settings=cleanPreferences({bindings:{reload:'ControlLeft'}})
+  assert.equal(settings.bindings.reload,'ControlLeft');assert.equal(settings.bindings.crouch,'KeyR')
+  assert.equal(canonicalCode({type:'keydown',code:'ControlLeft'},cleanPreferences()),'ControlLeft')
+  assert.equal(canonicalCode({type:'keydown',code:'ControlRight'},cleanPreferences()),'ControlRight')
+  for(const binding of ['KeyV','Mouse4']) {
+    const saved=cleanPreferences({bindings:rebind(DEFAULT_BINDINGS,'crouch',binding)})
+    const event=binding==='Mouse4' ? {type:'mousedown',button:4} : {type:'keydown',code:binding}
+    assert.equal(canonicalCode(event,saved),'ControlLeft')
+    assert.equal(canonicalCode({type:'keydown',code:'ControlLeft'},saved),null)
+  }
+})
 test('rebinding swaps collisions, round-trips all actions and translates physical input for both game modes',()=> {
   let bindings=rebind(DEFAULT_BINDINGS,'forward','KeyS');bindings=rebind(bindings,'fire','KeyP');bindings=rebind(bindings,'dash','Mouse4')
   assert.equal(bindings.backward,'KeyW');assert.equal(new Set(Object.values(bindings)).size,ACTIONS.length)

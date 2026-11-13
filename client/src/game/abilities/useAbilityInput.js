@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { abilityForBinding } from '../../../../shared/abilities.js'
 import { game } from '../store.js'
+import { runtime } from '../runtime.js'
 import { canonicalCode } from '../../settings/preferences.js'
 
 export function useAbilityInput(body,keys,look,canvas) {
@@ -14,7 +15,7 @@ export function useAbilityInput(body,keys,look,canvas) {
       let x = Number(keys.current.has('KeyD'))-Number(keys.current.has('KeyA'))
       let z = Number(keys.current.has('KeyS'))-Number(keys.current.has('KeyW'))
       if (x === 0 && z === 0) z = -1
-      game.activateAbility(id,{ position:[p.x,p.y,p.z],yaw,pitch:look.current.pitch,direction:[x*Math.cos(yaw)+z*Math.sin(yaw),z*Math.cos(yaw)-x*Math.sin(yaw)] })
+      game.activateAbility(id,{ position:[p.x,p.y,p.z],yaw,pitch:look.current.pitch,crouched:runtime.crouched,direction:[x*Math.cos(yaw)+z*Math.sin(yaw),z*Math.cos(yaw)-x*Math.sin(yaw)] })
     }
     document.addEventListener('keydown',down);document.addEventListener('mousedown',down)
     return () => { document.removeEventListener('keydown',down);document.removeEventListener('mousedown',down) }

@@ -1,16 +1,28 @@
-import { ROBOT_PARTS } from '../../../../shared/robot.js'
+import { ROBOT_PARTS,robotParts } from '../../../../shared/robot.js'
 import { PLAYER } from '../../../../shared/arena.js'
+import { CROUCH } from '../../../../shared/stance.js'
 import { getCharacter } from '../../../../shared/characters.js'
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { BackSide } from 'three'
 import { useGame } from '../store.js'
 
-export default function RobotModel({ targetId, characterId = 'vex', color, flash = false, down = false, headRef, revealed = false, reveal,enemy=false }) {
+export default function RobotModel({ targetId, characterId = 'vex', color, flash = false, down = false, headRef, revealed = false, reveal,enemy=false,stance }) {
   const settings=useGame(s=>s.settings),aura=enemy && settings.enemyAura && !down
   const character = getCharacter(characterId), accent = color || character.color
-  const root = useRef()
+  const root = useRef(),parts=useRef({}),feet=useRef(),lastStance=useRef(false)
   useFrame(() => {
+    const crouched=Boolean(stance?.())
+    if(crouched!==lastStance.current) {
+      robotParts(crouched).forEach((part,index)=>{
+        const group=parts.current[part.id],base=ROBOT_PARTS[index]
+        group.position.set(...part.position)
+        group.scale.set(...part.size.map((value,axis)=>value/base.size[axis]))
+        if(part.id!=='head') group.rotation.set(...(part.rotation || [0,0,0]))
+      })
+      feet.current.position.y=-(crouched ? CROUCH.height : PLAYER.height)/2+.025
+      lastStance.current=crouched
+    }
     if (!reveal || !root.current) return
     const visible = !down && reveal()
     root.current.traverse(mesh => {
@@ -24,7 +36,7 @@ export default function RobotModel({ targetId, characterId = 'vex', color, flash
     })
   })
   return <group ref={root}>
-    {ROBOT_PARTS.map(part => <group key={part.id} position={part.position} ref={part.id==='head' ? headRef : undefined}>
+    {ROBOT_PARTS.map(part => <group key={part.id} position={part.position} ref={node=>{parts.current[part.id]=node;if(part.id==='head' && headRef) headRef.current=node}}>
       <mesh name={`robot-${part.id}`} renderOrder={revealed ? 100 : 0} userData={{ blocksShot:!down,targetId,hitRegion:part.region,characterArmor:true }}>
         <boxGeometry args={part.size} />
         <meshStandardMaterial depthTest={!revealed} color={down ? '#243044' : flash ? '#ffffff' : revealed ? accent : part.id==='head' ? character.secondary : character.armor} emissive={revealed ? accent : aura ? settings.enemyColor : '#000000'} emissiveIntensity={revealed ? 0.8 : aura ? .42 : 0} metalness={0.65} roughness={0.4} />
@@ -37,6 +49,6 @@ export default function RobotModel({ targetId, characterId = 'vex', color, flash
         </>}
       </group>}
     </group>)}
-    <mesh position={[0,-PLAYER.height/2+0.025,0]} rotation={[-Math.PI/2,0,0]}><ringGeometry args={[0.37,0.4,24]} /><meshBasicMaterial color={accent} transparent opacity={down ? 0.2 : 0.7} /></mesh>
+    <mesh ref={feet} position={[0,-PLAYER.height/2+0.025,0]} rotation={[-Math.PI/2,0,0]}><ringGeometry args={[0.37,0.4,24]} /><meshBasicMaterial color={accent} transparent opacity={down ? 0.2 : 0.7} /></mesh>
   </group>
 }

@@ -5,6 +5,7 @@ import { WEAPONS } from '../config.js'
 import { weaponForBinding,weaponSlots } from '../../../../shared/loadout.js'
 import { game } from '../store.js'
 import { canonicalCode } from '../../settings/preferences.js'
+import { trainingShotMotion } from './accuracy.js'
 
 export function useCombatInput(camera,canvas,scene,look,fireInput) {
   useEffect(()=> {
@@ -13,7 +14,7 @@ export function useCombatInput(camera,canvas,scene,look,fireInput) {
     const readTrace=()=> {
       camera.quaternion.setFromEuler(rotation.set(look.current.pitch,look.current.yaw,0,'YXZ'))
       scene.updateMatrixWorld(true); camera.updateMatrixWorld()
-      return trace(scene,camera,WEAPONS[game.get().weapon],game.get().shot+1)
+      return trace(scene,camera,WEAPONS[game.get().weapon],game.get().shot+1,trainingShotMotion())
     }
     const interrupt=()=> { fireInput.current=false;game.cancelAttack(); if (game.get().aiming) game.set({ aiming:false }) }
     const key=event=> {

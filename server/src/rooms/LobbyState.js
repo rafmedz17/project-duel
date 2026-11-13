@@ -8,6 +8,7 @@ export const AbilityState = schema({
 },'AbilityState')
 
 export const ArsenalState=schema({
+  crouched:t.boolean().default(false),
   pingMs:t.number().default(-1),
   activeSlot:t.number().default(0),
   secondaryWeapon:t.string().default('pistol'),meleeWeapon:t.string().default('blade'),spinStarted:t.number().default(-10),spinning:t.boolean().default(false),windupStart:t.number().default(-10),windupEnd:t.number(),knockX:t.number(),knockZ:t.number(),
@@ -40,7 +41,7 @@ export const LobbyPlayer = schema({
 },'LobbyPlayer')
 // Keep combat code independent of the wire layout; the added arsenal state is nested
 // to stay within Colyseus' per-schema field limit.
-for (const key of ['secondaryWeapon','meleeWeapon','spinStarted','spinning','windupStart','windupEnd','swings','knockX','knockZ','killCombo','killAt','killBadgeId','killHeadshot',...Object.keys(freshMagazines()).filter(id=>!['pistol','rifle','shotgun'].includes(id)).map(id=>id+'Ammo')]) Object.defineProperty(LobbyPlayer.prototype,key,{
+for (const key of ['crouched','secondaryWeapon','meleeWeapon','spinStarted','spinning','windupStart','windupEnd','swings','knockX','knockZ','killCombo','killAt','killBadgeId','killHeadshot',...Object.keys(freshMagazines()).filter(id=>!['pistol','rifle','shotgun'].includes(id)).map(id=>id+'Ammo')]) Object.defineProperty(LobbyPlayer.prototype,key,{
   get() { return this.arsenal[key] },set(value) { this.arsenal[key]=value },configurable:true,
 })
 

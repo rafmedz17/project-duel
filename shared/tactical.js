@@ -1,4 +1,4 @@
-import { PLAYER } from './arena.js'
+import { eyeHeight } from './stance.js'
 import { rayBox } from './ballistics.js'
 
 export const enemies = (a,b) => a.id!==b.id && (!a.teamId || !b.teamId || a.teamId!==b.teamId)
@@ -8,9 +8,9 @@ export function blocked(origin,target,solids) {
   const direction = delta.map(value => value/distance)
   return solids.some(solid => { const hit = rayBox(origin,direction,solid.position,solid.size); return hit!==null && hit<distance-0.05 })
 }
-export function launchGrenade(position,yaw = 0,pitch = 0) {
+export function launchGrenade(position,yaw = 0,pitch = 0,crouched=false) {
   const direction = [-Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),-Math.cos(yaw)*Math.cos(pitch)]
-  return { position:position.map((value,axis) => value+(axis===1 ? PLAYER.eye : 0)),velocity:direction.map((value,axis) => value*12+(axis===1 ? 3 : 0)),age:0 }
+  return { position:position.map((value,axis) => value+(axis===1 ? eyeHeight(crouched) : 0)),velocity:direction.map((value,axis) => value*12+(axis===1 ? 3 : 0)),age:0 }
 }
 export function stepGrenade(grenade,dt,solids) {
   grenade.age += dt
@@ -34,7 +34,7 @@ export function stepGrenade(grenade,dt,solids) {
   }
 }
 export function flashDuration(origin,target,solids) {
-  const eyes = [target.x,target.y+PLAYER.eye,target.z]
+  const eyes = [target.x,target.y+eyeHeight(target.crouched),target.z]
   const offset = origin.map((value,axis) => value-eyes[axis]), distance = Math.hypot(...offset)
   if (distance>10 || blocked(origin,eyes,solids)) return 0
   const facing = [-Math.sin(target.yaw || 0)*Math.cos(target.pitch || 0),Math.sin(target.pitch || 0),-Math.cos(target.yaw || 0)*Math.cos(target.pitch || 0)]

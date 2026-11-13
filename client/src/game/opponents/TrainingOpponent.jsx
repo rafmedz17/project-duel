@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { RigidBody, CapsuleCollider, useRapier, useBeforePhysicsStep } from '@react-three/rapier'
 import { Quaternion, Vector3 } from 'three'
-import { OPPONENT, PLAYER } from '../config.js'
+import { OPPONENT } from '../config.js'
+import { eyeHeight } from '../../../../shared/stance.js'
 import { game, useGame } from '../store.js'
 import { runtime } from '../runtime.js'
 import { freshBrain, stepBrain } from './opponentRules.js'
@@ -39,7 +40,7 @@ export default function TrainingOpponent() {
     collider.current.setEnabled(alive)
     game.reportOpponentPosition([p.x,p.y,p.z])
     runtime.opponent.position = [p.x,p.y,p.z]
-    const player = [runtime.position[0],runtime.position[1]+PLAYER.eye,runtime.position[2]]
+    const player = [runtime.position[0],runtime.position[1]+eyeHeight(runtime.crouched),runtime.position[2]]
     direction.current.set(player[0]-p.x,player[1]-p.y,player[2]-p.z)
     const distance = direction.current.length()
     direction.current.normalize()

@@ -4,7 +4,7 @@ const history = new Map()
 const listeners = new Set()
 export function subscribePoses(listener) { listeners.add(listener); return () => listeners.delete(listener) }
 let epoch = -1, tick = -1, round = -1
-export const arenaView = { position:[0,1,15],yaw:0,pitch:0,remotes:{} }
+export const arenaView = { position:[0,1,15],yaw:0,pitch:0,remotes:{},motion:{velocity:[0,0,0],grounded:true,dashing:false,crouched:false} }
 export function clearPoses() { history.clear(); epoch = -1; tick = -1; round = -1; arenaView.remotes = {} }
 export function recordPoses(state, now = performance.now()) {
   if (!state.arenaActive) { clearPoses(); return }
@@ -13,7 +13,7 @@ export function recordPoses(state, now = performance.now()) {
   tick = state.tick
   for (const [id,player] of state.players) {
     const samples = history.get(id) || []
-    samples.push({ time:now,tick:state.tick,x:player.x,y:player.y,z:player.z,yaw:player.yaw,pitch:player.pitch,grounded:player.grounded,inputSequence:player.inputSequence,inputSteps:player.inputSteps,vx:player.vx,vy:player.vy,vz:player.vz,dashRemaining:player.dashRemaining,dashX:player.dashX,dashZ:player.dashZ,rooted:player.rooted,knockX:player.arsenal.knockX,knockZ:player.arsenal.knockZ })
+    samples.push({ time:now,tick:state.tick,x:player.x,y:player.y,z:player.z,yaw:player.yaw,pitch:player.pitch,crouched:player.arsenal.crouched,grounded:player.grounded,inputSequence:player.inputSequence,inputSteps:player.inputSteps,vx:player.vx,vy:player.vy,vz:player.vz,dashRemaining:player.dashRemaining,dashX:player.dashX,dashZ:player.dashZ,rooted:player.rooted,knockX:player.arsenal.knockX,knockZ:player.arsenal.knockZ })
     if (samples.length > 12) samples.shift()
     history.set(id,samples)
   }
@@ -32,5 +32,5 @@ export function samplePose(id, now = performance.now()) {
   }
   const t = after.time === before.time ? 1 : Math.max(0,Math.min(1,(target-before.time)/(after.time-before.time)))
   const angle = Math.atan2(Math.sin(after.yaw-before.yaw),Math.cos(after.yaw-before.yaw))
-  return { x:before.x+(after.x-before.x)*t,y:before.y+(after.y-before.y)*t,z:before.z+(after.z-before.z)*t,yaw:before.yaw+angle*t,pitch:before.pitch+(after.pitch-before.pitch)*t }
+  return { x:before.x+(after.x-before.x)*t,y:before.y+(after.y-before.y)*t,z:before.z+(after.z-before.z)*t,yaw:before.yaw+angle*t,pitch:before.pitch+(after.pitch-before.pitch)*t,crouched:(t<.5 ? before : after).crouched }
 }

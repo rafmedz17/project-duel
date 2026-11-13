@@ -1,5 +1,6 @@
 import { PLAYER, ONLINE } from './arena.js'
 import { ABILITIES } from './abilities.js'
+import { CROUCH,updateStance } from './stance.js'
 
 // Both the server and local prediction use the same fixed-step capsule sweep.
 export function createMovementWorld(RAPIER, map) {
@@ -17,15 +18,16 @@ export function createCharacter(RAPIER, world, position) {
   controller.setSlideEnabled(true)
   controller.enableSnapToGround(0.15)
   controller.setMaxSlopeClimbAngle(Math.PI/4)
-  return { body,collider,controller,vx:0,vy:0,vz:0,grounded:false,dash:null }
+  return { world,body,collider,controller,standingShape:new RAPIER.Capsule(ONLINE.capsuleHalfHeight,ONLINE.capsuleRadius),crouched:false,vx:0,vy:0,vz:0,grounded:false,dash:null }
 }
 
 export function stepCharacter(entry, input, jump = false) {
+  updateStance(entry,input?.active && input.crouch)
   const dt = 1/ONLINE.tickRate
   let x = input?.active ? input.x : 0, z = input?.active ? input.z : 0
   const length = Math.max(1,Math.hypot(x,z))
   x /= length; z /= length
-  const speed = (input?.sprint ? PLAYER.sprint : PLAYER.speed)*(entry.movement || 1), yaw = input?.yaw || 0
+  const speed = (entry.crouched ? PLAYER.speed*CROUCH.speed : input?.sprint ? PLAYER.sprint : PLAYER.speed)*(entry.movement || 1), yaw = input?.yaw || 0
   const smooth = 1-Math.exp(-14*dt)
   entry.vx += ((x*Math.cos(yaw)+z*Math.sin(yaw))*speed-entry.vx)*smooth
   entry.vz += ((z*Math.cos(yaw)-x*Math.sin(yaw))*speed-entry.vz)*smooth

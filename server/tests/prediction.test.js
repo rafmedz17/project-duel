@@ -63,6 +63,22 @@ test('input acknowledgement advances on simulation, not packet receipt',t => {
   assert.equal(player.inputSteps,2)
 })
 
+test('predicted crouch, release and jumping match the server, including replayed stance changes',t=>{
+  const {server,prediction,player}=setup(t),snapshots=[]
+  for(let tick=0;tick<180;tick++) {
+    const input=command(tick,{x:tick<100 ? 1 : 0,crouch:tick>=15 && tick<90,sprint:true,jump:tick===45})
+    prediction.command(input);server.receive('self',input,tick*1000/60)
+    prediction.step();server.step(tick*1000/60)
+    const p=prediction.position()
+    assert.ok(Math.hypot(p.x-player.x,p.y-player.y,p.z-player.z)<.0001,`tick ${tick}`)
+    assert.equal(prediction.entry.crouched,player.crouched)
+    if(tick%3===0) snapshots.push({at:tick+6,pose:pose(player)})
+    for(const packet of snapshots.filter(packet=>packet.at===tick)) prediction.reconcile(packet.pose)
+  }
+  prediction.reset(pose(player))
+  assert.equal(prediction.motion.crouched,false)
+})
+
 test('prediction replays movement speed changes across VEX ultimate expiry without changing historical frames',t=> {
   const { server,prediction,player }=setup(t)
   player.characterId='vex';player.abilities=new Map([['ultimate',{ activeUntil:1.5 }]])

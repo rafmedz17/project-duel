@@ -3,7 +3,7 @@ import { DEFAULT_WEAPON_SENSITIVITY,cleanWeaponSensitivity } from './sensitivity
 
 export const ACTIONS = [
   ['forward','Move forward','KeyW'],['backward','Move backward','KeyS'],['left','Strafe left','KeyA'],['right','Strafe right','KeyD'],
-  ['jump','Jump','Space'],['sprint','Sprint','ShiftLeft'],['fire','Fire / melee','Mouse0'],['aim','Aim / scope','Mouse2'],
+  ['jump','Jump','Space'],['sprint','Sprint','ShiftLeft'],['crouch','Crouch (hold)','ControlLeft'],['fire','Fire / melee','Mouse0'],['aim','Aim / scope','Mouse2'],
   ['reload','Reload','KeyR'],['primary','Primary weapon','Digit1'],['secondary','Secondary pistol','Digit2'],['melee','Melee weapon','Digit3'],
   ['cycle','Cycle weapons','KeyQ'],['inspect','Inspect weapon','KeyT'],['dash','Dash','KeyE'],['shield','Shield','KeyF'],
   ['unique','Unique skill','KeyC'],['ultimate','Ultimate','KeyX'],['armory','Training armory','KeyB'],['course','Start / stop training course','KeyG'],
@@ -38,6 +38,7 @@ export function canonicalCode(event,settings) {
   const code=physicalCode(event),bindings=settings.bindings
   const action=ACTIONS.find(([id])=>bindings[id]===code)
   if(!action && code==='ShiftRight' && bindings.sprint==='ShiftLeft') return 'ShiftRight'
+  if(!action && code==='ControlRight' && bindings.crouch==='ControlLeft') return 'ControlRight'
   return action?.[2] || null
 }
 export const abilityKey=(id,settings)=>bindingLabel(settings.bindings[['dash','shield','ultimate'].includes(id) ? id : 'unique'])

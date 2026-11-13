@@ -5,9 +5,10 @@ import { movementMultiplier } from '../../../shared/weapons.js'
 import { ABILITIES } from '../../../shared/abilities.js'
 import { ultimateModifiers } from '../../../shared/characters.js'
 import { createMovementWorld, createCharacter, stepCharacter } from '../../../shared/movement.js'
+import { capsuleHalfHeight,restoreStance } from '../../../shared/stance.js'
 
 await RAPIER.init()
-const fields = new Set(['sequence','round','x','z','yaw','pitch','sprint','jump','active'])
+const fields = new Set(['sequence','round','x','z','yaw','pitch','sprint','jump','crouch','active'])
 export function validateInput(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !fields.has(key))) return null
   if (!Number.isSafeInteger(value.sequence) || value.sequence < 0 || value.sequence > 2147483647) return null
@@ -15,6 +16,7 @@ export function validateInput(value) {
   if (!['x','z','yaw','pitch'].every(key => Number.isFinite(value[key]))) return null
   if (Math.abs(value.x)>1 || Math.abs(value.z)>1 || Math.abs(value.yaw)>1e6) return null
   if (!['sprint','jump','active'].every(key => typeof value[key] === 'boolean')) return null
+  if (Object.hasOwn(value,'crouch') && typeof value.crouch!=='boolean') return null
   return { ...value,yaw:Math.atan2(Math.sin(value.yaw),Math.cos(value.yaw)),pitch:Math.max(-ONLINE.maxPitch,Math.min(ONLINE.maxPitch,value.pitch)) }
 }
 
@@ -27,7 +29,7 @@ export class ArenaSimulation {
       const spawn = this.map.spawns[player.slot]
       const [x,y,z] = spawn.position
       this.players.set(id,{ ...createCharacter(RAPIER,this.world,spawn.position),player,input:null,lastSequence:-1,jumpHeld:false,jumpPending:false })
-      Object.assign(player,{ x,y,z,yaw:spawn.yaw,pitch:0,grounded:false,active:false,inputSequence:-1,inputSteps:0,vx:0,vy:0,vz:0,dashRemaining:0,dashX:0,dashZ:0 })
+      Object.assign(player,{ x,y,z,yaw:spawn.yaw,pitch:0,crouched:false,grounded:false,active:false,inputSequence:-1,inputSteps:0,vx:0,vy:0,vz:0,dashRemaining:0,dashX:0,dashZ:0 })
     }
     this.world.step()
   }
@@ -80,6 +82,11 @@ export class ArenaSimulation {
 
   stopAll() { for (const id of this.players.keys()) this.stop(id) }
 
+  shotMotion(id) {
+    const entry=this.players.get(id)
+    return {velocity:entry?.shotVelocity || [0,0,0],grounded:entry?.shotGrounded ?? true,dashing:Boolean(entry?.dash),crouched:Boolean(entry?.crouched)}
+  }
+
   setAlive(id,alive) {
     const entry = this.players.get(id)
     if (!entry) return
@@ -93,11 +100,13 @@ export class ArenaSimulation {
     if (!entry) return
     const spawn = this.map.spawns[entry.player.slot], [x,y,z] = spawn.position
     this.setAlive(id,true)
+    restoreStance(entry,false)
     entry.body.setTranslation({ x,y,z },true)
     entry.body.setNextKinematicTranslation({ x,y,z })
     entry.knockX=0; entry.knockZ=0
     entry.grounded = false
-    Object.assign(entry.player,{ x,y,z,yaw:spawn.yaw,pitch:0,grounded:false,vx:0,vy:0,vz:0,dashRemaining:0 })
+    entry.shotVelocity=[0,0,0];entry.shotGrounded=true
+    Object.assign(entry.player,{ x,y,z,yaw:spawn.yaw,pitch:0,crouched:false,grounded:false,vx:0,vy:0,vz:0,dashRemaining:0 })
   }
 
   step(now = performance.now()) {
@@ -111,10 +120,11 @@ export class ArenaSimulation {
       const active = Boolean(input?.active && player.connected)
       const yaw = input?.yaw ?? player.yaw
       if (player.rooted) { entry.vx = 0; entry.vz = 0; entry.dash = null; entry.jumpPending = false }
-      proposals.push(stepCharacter(entry,input ? { ...input,active,x:player.rooted ? 0 : input.x,z:player.rooted ? 0 : input.z } : null,entry.jumpPending))
+      proposals.push({...stepCharacter(entry,input ? { ...input,active,x:player.rooted ? 0 : input.x,z:player.rooted ? 0 : input.z } : null,entry.jumpPending),entry})
       entry.jumpPending = false
       player.yaw = yaw; player.pitch = input?.pitch ?? player.pitch; player.active = active
       player.grounded = entry.grounded
+      player.crouched = entry.crouched
       if (player.inputSequence!==entry.lastSequence) { player.inputSequence = entry.lastSequence; player.inputSteps = 0 }
       player.inputSteps++
     }
@@ -122,13 +132,18 @@ export class ArenaSimulation {
     // simultaneous endpoints rather than pushing a player into adjacent cover.
     for (let i=0;i<proposals.length;i++) for (let j=i+1;j<proposals.length;j++) {
       const a = proposals[i], b = proposals[j]
-      const verticalGap = Math.max(0,Math.abs(a.next.y-b.next.y)-ONLINE.capsuleHalfHeight*2)
+      const verticalGap = Math.max(0,Math.abs(a.next.y-b.next.y)-capsuleHalfHeight(a.entry.crouched)-capsuleHalfHeight(b.entry.crouched))
       if (Math.hypot(a.next.x-b.next.x,a.next.z-b.next.z,verticalGap)<ONLINE.capsuleRadius*2+0.02) {
         a.body.setNextKinematicTranslation(a.position)
         b.body.setNextKinematicTranslation(b.position)
       }
     }
     this.world.step()
+    for(const {entry,body,position} of proposals) {
+      const p=body.translation()
+      entry.shotVelocity=[(p.x-position.x)*ONLINE.tickRate,(p.y-position.y)*ONLINE.tickRate,(p.z-position.z)*ONLINE.tickRate]
+      entry.shotGrounded=entry.grounded
+    }
     for (const { player,body,vx,vy,vz,dash,knockX,knockZ } of this.players.values()) {
       const p = body.translation()
       player.x = p.x; player.y = p.y; player.z = p.z

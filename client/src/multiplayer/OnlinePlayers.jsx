@@ -6,6 +6,7 @@ import { useRapier } from '@react-three/rapier'
 import { Prediction } from './Prediction.js'
 import { canPlayArena } from '../../../shared/match.js'
 import { PLAYER, ONLINE } from '../../../shared/arena.js'
+import { eyeHeight } from '../../../shared/stance.js'
 import RobotModel from '../game/characters/RobotModel.jsx'
 import WeaponView from '../game/weapons/WeaponView.jsx'
 import { abilityForBinding } from '../../../shared/abilities.js'
@@ -45,7 +46,7 @@ function LocalCamera({ id }) {
     const send = () => {
       const captured = active(), pressed = keys.current, pose = latestPose(id)
       const aim = look.current || { yaw:pose?.yaw || 0,pitch:pose?.pitch || 0 }
-      const packet = lobby.move({ x:captured ? Number(pressed.has('KeyD'))-Number(pressed.has('KeyA')) : 0,z:captured ? Number(pressed.has('KeyS'))-Number(pressed.has('KeyW')) : 0,yaw:aim.yaw,pitch:aim.pitch,sprint:captured && (pressed.has('ShiftLeft') || pressed.has('ShiftRight')),jump:captured && jump.current,active:captured })
+      const packet = lobby.move({ x:captured ? Number(pressed.has('KeyD'))-Number(pressed.has('KeyA')) : 0,z:captured ? Number(pressed.has('KeyS'))-Number(pressed.has('KeyW')) : 0,yaw:aim.yaw,pitch:aim.pitch,sprint:captured && (pressed.has('ShiftLeft') || pressed.has('ShiftRight')),crouch:captured && (pressed.has('ControlLeft') || pressed.has('ControlRight')),jump:captured && jump.current,active:captured })
       prediction.current?.command(packet)
       jump.current = false
     }
@@ -78,7 +79,7 @@ function LocalCamera({ id }) {
         }
         return
       }
-      if (!['KeyW','KeyA','KeyS','KeyD','Space','ShiftLeft','ShiftRight'].includes(code)) return
+      if (!['KeyW','KeyA','KeyS','KeyD','Space','ShiftLeft','ShiftRight','ControlLeft','ControlRight'].includes(code)) return
       event.preventDefault()
       keys.current.add(code)
       if (code === 'Space' && !event.repeat) jump.current = true
@@ -157,7 +158,7 @@ function LocalCamera({ id }) {
     const dead = lobby.self()?.hp===0
     const reset = !initialized.current || (wasDead.current && !dead) || seenRound.current!==roundId
     if (reset) {
-      camera.position.set(pose.x,pose.y+PLAYER.eye,pose.z)
+      camera.position.set(pose.x,pose.y+eyeHeight(pose.crouched),pose.z)
       look.current = { yaw:pose.yaw,pitch:pose.pitch }
       seenShot.current=lobby.self()?.shot || 0
       initialized.current = true
@@ -195,10 +196,12 @@ function LocalCamera({ id }) {
       }
       const position = engine.position(), decay = Math.exp(-16*Math.min(delta,0.1))
       correction.current = correction.current.map(value => value*decay)
-      camera.position.set(position.x+correction.current[0],position.y+PLAYER.eye+correction.current[1],position.z+correction.current[2])
-    } else camera.position.set(pose.x,pose.y+PLAYER.eye,pose.z)
+      camera.position.set(position.x+correction.current[0],position.y+eyeHeight(engine.entry.crouched)+correction.current[1],position.z+correction.current[2])
+    } else camera.position.set(pose.x,pose.y+eyeHeight(pose.crouched),pose.z)
     camera.quaternion.setFromEuler(new Euler(look.current.pitch,look.current.yaw,0,'YXZ'))
-    arenaView.position = [camera.position.x,camera.position.y-PLAYER.eye,camera.position.z]
+    const position=[camera.position.x,camera.position.y-eyeHeight(engine ? engine.entry.crouched : pose.crouched),camera.position.z]
+    arenaView.motion=engine?.motion || {velocity:[pose.vx,pose.vy,pose.vz],grounded:pose.grounded,dashing:pose.dashRemaining>0,crouched:pose.crouched}
+    arenaView.position = position
     arenaView.yaw = look.current.yaw; arenaView.pitch = look.current.pitch
   },-2)
   return null
@@ -213,17 +216,17 @@ function RemotePlayer({ player }) {
     root.current.position.set(pose.x,pose.y,pose.z)
     root.current.rotation.y = pose.yaw
     head.current.rotation.x = pose.pitch
-    arenaView.remotes[player.id] = { position:[pose.x,pose.y,pose.z],yaw:pose.yaw,pitch:pose.pitch }
+    arenaView.remotes[player.id] = { position:[pose.x,pose.y,pose.z],yaw:pose.yaw,pitch:pose.pitch,crouched:pose.crouched }
   })
   const reveal = () => {
     const self = lobby.self(), time = lobby.get().room.time, pose = samplePose(player.id)
     if (!self || self.hp<=0 || !pose) return false
     if (time<self.abilities.scanner.activeUntil) return true
-    const smoke = self.abilities.smoke, origin = arenaView.position.map((v,i) => v+(i===1 ? PLAYER.eye : 0)), target = [pose.x,pose.y,pose.z]
+    const smoke = self.abilities.smoke, origin = arenaView.position.map((v,i) => v+(i===1 ? eyeHeight(arenaView.motion.crouched) : 0)), target = [pose.x,pose.y,pose.z]
     return time<smoke.activeUntil && throughSmoke(origin,target,[{ origin:smoke.origin.map((v,i)=>v+(i===1 ? 1 : 0)),radius:4 }]) && !blocked(origin,target,getMap(lobby.get().room.mapId).solids)
   }
   return <group ref={root} name={`remote-player-${player.id}`}>
-    <RobotModel enemy headRef={head} characterId={player.combat.characterId} color={player.connected ? undefined : '#728599'} reveal={reveal} />
+    <RobotModel enemy headRef={head} stance={()=>samplePose(player.id)?.crouched || false} characterId={player.combat.characterId} color={player.connected ? undefined : '#728599'} reveal={reveal} />
   </group>
 }
 

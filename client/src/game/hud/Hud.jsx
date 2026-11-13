@@ -28,7 +28,7 @@ export default function Hud() {
     <AbilityHud />
     {s.time<s.abilities.scanner.activeUntil && <div className="scan-status">SCANNER ONLINE · TARGET REVEAL</div>}
      <TacticalStatus state={s} />
-    {s.mode === 'playing' && <Crosshair shotgun={Boolean(weapon.pellets)} melee={melee}/>}
+    {s.mode === 'playing' && <Crosshair dynamic weaponId={s.weapon} shotgun={Boolean(weapon.pellets)} melee={melee}/>}
     <CombatFeedback state={s} />
     <KillBadge state={s} />
     <WeaponStatus state={s} />

@@ -35,7 +35,7 @@ export default function OnlineOverlay({ onLeave,onSettings }) {
     <div className={`online-hud ${s.room.time-combat.hurt<0.3 ? 'damage' : ''} ${shield ? 'shield-active' : ''} ${s.room.time<combat.abilities.dash.activeUntil ? 'dash-active' : ''}`}>
       <div className="online-top"><span className="eyebrow">PRIVATE ARENA / {s.room.code}</span><strong>{getMap(s.room.mapId).name}<small>{s.room.ranked ? 'RANKED' : 'CASUAL'} · SERVER VALIDATED COMBAT</small></strong><span className="online-link">{interrupted ? 'LINK INTERRUPTED' : 'CONNECTED · 2 PLAYERS'}</span></div>
       <div className="online-names"><span>{self.name} <small>YOU · {combat.kills} KILLS / {combat.deaths} DEATHS</small></span><span>{other?.name || 'OPEN SLOT'} <small>{other?.connected ? `CHALLENGER · ${other.combat.kills} KILLS` : 'RECONNECTING'}</small></span></div>
-      {s.captured && !dead && live && <Crosshair shotgun={Boolean(weapon.pellets)} melee={melee}/>}
+      {s.captured && !dead && live && <Crosshair dynamic weaponId={combat.weapon} shotgun={Boolean(weapon.pellets)} melee={melee}/>}
       <CombatFeedback state={feedback} />
       <KillBadge state={feedback} visible={!interrupted && ((s.captured && live) || (duel && s.room.matchPhase==='roundOver'))} />
       <WeaponStatus state={feedback} />

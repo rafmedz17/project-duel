@@ -16,6 +16,7 @@ These are the default bindings. Open **Settings → Controls** to edit them and 
 | Q | Cycle the three equipped weapons |
 | R | Reload equipped firearm |
 | Shift | Sprint |
+| Hold Ctrl | Crouch; move slower and tighten grounded firearm spread by 20%. Release to stand when there is headroom |
 | Space | Jump while grounded |
 | B | Open/close the training field armory; edit character, guns, melee and unique skill |
 | G | Reset the range, pause/restart moving robots, or start/stop the current challenge |
@@ -33,6 +34,8 @@ Choose from 11 primaries, three pistols and three melee weapons. Each has its ow
 Confirmed eliminations display an animated kill badge. Another kill within six simulation seconds advances the combo: **Double Kill → Triple Kill → Overdrive → Rampage**, with a different sound at each tier. Higher combos keep their exact count on the Rampage badge. Nonlethal hits do not advance it. Death, restarting and a fresh multiplayer round clear the combo; training pause freezes its timer. The badge stays hidden while paused, dead, or behind the multiplayer Escape menu. In Best of Three, winning-kill badges remain visible during the round result; the final elimination badge appears inside the match result dialog. Badges last 2.4 seconds. Settings → Audio master, sound-effects and mute controls also apply to combo sounds.
 
 Firearms leave short, colored bullet trails, including individual shotgun pellets and opponent shots online. They follow accepted shots, stop at cover and respect RAILBREAKER's thin-cover penetration. Online trails keep rendering without mouse capture and finish their flight when a round ends. Server trail IDs continue across respawns, so both players' first shots after respawning remain visible. Melee attacks and rejected shots emit no bullet trail. Trails are visual effects and do not change damage.
+
+Stop before taking precise shots: walking spreads bullets, sprinting spreads them further, and jumping or dashing is highly inaccurate. SMGs are more forgiving while moving than rifles or snipers. The crosshair opens and shows a low-accuracy hint while moving, then tightens as you stop or land. These rules apply in training and multiplayer, including while scoped.
 
 Training Settings and the B Field Armory offer Normal magazines or Unlimited ammo / no reload. The choice saves on this device and affects every training firearm; multiplayer keeps normal ammunition rules. Empty firearms automatically reload; R reloads a partial magazine. A notice and weapon/cell animation show progress. Switching normally takes 0.25 seconds; snipers and OMEGA take longer. Switching preserves separate magazines and cancels unfinished reloads. Re-equipping an empty firearm starts a fresh reload after equip recovery. Melee swings must finish before switching. Switching, reloading, pausing or losing focus clears the trigger; press again to resume firing.
 

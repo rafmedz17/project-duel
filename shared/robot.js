@@ -1,4 +1,5 @@
 import { PLAYER } from './arena.js'
+import { CROUCH } from './stance.js'
 
 // Feet and head fill the player's capsule height. The camera sits inside the
 // head, and training/online rendering and damage use these same proportions.
@@ -12,3 +13,14 @@ export const ROBOT_PARTS = [
     { id:`foot${side}`,region:'foot',position:[side*0.13,-0.79,-0.045],size:[0.2,0.12,0.31] },
   ]),
 ]
+
+// A lowered head and torso, bent legs and planted feet. Rendering and damage
+// share this pose, preserving head size instead of squashing the whole robot.
+export const CROUCHED_ROBOT_PARTS=ROBOT_PARTS.map(part=>{
+  if(part.id==='head') return {...part,position:[0,CROUCH.height/2-.175,-.035]}
+  if(part.id==='torso') return {...part,position:[0,-.06,.015],size:[.43,.58,.32]}
+  if(part.id.startsWith('arm')) return {...part,position:[part.position[0],-.05,-.03],size:[.13,.6,.17]}
+  if(part.id.startsWith('leg')) return {...part,position:[part.position[0],-.34,.04],size:[.17,.42,.2],rotation:[-.85,0,0]}
+  return {...part,position:[part.position[0],-CROUCH.height/2+.06,-.13]}
+})
+export const robotParts=crouched=>crouched ? CROUCHED_ROBOT_PARTS : ROBOT_PARTS

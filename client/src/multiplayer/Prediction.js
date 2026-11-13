@@ -1,5 +1,7 @@
 import { getMap } from '../../../shared/maps.js'
+import { ONLINE } from '../../../shared/arena.js'
 import { createMovementWorld, createCharacter, stepCharacter } from '../../../shared/movement.js'
+import { restoreStance } from '../../../shared/stance.js'
 
 export class Prediction {
   constructor(RAPIER,mapId) {
@@ -13,6 +15,7 @@ export class Prediction {
     this.input = null
     this.pendingJump = false
     this.pose = null
+    this.motion={velocity:[0,0,0],grounded:true,dashing:false,crouched:false}
   }
   command(input) {
     if (!input) return
@@ -27,12 +30,14 @@ export class Prediction {
     this.commands.clear()
     this.input = null
     this.pendingJump = false
+    this.motion={velocity:[0,0,0],grounded:pose.grounded,dashing:pose.dashRemaining>0,crouched:Boolean(pose.crouched)}
     this.restore(pose)
     this.pose = pose
   }
   restore(pose) {
     this.rooted = pose.rooted
     const entry = this.entry
+    restoreStance(entry,pose.crouched)
     entry.body.setTranslation({ x:pose.x,y:pose.y,z:pose.z },true)
     entry.body.setNextKinematicTranslation({ x:pose.x,y:pose.y,z:pose.z })
     Object.assign(entry,{ knockX:pose.knockX || 0,knockZ:pose.knockZ || 0,vx:pose.vx || 0,vy:pose.vy || 0,vz:pose.vz || 0,grounded:pose.grounded,dash:pose.dashRemaining>0 ? { remaining:pose.dashRemaining,direction:[pose.dashX,pose.dashZ] } : null })
@@ -42,6 +47,7 @@ export class Prediction {
     if (pose===this.pose) return [0,0,0]
     const before = this.entry.body.translation()
     if (other) {
+      restoreStance(this.other,other.crouched)
       this.other.collider.setEnabled(other.hp!==0)
       this.other.body.setTranslation({ x:other.x,y:other.y,z:other.z },true)
       this.other.body.setNextKinematicTranslation({ x:other.x,y:other.y,z:other.z })
@@ -63,9 +69,11 @@ export class Prediction {
     if (!input?.active) { this.entry.vx = 0; this.entry.vz = 0; this.entry.dash = null }
     const current=this.entry.movement
     this.entry.movement=movement
-    stepCharacter(this.entry,input,jump)
+    const {position}=stepCharacter(this.entry,input,jump)
     this.entry.movement=current
     this.world.step()
+    const next=this.entry.body.translation()
+    this.motion={velocity:[(next.x-position.x)*ONLINE.tickRate,(next.y-position.y)*ONLINE.tickRate,(next.z-position.z)*ONLINE.tickRate],grounded:this.entry.grounded,dashing:Boolean(this.entry.dash),crouched:this.entry.crouched}
   }
   step() {
     const frame = { index:this.index++,input:this.input,jump:this.pendingJump,movement:this.entry.movement }

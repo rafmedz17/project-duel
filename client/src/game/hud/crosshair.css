@@ -1,1 +1,3 @@
 .crosshair.custom-crosshair{width:80px;height:80px;line-height:0;pointer-events:none;filter:drop-shadow(0 0 2px #06121d);text-shadow:none}.crosshair.custom-crosshair::before{display:none}.custom-crosshair svg{display:block;overflow:visible}
+.movement-spread-hint{position:absolute;top:86px;left:50%;transform:translateX(-50%);white-space:nowrap;font:8px/1.4 Consolas,monospace;letter-spacing:1px;color:#ffcf91}
+.movement-spread-hint[data-steady="true"]{color:#80efc0}

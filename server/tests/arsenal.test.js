@@ -5,7 +5,8 @@ import { ArenaCombat } from '../src/arena/ArenaCombat.js'
 import { ArenaSimulation } from '../src/arena/ArenaSimulation.js'
 import { WEAPONS,WEAPON_IDS,pelletDamage } from '../../shared/weapons.js'
 import { validateLoadout,weaponSlots } from '../../shared/loadout.js'
-import { coverTransmission } from '../../shared/ballistics.js'
+import { coverTransmission,shotDirections } from '../../shared/ballistics.js'
+import { movementSpread } from '../../shared/accuracy.js'
 import { PLAYER } from '../../shared/arena.js'
 
 const specifications=[
@@ -83,6 +84,38 @@ test('accepted shot trails have monotonic IDs across respawns while animation sh
   assert.equal(shoot(),true)
   assert.equal(events[1].shot,1)
   assert.equal(events[1].trailId,2)
+})
+
+test('actual server movement widens shots, deceleration restores accuracy and wall-blocked input is stationary',t=>{
+  const {a,b,sim,combat,send,advance}=setup(t),events=[]
+  combat.onShot=event=>events.push(event)
+  for(const [id,z] of [['a',15],['b',-15]]) {
+    const body=sim.players.get(id).body
+    body.setTranslation({x:0,y:.87,z},true);body.setNextKinematicTranslation({x:0,y:.87,z})
+  }
+  for(let i=0;i<30;i++) sim.step()
+  const aim=()=>({yaw:Math.atan2(a.x-b.x,a.z-b.z),pitch:Math.atan2(b.y-a.y-PLAYER.eye,Math.hypot(a.x-b.x,a.z-b.z))})
+  assert.equal(send('fire',aim()),true);assert.equal(b.hp,76)
+  advance(.2)
+  let sequence=0
+  const move=(x,sprint=true)=>sim.receive('a',{sequence:sequence++,x,z:0,yaw:0,pitch:0,sprint,jump:false,active:true})
+  move(1);for(let i=0;i<30;i++) sim.step()
+  const running=sim.shotMotion('a'),intent=aim()
+  assert.ok(movementSpread(WEAPONS.rifle,running)>.1)
+  assert.equal(send('fire',intent),true);assert.equal(b.hp,76)
+  const ray=shotDirections(intent.yaw,intent.pitch,WEAPONS.rifle,a.shot,running)[0],event=events.at(-1)
+  const delta=event.ends[0].map((value,index)=>value-event.origin[index]),length=Math.hypot(...delta)
+  assert.ok(delta.every((value,index)=>Math.abs(value/length-ray[index])<1e-10))
+  move(0);for(let i=0;i<3;i++) sim.step()
+  assert.ok(movementSpread(WEAPONS.rifle,sim.shotMotion('a'))>0)
+  for(let i=0;i<20;i++) sim.step()
+  assert.equal(movementSpread(WEAPONS.rifle,sim.shotMotion('a')),0)
+  move(1);for(let i=0;i<150;i++) sim.step()
+  assert.ok(a.vx>8)
+  assert.equal(movementSpread(WEAPONS.rifle,sim.shotMotion('a')),0)
+  advance(.2)
+  assert.equal(send('fire',{...aim(),spread:0}),false)
+  assert.equal(send('fire',{...aim(),velocity:[0,0,0],grounded:true}),false)
 })
 test('all 99 primary/pistol/melee combinations are legal, with exactly one of each and no extra gear',()=> {
   assert.equal(WEAPON_IDS.length,17)

@@ -239,7 +239,7 @@ export const game = {
         if (!pending.times.length || state.reloading) pendingAttack=null
       }
     }
-    const tactical = stepTrainingAbilities(state,clock,dt,{ x:runtime.position[0],y:runtime.position[1],z:runtime.position[2],yaw:runtime.yaw,pitch:runtime.pitch },publish)
+    const tactical = stepTrainingAbilities(state,clock,dt,{ x:runtime.position[0],y:runtime.position[1],z:runtime.position[2],yaw:runtime.yaw,pitch:runtime.pitch,crouched:runtime.crouched },publish)
     if (tactical) game.set(tactical)
     const course=stepCourses(state,clock,dt,runtime.position)
     state={ ...state,training:course.training,targets:course.targets }

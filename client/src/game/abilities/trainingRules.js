@@ -6,7 +6,7 @@ import { WEAPONS } from '../../../../shared/weapons.js'
 
 let grenades = []
 export function resetTrainingAbilities() { grenades = [] }
-export function activateTraining(s,time,id,{ position = [0,0,0],direction = [0,-1],yaw = 0,pitch = 0 } = {}) {
+export function activateTraining(s,time,id,{ position = [0,0,0],direction = [0,-1],yaw = 0,pitch = 0,crouched=false } = {}) {
   const tuning = ABILITIES[id], previous = s.abilities[id], modifiers = ultimateModifiers(s,time)
   if (s.mode!=='playing' || !tuning || !s.loadout.abilities.includes(id) || (time<previous.readyAt && !(id==='dash' && modifiers.unlimitedDash))) return null
   if (!Array.isArray(position) || position.length!==3 || !position.every(Number.isFinite) || !Array.isArray(direction) || direction.length!==2 || !direction.every(Number.isFinite) || !Number.isFinite(yaw) || !Number.isFinite(pitch)) return null
@@ -21,7 +21,7 @@ export function activateTraining(s,time,id,{ position = [0,0,0],direction = [0,-
     if (effect==='ammo') Object.assign(patch,{ reloading:false,reloadWeapon:null,reloadStart:0,reloadEnd:0,reloadReason:null,magazines:Object.fromEntries(Object.entries(WEAPONS).filter(([,weapon]) => weapon.magazine).map(([key,weapon]) => [key,weapon.magazine])) })
   }
   if (tuning.fuse) {
-    const grenade = { ...launchGrenade(position,yaw,pitch),id }
+    const grenade = { ...launchGrenade(position,yaw,pitch,crouched),id }
     grenades.push(grenade)
     Object.assign(ability,{ activeUntil:0,flying:true,projectile:[...grenade.position] })
   }

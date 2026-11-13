@@ -5,12 +5,12 @@ import { trailDistance } from '../../../../shared/bulletTrails.js'
 
 export function createWeaponTracer() {
   const ray = new Raycaster(), direction = new Vector3()
-  return (scene,camera,weapon,shot = 0) => {
+  return (scene,camera,weapon,shot = 0,motion) => {
     const hits = [], ends=[], forward=camera.getWorldDirection(direction), yaw=Math.atan2(-forward.x,-forward.z), pitch=Math.asin(forward.y)
     const origin=camera.position.toArray(), solids=[]
     scene.traverse(object=> { if (object.userData.coverSolid) solids.push(object.userData.coverSolid) })
     ray.far = weapon.range
-    for (const vector of shotDirections(yaw,pitch,weapon,shot)) {
+    for (const vector of shotDirections(yaw,pitch,weapon,shot,motion)) {
       ray.set(camera.position,direction.fromArray(vector))
       const intersections=ray.intersectObjects(scene.children,true)
       const hit = intersections.find(h => h.object.userData.blocksShot && (!weapon.penetration || h.object.userData.targetId!==undefined || !h.object.userData.coverSolid))

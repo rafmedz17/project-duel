@@ -5,8 +5,9 @@ import { WEAPONS,WEAPON_IDS,freshMagazines,equipTime } from '../../shared/weapon
 import { validateLoadout } from '../../shared/loadout.js'
 import { PISTOL,PLAYER,TARGET } from '../src/game/config.js'
 import { BoxGeometry,Mesh,MeshBasicMaterial,PerspectiveCamera,Scene,Group } from 'three'
-import { ROBOT_PARTS,ROBOT_HEAD_Y } from '../../shared/robot.js'
-import { rayRobot,rayBox } from '../../shared/ballistics.js'
+import { ROBOT_PARTS,ROBOT_HEAD_Y,robotParts } from '../../shared/robot.js'
+import { rayRobot,rayBox,shotDirections } from '../../shared/ballistics.js'
+import { movementSpread,stanceSpread,ACCURACY_STOP_SPEED } from '../../shared/accuracy.js'
 import { ONLINE } from '../../shared/arena.js'
 import { createWeaponTracer } from '../src/game/weapons/traceWeapon.js'
 import { TRAINING_SOLIDS,TRAINING_TARGETS } from '../src/game/training/config.js'
@@ -18,6 +19,73 @@ function start(id='pistol',character='vex',unique='flashbang') {
   game.set({ mode:'playing' })
 }
 function advance(seconds) { for(let i=0;i<Math.ceil(seconds*600);i++) game.tick(1/600) }
+
+test('movement cones preserve standing accuracy, scale by speed and category, and penalize airborne and dash shots',()=>{
+  const motion=speed=>({velocity:[speed,0,0],grounded:true})
+  for(const id of WEAPON_IDS) {
+    const weapon=WEAPONS[id]
+    assert.deepEqual(shotDirections(.3,.2,weapon,17,motion(0)),shotDirections(.3,.2,weapon,17))
+    assert.equal(movementSpread(weapon,motion(ACCURACY_STOP_SPEED)),0)
+    if(weapon.fireMode==='melee') {assert.equal(movementSpread(weapon,{...motion(20),grounded:false,dashing:true}),0);continue}
+    const walking=movementSpread(weapon,motion(5)),running=movementSpread(weapon,motion(8.5))
+    assert.ok(walking>0 && running>walking)
+    assert.ok(movementSpread(weapon,{...motion(0),grounded:false})>running)
+    assert.ok(movementSpread(weapon,{...motion(20),dashing:true})>=running)
+    for(const vector of shotDirections(.8,-.5,weapon,12,{...motion(8.5),grounded:false})) {
+      assert.ok(vector.every(Number.isFinite));assert.ok(Math.abs(Math.hypot(...vector)-1)<1e-12)
+    }
+  }
+  assert.ok(movementSpread(WEAPONS.nova,motion(5))<movementSpread(WEAPONS.rifle,motion(5)))
+  assert.ok(movementSpread(WEAPONS.hyperion,motion(5))>movementSpread(WEAPONS.rifle,motion(5)))
+})
+
+test('grounded crouch tightens every firearm cone by twenty percent without changing airborne or dash accuracy',()=>{
+  for(const weapon of Object.values(WEAPONS).filter(w=>w.magazine)) for(const speed of [0,2.75]) {
+    const standing={velocity:[speed,0,0],grounded:true},crouched={...standing,crouched:true}
+    assert.equal(stanceSpread(crouched),.8)
+    for(let shot=1;shot<10;shot++) {
+      const a=shotDirections(0,0,weapon,shot,standing),b=shotDirections(0,0,weapon,shot,crouched)
+      // Movement is authored as a cone angle; tan(angle * .8) differs slightly
+      // from tan(angle) * .8, while base accuracy/pellet offsets scale exactly.
+      for(let i=0;i<a.length;i++) assert.ok(Math.abs(Math.hypot(b[i][0],b[i][1])/-b[i][2]-.8*Math.hypot(a[i][0],a[i][1])/-a[i][2])<.0001)
+      for(const patch of [{grounded:false},{dashing:true}]) assert.deepEqual(shotDirections(.4,.3,weapon,shot,{...crouched,...patch}),shotDirections(.4,.3,weapon,shot,{...standing,...patch}))
+    }
+  }
+})
+
+test('sprinting makes aimed rifle shots unreliable at thirty meters, while stopping restores the same precise rays',()=>{
+  const origin=[0,1.52,0],target={x:0,y:.87,z:-30,yaw:0,pitch:0},pitch=Math.atan2(-PLAYER.eye,30)
+  const standing={velocity:[0,0,0],grounded:true},running={velocity:[8.5,0,0],grounded:true}
+  let steadyHits=0,movingHits=0
+  for(let shot=1;shot<=1000;shot++) {
+    steadyHits+=Number(Boolean(rayRobot(origin,shotDirections(0,pitch,WEAPONS.rifle,shot,standing)[0],target)))
+    movingHits+=Number(Boolean(rayRobot(origin,shotDirections(0,pitch,WEAPONS.rifle,shot,running)[0],target)))
+  }
+  assert.ok(steadyHits>950,`steady hits: ${steadyHits}`)
+  assert.ok(movingHits<150,`sprinting hits: ${movingHits}`)
+})
+
+test('training traces and authoritative robot rays agree for stationary and moving rifle shots',t=>{
+  const scene=new Scene(),camera=new PerspectiveCamera(),trace=createWeaponTracer(),material=new MeshBasicMaterial(),geometry=[]
+  const target={x:0,y:.87,z:-30,yaw:0,pitch:0}
+  for(const part of ROBOT_PARTS) {
+    const box=new BoxGeometry(...part.size),mesh=new Mesh(box,material)
+    geometry.push(box)
+    mesh.position.set(part.position[0],target.y+part.position[1],target.z+part.position[2])
+    mesh.userData={blocksShot:true,targetId:0,hitRegion:part.region};scene.add(mesh)
+  }
+  t.after(()=>{geometry.forEach(box=>box.dispose());material.dispose()})
+  camera.position.set(0,1.52,0);camera.lookAt(0,.87,-30)
+  camera.updateMatrixWorld();scene.updateMatrixWorld(true)
+  const pitch=Math.atan2(-PLAYER.eye,30)
+  for(const speed of [0,5,8.5]) for(let shot=1;shot<=30;shot++) {
+    const motion={velocity:[speed,0,0],grounded:true}
+    const server=rayRobot(camera.position.toArray(),shotDirections(0,pitch,WEAPONS.rifle,shot,motion)[0],target)
+    const visual=trace(scene,camera,WEAPONS.rifle,shot,motion).hits[0]
+    assert.equal(Boolean(visual),Boolean(server))
+    if(server) assert.equal(visual.region,server.region)
+  }
+})
 
 for(const id of WEAPON_IDS) test(`${WEAPONS[id].name} equips in its proper slot, respects regional damage, recovery and reset`,()=> {
   start(id)
@@ -121,22 +189,23 @@ test('authored animation phases cycle the bolt, pump, barrel hinge, magazines an
 test('rendered robot boxes and authoritative hit volumes agree, including rotated and tilted heads', t => {
   const geometry = [], material = new MeshBasicMaterial(), trace = createWeaponTracer()
   t.after(() => { geometry.forEach(g => g.dispose()); material.dispose() })
-  for (const yaw of [0,Math.PI,0.4]) for (const pitch of [0,0.6]) {
+  for (const crouched of [false,true]) for (const yaw of [0,Math.PI,0.4]) for (const pitch of [0,0.6]) {
     const scene = new Scene(), root = new Group()
     root.position.set(0,0.87,-8); root.rotation.y = yaw
-    for (const part of ROBOT_PARTS) {
+    for (const part of robotParts(crouched)) {
       const shape = new BoxGeometry(...part.size), mesh = new Mesh(shape,material)
       geometry.push(shape); mesh.position.set(...part.position)
       if (part.id==='head') mesh.rotation.x = pitch
+      else if(part.rotation) mesh.rotation.set(...part.rotation)
       mesh.userData = { blocksShot:true,targetId:0,hitRegion:part.region }
       root.add(mesh)
     }
     scene.add(root); scene.updateMatrixWorld(true)
-    for (const [x,y] of [[0,0.87+ROBOT_HEAD_Y],[0,0.84],[0.3,0.77],[0.13,0.08],[0,0.2]]) {
+    for (const [x,y] of [[0,0.87+ROBOT_HEAD_Y],[0,1.27],[0,0.84],[0.3,0.77],[0.13,0.53],[0.13,0.355],[0.13,0.08],[0,0.2]]) {
       const camera = new PerspectiveCamera(70,16/9,0.05,100)
       camera.position.set(x,y,0); camera.updateMatrixWorld(true)
       const visual = trace(scene,camera,PISTOL).hits[0]
-      const server = rayRobot([x,y,0],[0,0,-1],{ x:0,y:0.87,z:-8,yaw,pitch })
+      const server = rayRobot([x,y,0],[0,0,-1],{ x:0,y:0.87,z:-8,yaw,pitch,crouched })
       assert.equal(visual?.region,server?.region)
       if (visual) assert.ok(Math.abs(visual.distance-server.distance)<1e-6)
     }
