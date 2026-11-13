@@ -42,7 +42,7 @@ test('refresh restores the same arena seat and ammo, accepts new actions, and ex
     await expect.poll(async () => (await state(page)).captured).toBe(true)
     await page.mouse.click(640,400)
     await expect(page.getByTestId('online-ammo')).toHaveText('13 / 15')
-    await page.evaluate(() => document.exitPointerLock())
+    await page.keyboard.press('Escape');await page.evaluate(() => document.exitPointerLock())
     await page.getByRole('button',{ name:'RETURN TO LOBBY',exact:true }).click()
     await page.getByRole('button',{ name:'LEAVE ROOM',exact:true }).click()
     await page.reload()

@@ -5,7 +5,7 @@ async function start(page,gear) {
   await presetLoadout(page,gear)
   await page.goto('/')
   await page.getByRole('button',{ name:/SETTINGS/ }).click()
-  await page.getByLabel('Render quality').selectOption('Low')
+  await page.getByRole('tab',{ name:'Graphics',exact:true }).click();await page.getByLabel('Render quality').selectOption('Low')
   await page.getByRole('button',{ name:'BACK' }).click()
   await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
   await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()

@@ -39,6 +39,8 @@ Releasing only your own mouse stops your controls without pausing the shared wor
 - Switching preserves independent magazines and cancels incomplete reloads. An empty re-equipped firearm auto reloads after equip recovery. Melee swings must finish before switching; switching never clears previous attack recovery.
 - Returning to lobby disposes the room's physics world. Re-entry creates a fresh generation and resets combat. The room clock remains active for later countdowns/reservations.
 
+Alt-tabbing releases held movement, fire and aim without opening the Escape menu or pausing the match. The server continues timers, abilities, damage, respawns and rounds. The live scene remains on return; click the canvas or Click to Aim to recapture the mouse. Escape still opens the arena menu, where Settings is available. Hidden tabs may throttle rendering, while the server remains independent. Actual disconnections retain the existing reconnect pause.
+
 ## Rendering and limits
 
 Server patches arrive at 20 Hz. Local look and movement respond immediately. The client predicts capsule movement at 60 Hz using the shared server controller, then restores acknowledged state and replays pending steps. Small corrections smooth out; large corrections snap. Other players interpolate across a 100 ms history. Position histories stay outside React, while the combat HUD receives authoritative snapshots. Released arena views render on invalidation. See [movement/recovery/performance details](NETWORK_AND_PERFORMANCE.md).

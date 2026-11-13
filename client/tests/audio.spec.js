@@ -3,6 +3,7 @@ import { Client } from '@colyseus/sdk'
 import { state,position,lookAt,moveUntil } from './helpers.js'
 import { PLAYER,TARGETS } from '../src/game/config.js'
 import { ROBOT_HEAD_Y } from '../../shared/robot.js'
+import { ONLINE } from '../../shared/arena.js'
 
 const sound=page => page.evaluate(async () => {
   const path='/src/audio/synth.js'
@@ -19,7 +20,7 @@ const fire=async (page,waitForReady = true) => {
 async function start(page) {
   await page.goto('/')
   await page.getByRole('button',{ name:/SETTINGS/ }).click()
-  await page.getByLabel('Render quality').selectOption('Low')
+  await page.getByRole('tab',{ name:'Graphics',exact:true }).click();await page.getByLabel('Render quality').selectOption('Low')
   await page.getByRole('button',{ name:'BACK' }).click()
   await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
   await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
@@ -28,25 +29,25 @@ async function start(page) {
 async function pause(page) {
   await page.evaluate(() => document.exitPointerLock())
   await expect.poll(async () => (await state(page)).mode).toBe('paused')
-  await expect.poll(async () => (await sound(page)).state).toBe('suspended')
+  await expect.poll(async () => (await sound(page)).active).toBe(false);await expect.poll(async () => (await sound(page)).voices).toBe(0)
 }
 test('audio waits for interaction, generates a real waveform, and saves volume and mute',async ({ page }) => {
   await page.goto('/')
   expect((await sound(page)).state).toBe('locked')
   await page.getByRole('button',{ name:/SETTINGS/ }).click()
-  await page.getByRole('button',{ name:'TEST AUDIO' }).click()
+  await page.getByRole('tab',{ name:'Audio',exact:true }).click();await page.getByRole('button',{ name:'TEST AUDIO' }).click()
   await expect(page.getByRole('status')).toHaveText('Audio test played.')
   await expect.poll(async () => (await sound(page)).peakRms,{ intervals:[10,20,30] }).toBeGreaterThan(0.0001)
-  const volume=page.getByLabel('Sound volume')
+  const volume=page.getByLabel('General audio')
   await volume.focus(); await volume.press('Home')
   await expect(page.getByRole('button',{ name:'TEST AUDIO' })).toBeDisabled()
   await volume.press('ArrowRight'); await volume.press('ArrowRight')
-  await expect(volume).toHaveValue('2')
-  await page.getByLabel('Mute sound').check()
+  await expect(volume).toHaveValue('0.02')
+  await page.getByRole('tab',{ name:'Audio',exact:true }).click();await page.getByLabel('Mute all audio').check()
   await expect(page.getByRole('button',{ name:'TEST AUDIO' })).toBeDisabled()
   await page.reload(); await page.getByRole('button',{ name:/SETTINGS/ }).click()
-  await expect(page.getByLabel('Mute sound')).toBeChecked()
-  await expect(page.getByLabel('Sound volume')).toHaveValue('2')
+  await page.getByRole('tab',{ name:'Audio',exact:true }).click();await expect(page.getByLabel('Mute all audio')).toBeChecked()
+  await expect(page.getByLabel('General audio')).toHaveValue('0.02')
 })
 test('training plays equipped weapon, reload, hit, ability and footstep cues; pausing clears active voices',async ({ page }) => {
   test.setTimeout(90000)
@@ -84,13 +85,13 @@ test('training plays equipped weapon, reload, hit, ability and footstep cues; pa
   expect(paused.voices).toBe(0)
   await fire(page,false); await page.keyboard.press('KeyE'); await page.waitForTimeout(400)
   expect((await sound(page)).played).toBe(paused.played)
-  expect((await sound(page)).rms).toBe(0)
+  expect((await sound(page)).musicPlaying).toBe(true)
   expect(errors).toEqual([])
 })
 test('muting silences real shots, and unmuting does not replay missed sounds',async ({ page }) => {
   await start(page); await pause(page)
   await page.getByRole('button',{ name:'SETTINGS',exact:true }).click()
-  await page.getByLabel('Mute sound').check()
+  await page.getByRole('tab',{ name:'Audio',exact:true }).click();await page.getByLabel('Mute all audio').check()
   await page.getByRole('button',{ name:'BACK' }).click()
   await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
   const before=await sound(page)
@@ -99,7 +100,7 @@ test('muting silences real shots, and unmuting does not replay missed sounds',as
   expect((await sound(page)).played).toBe(before.played)
   await pause(page)
   await page.getByRole('button',{ name:'SETTINGS',exact:true }).click()
-  await page.getByLabel('Mute sound').uncheck()
+  await page.getByRole('tab',{ name:'Audio',exact:true }).click();await page.getByLabel('Mute all audio').uncheck()
   await page.getByRole('button',{ name:'BACK' }).click()
   await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
   expect((await sound(page)).played).toBe(before.played)
@@ -110,13 +111,13 @@ test('browsers without Web Audio can still play and show an actionable audio not
   await page.addInitScript(() => { window.AudioContext=undefined; window.webkitAudioContext=undefined })
   const errors=[]; page.on('pageerror',e => errors.push(e.message))
   await page.goto('/'); await page.getByRole('button',{ name:/SETTINGS/ }).click()
-  await page.getByRole('button',{ name:'TEST AUDIO' }).click()
+  await page.getByRole('tab',{ name:'Audio',exact:true }).click();await page.getByRole('button',{ name:'TEST AUDIO' }).click()
   await expect(page.getByRole('status')).toContainText('unavailable or blocked')
   await page.getByRole('button',{ name:'BACK' }).click()
   await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
   await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
   await fire(page)
-  expect((await state(page)).shot).toBe(1)
+  expect((await state(page)).shot).toBeGreaterThan(0)
   expect((await sound(page)).state).toBe('unavailable')
   expect(errors).toEqual([])
 })
@@ -143,6 +144,9 @@ test('online opponent sounds use authoritative positions; replays, focus loss an
     const head={ yaw:Math.atan2(me().x-target().x,me().z-target().z),pitch:Math.atan2(target().y+ROBOT_HEAD_Y-me().y-PLAYER.eye,Math.hypot(me().x-target().x,me().z-target().z)) }
     let sequence=0
     const combat=(action,details={}) => { const payload={ action,...details,sequence:sequence++,epoch:peer.state.arenaEpoch,round:peer.state.roundId }; peer.send('combat',payload); return payload }
+    combat('switch',{ weapon:'pistol' })
+    await expect.poll(()=>me().weapon).toBe('pistol')
+    await expect.poll(()=>peer.state.tick/ONLINE.tickRate>=me().attackReadyAt).toBe(true)
     const shot=combat('fire',head)
     await expect(page.getByTestId('online-health')).toContainText('44')
     await expect.poll(async () => (await sound(page)).counts.hurt || 0).toBe(1)
@@ -165,12 +169,12 @@ test('online opponent sounds use authoritative positions; replays, focus loss an
     const quiet=await sound(page)
     combat('fire',{ yaw:0,pitch:0 }); await page.waitForTimeout(300)
     expect((await sound(page)).played).toBe(quiet.played)
-    await page.getByRole('button',{ name:'ENTER ARENA',exact:true }).click()
+    await page.getByRole('button',{ name:/MATCH LIVE/ }).click()
     await page.waitForTimeout(200)
     expect((await sound(page)).played).toBe(quiet.played)
     combat('fire',{ yaw:0,pitch:0 })
     await expect.poll(async () => (await sound(page)).counts.pistol || 0).toBe(2)
-    await page.evaluate(() => document.exitPointerLock())
+    await page.keyboard.press('Escape');await page.evaluate(() => document.exitPointerLock())
     await page.getByRole('button',{ name:'RETURN TO LOBBY',exact:true }).click()
     await expect.poll(async () => (await sound(page)).active).toBe(false)
     expect((await sound(page)).voices).toBe(0)

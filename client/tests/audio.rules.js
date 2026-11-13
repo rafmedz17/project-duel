@@ -64,7 +64,7 @@ test('footsteps require grounded movement, suppress spawn teleports, and clear b
   assert.equal(steps.step('self',[0,1,-15],true,2),false)
 })
 test('sound settings clamp unsafe values, preserve silence at zero and survive training reset',() => {
-  assert.deepEqual(audioSettings({ volume:NaN,muted:'yes' }),{ volume:0.55,muted:false })
+  assert.deepEqual(audioSettings({ volume:NaN,muted:'yes' }),{ volume:0.55,muted:false,sfxVolume:1,musicVolume:.25 })
   assert.equal(audioSettings({ volume:20 }).volume,1)
   assert.equal(audioSettings({ volume:-1 }).volume,0)
   assert.equal(audioSettings({ volume:0 }).volume,0)

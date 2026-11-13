@@ -15,6 +15,7 @@ import { throughSmoke,blocked } from '../../../shared/tactical.js'
 import { getMap } from '../../../shared/maps.js'
 import OnlineEffects from './OnlineEffects.jsx'
 import { WEAPONS } from '../../../shared/weapons.js'
+import { canonicalCode } from '../settings/preferences.js'
 import { onlineWeapon } from './onlineWeapon.js'
 import { game } from '../game/store.js'
 import { lobby, useLobby } from './lobby.js'
@@ -29,7 +30,7 @@ function LocalCamera({ id }) {
   const phase = useLobby(s => s.room?.phase), status = useLobby(s => s.status)
   const matchPhase = useLobby(s => s.room?.matchPhase)
   const roundId = useLobby(s => s.room?.roundId)
-  const seenRound = useRef(-1), seenShot=useRef(0)
+  const seenRound = useRef(-1), seenShot=useRef(0),fpsFrames=useRef({ count:0,time:0 })
   const clearInput = useRef(null), held = useRef(false), nextFire = useRef(0), wasDead = useRef(false)
   useEffect(() => {
     const engine = new Prediction(rapier,mapId)
@@ -38,6 +39,7 @@ function LocalCamera({ id }) {
   },[rapier,mapId])
   useEffect(() => {
     const canvas = gl.domElement
+    let requestedMenu=false
     const active = () => document.pointerLockElement === canvas && lobby.get().status === 'connected' && canPlayArena(lobby.get().room)
     const send = () => {
       const captured = active(), pressed = keys.current, pose = latestPose(id)
@@ -49,58 +51,76 @@ function LocalCamera({ id }) {
     const clear = () => { lobby.combat('release'); game.set({ aiming:false }); held.current = false; keys.current.clear(); jump.current = false; send() }
     clearInput.current = clear
     const down = event => {
+      if(event.code==='Escape') {
+        requestedMenu=true;lobby.setBackground(false)
+        if(document.pointerLockElement===canvas) document.exitPointerLock()
+      }
       if (!active() || lobby.self()?.hp<=0) return
-      if (event.code==='KeyT' && !event.repeat) { game.set({ inspectAt:lobby.get().room.time }); return }
-      const ability = abilityForBinding(lobby.self().loadout,event.code)
+      const code=canonicalCode(event,game.get().settings)
+      if(code==='Mouse0' || code==='Mouse2') { fire(event,code);return }
+      if (code==='KeyT' && !event.repeat) { game.set({ inspectAt:lobby.get().room.time }); return }
+      const ability = abilityForBinding(lobby.self().loadout,code)
       if (ability) {
         event.preventDefault()
         if (!event.repeat) { send(); lobby.combat('ability',{ ability,yaw:look.current?.yaw || 0,pitch:look.current?.pitch || 0 }) }
         return
       }
-      const weapon = weaponForBinding(lobby.self().loadout,event.code)
-      if (weapon || event.code==='KeyQ' || event.code==='KeyR') {
+      const weapon = weaponForBinding(lobby.self().loadout,code)
+      if (weapon || code==='KeyQ' || code==='KeyR') {
         event.preventDefault()
         if (event.repeat) return
-        held.current = false; lobby.combat('release')
-        if (event.code==='KeyR') lobby.combat('reload')
+        held.current = false;game.set({ aiming:false }); lobby.combat('release')
+        if (code==='KeyR') lobby.combat('reload')
         else {
           const equipped = weaponSlots(lobby.self().loadout)
           lobby.combat('switch',{ weapon:weapon || equipped[(equipped.indexOf(lobby.self().weapon)+1)%equipped.length] })
         }
         return
       }
-      if (!['KeyW','KeyA','KeyS','KeyD','Space','ShiftLeft','ShiftRight'].includes(event.code)) return
+      if (!['KeyW','KeyA','KeyS','KeyD','Space','ShiftLeft','ShiftRight'].includes(code)) return
       event.preventDefault()
-      keys.current.add(event.code)
-      if (event.code === 'Space' && !event.repeat) jump.current = true
+      keys.current.add(code)
+      if (code === 'Space' && !event.repeat) jump.current = true
       if (!event.repeat) send()
     }
-    const up = event => { keys.current.delete(event.code); if (active()) send() }
+    const up = event => { const code=canonicalCode(event,game.get().settings);keys.current.delete(code);release(event,code);if (active()) send() }
     const move = event => {
       if (!active() || !look.current) return
       const sensitivity = PLAYER.sensitivity*game.get().settings.sensitivity
       look.current.yaw = Math.atan2(Math.sin(look.current.yaw-event.movementX*sensitivity),Math.cos(look.current.yaw-event.movementX*sensitivity))
       look.current.pitch = Math.max(-ONLINE.maxPitch,Math.min(ONLINE.maxPitch,look.current.pitch-event.movementY*sensitivity))
     }
-    const fire = event => {
-      if (!active() || lobby.self()?.hp<=0 || lobby.self()?.reloading || !look.current) return
-      if (event.button===2) { game.set({ aiming:true }); return }
-      if (event.button!==0) return
+    const fire = (event,code) => {
+      if (!active() || lobby.self()?.hp<=0 || lobby.self()?.reloading) return
+      event.preventDefault()
+      if (code==='Mouse2') { if(!event.repeat) game.set({ aiming:game.get().settings.scopeMode==='tap' ? !game.get().aiming : true });return }
+      if (code!=='Mouse0' || event.repeat || !look.current) return
       const automatic=WEAPONS[lobby.self().weapon].fireMode==='auto'
       held.current=automatic; nextFire.current=performance.now()+100
       lobby.combat(automatic ? 'hold' : 'fire',look.current)
     }
-    const release = event => {
-      if (event.button===2) game.set({ aiming:false })
-      if (event.button===0 && held.current) { held.current=false; lobby.combat('release') }
+    const release = (event,code) => {
+      if (code==='Mouse2' && game.get().settings.scopeMode==='hold') game.set({ aiming:false })
+      if (code==='Mouse0' && held.current) { held.current=false; lobby.combat('release') }
     }
     const context=event=> { if (active()) event.preventDefault() }
-    const lock = () => { clear(); lobby.setCaptured(document.pointerLockElement===canvas && lobby.get().room?.phase==='arena') }
-    const blur = () => { clear(); if (document.pointerLockElement === canvas) document.exitPointerLock() }
+    const lock = () => {
+      const captured=document.pointerLockElement===canvas && lobby.get().room?.phase==='arena'
+      if(!captured) clear()
+      const live=canPlayArena(lobby.get().room) && lobby.self()?.hp>0
+      lobby.setBackground(!captured && !requestedMenu && live)
+      if(captured) requestedMenu=false
+      lobby.setCaptured(captured)
+    }
+    const blur = () => {
+      if(lobby.get().captured || document.pointerLockElement===canvas) { requestedMenu=false;lobby.setBackground(true) }
+      clear();if(document.pointerLockElement===canvas) document.exitPointerLock()
+    }
     const visibility = () => { if (document.hidden) blur() }
     const error = () => lobby.setCaptured(false)
+    const recapture=event=> { if(event.target===canvas && !lobby.get().captured && lobby.get().background && !document.hidden) void lobby.capture() }
     document.addEventListener('contextmenu',context)
-    document.addEventListener('mousedown',fire); document.addEventListener('mouseup',release)
+    document.addEventListener('mousedown',down); document.addEventListener('mouseup',up);canvas.addEventListener('click',recapture)
     document.addEventListener('keydown',down); document.addEventListener('keyup',up); document.addEventListener('mousemove',move)
     document.addEventListener('pointerlockchange',lock); document.addEventListener('pointerlockerror',error)
     window.addEventListener('blur',blur); document.addEventListener('visibilitychange',visibility)
@@ -112,7 +132,7 @@ function LocalCamera({ id }) {
       lobby.setArenaReady(false)
       clearInterval(interval); clear()
       document.removeEventListener('contextmenu',context)
-      document.removeEventListener('mousedown',fire); document.removeEventListener('mouseup',release)
+      document.removeEventListener('mousedown',down); document.removeEventListener('mouseup',up);canvas.removeEventListener('click',recapture)
       document.removeEventListener('keydown',down); document.removeEventListener('keyup',up); document.removeEventListener('mousemove',move)
       document.removeEventListener('pointerlockchange',lock); document.removeEventListener('pointerlockerror',error)
       window.removeEventListener('blur',blur); document.removeEventListener('visibilitychange',visibility)
@@ -127,6 +147,8 @@ function LocalCamera({ id }) {
     }
   },[phase,status,matchPhase,roundId,gl])
   useFrame(({ camera },delta) => {
+    fpsFrames.current.count++;fpsFrames.current.time+=delta
+    if(fpsFrames.current.time>=.5) { game.set({ fps:Math.round(fpsFrames.current.count/fpsFrames.current.time) });fpsFrames.current={ count:0,time:0 } }
     const pose = latestPose(id)
     if (!pose) return
     const dead = lobby.self()?.hp===0
@@ -198,7 +220,7 @@ function RemotePlayer({ player }) {
     return time<smoke.activeUntil && throughSmoke(origin,target,[{ origin:smoke.origin.map((v,i)=>v+(i===1 ? 1 : 0)),radius:4 }]) && !blocked(origin,target,getMap(lobby.get().room.mapId).solids)
   }
   return <group ref={root} name={`remote-player-${player.id}`}>
-    <RobotModel headRef={head} characterId={player.combat.characterId} color={player.connected ? undefined : '#728599'} reveal={reveal} />
+    <RobotModel enemy headRef={head} characterId={player.combat.characterId} color={player.connected ? undefined : '#728599'} reveal={reveal} />
   </group>
 }
 

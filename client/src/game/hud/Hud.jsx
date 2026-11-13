@@ -9,6 +9,8 @@ import CombatFeedback from './CombatFeedback.jsx'
 import KillBadge from './KillBadge.jsx'
 import { trainingNoReload } from '../training/options.js'
 import CourseHud from '../training/CourseHud.jsx'
+import Crosshair from './Crosshair.jsx'
+import { bindingLabel } from '../../settings/preferences.js'
 
 export default function Hud() {
   const s = useGame()
@@ -26,16 +28,16 @@ export default function Hud() {
     <AbilityHud />
     {s.time<s.abilities.scanner.activeUntil && <div className="scan-status">SCANNER ONLINE · TARGET REVEAL</div>}
      <TacticalStatus state={s} />
-    {s.mode === 'playing' && <div className={`crosshair ${melee ? 'melee-crosshair' : weapon.pellets ? 'shotgun-crosshair' : ''}`} aria-hidden="true">{weapon.pellets ? null : '+'}</div>}
+    {s.mode === 'playing' && <Crosshair shotgun={Boolean(weapon.pellets)} melee={melee}/>}
     <CombatFeedback state={s} />
     <KillBadge state={s} />
     <WeaponStatus state={s} />
     <div className="hud-bottom">
       <div className="health"><span className="eyebrow">VITAL SYSTEMS / {s.hp > 30 ? 'STABLE' : 'CRITICAL'}</span><strong>{s.hp}<small> / 100 HP</small></strong><div className="health-track"><i style={{ width:`${s.hp}%` }} /></div>{shield && <div className="shield-charge" data-testid="shield-charge">SHIELD {s.shieldCharge} / {ABILITIES.shield.capacity}<i style={{ width:`${s.shieldCharge/ABILITIES.shield.capacity*100}%` }} /></div>}</div>
-      <span className="hint">1-3 SELECT · Q CYCLE · R RELOAD · ESC PAUSE</span>
+      <span className="hint">{bindingLabel(s.settings.bindings.cycle)} CYCLE · {bindingLabel(s.settings.bindings.reload)} RELOAD · ESC PAUSE</span>
       <div className={`ammo ${melee ? 'blade-status' : s.weapon === 'rifle' ? 'rifle-status' : weapon.pellets ? 'shotgun-status' : ''}`}>
         <div className="weapon-slots" aria-label="Weapon selection">
-          {weaponSlots(s.loadout).map((id,index) => <span key={id} className={s.weapon === id ? 'selected' : ''}>{index+1} {WEAPONS[id].shortName}</span>)}
+          {weaponSlots(s.loadout).map((id,index) => <span key={id} className={s.weapon === id ? 'selected' : ''}>{bindingLabel(s.settings.bindings[['primary','secondary','melee'][index]])} {WEAPONS[id].shortName}</span>)}
         </div>
         <span className="eyebrow">{weaponSlots(s.loadout).indexOf(s.weapon)+1} / {weapon.name}</span>
         {melee ? <><strong>{status}</strong><div className="blade-cooldown"><i style={{ width:`${Math.max(0,1-remaining/weapon.cooldown)*100}%` }} /></div><span>{weapon.range} M REACH · {weapon.damage} DAMAGE · NO AMMO</span></> : <><strong>{trainingNoReload(s,s.time) ? '?' : String(ammo).padStart(2,'0')}<small> / {weapon.magazine}</small></strong><span>{equipping ? 'EQUIPPING…' : trainingNoReload(s,s.time) ? 'UNLIMITED AMMO / NO RELOAD' : s.reloading ? 'RELOADING ENERGY CELL…' : ammo === 0 ? 'AUTO RELOAD PENDING…' : weapon.fireMode === 'auto' ? 'FULL AUTO · HOLD LEFT CLICK' : 'SEMI AUTO · UNLIMITED RESERVE'}</span></>}

@@ -18,6 +18,7 @@ export function useGameAudio() {
       const nextScope=inArena ? `${room.code}:${room.arenaEpoch}` : `training:${local.generation}`
       const active=focused && !document.hidden && (inArena ? online.status==='connected' && room.phase==='arena' : ['playing','dead'].includes(local.mode))
       audio.configure(local.settings)
+      audio.setMusicActive(focused && !document.hidden)
       audio.setActive(active)
       if (!active || !wasActive || scope!==nextScope) steps.clear()
       if (active && wasActive && scope===nextScope) {
@@ -73,7 +74,7 @@ export function useGameAudio() {
       unsubscribeGame(); unsubscribeLobby(); cancelAnimationFrame(frameId)
       document.removeEventListener('pointerdown',gesture,true); document.removeEventListener('keydown',gesture,true)
       window.removeEventListener('focus',focus); window.removeEventListener('blur',blur); document.removeEventListener('visibilitychange',visibility)
-      audio.setActive(false); audio.pause()
+      audio.setMusicActive(false);audio.setActive(false); audio.pause()
     }
   },[])
 }

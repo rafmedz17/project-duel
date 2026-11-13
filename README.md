@@ -35,9 +35,11 @@ Confirmed kills display animated sci-fi badges with escalating combo sounds: Eli
 
 Every character has **E** Dash, **F** Shield, **C** a freely selected unique skill, and **X** a fixed ten-second ultimate. Choose VEX, AEGIS, ION or RAZE in **Character & Loadout**, then equip one of 11 primaries, three pistols and three melee weapons with animated previews. Press **B** during training to change character, guns, melee and unique skill. The field armory pauses the simulation and applies equipment without resetting your position, health or course progress. These changes are for the current training session; your saved multiplayer presets remain separate. See [characters and loadouts](docs/CHARACTERS_AND_LOADOUT.md), [controls](docs/CONTROLS.md) and [tactical systems](docs/TACTICAL_SYSTEMS.md).
 
-Combat audio includes distinct weapons, reloads, confirmed hits/headshots, eliminations, damage, abilities, footsteps and round results. Opponent sounds use distance and direction in multiplayer. **Settings → Test Audio** previews the current volume. Training pause and tab/focus loss silence active sounds, and resuming does not replay missed events. All sounds are generated locally without asset downloads. See [audio behavior and controls](docs/AUDIO_SYSTEM.md).
+Combat audio includes distinct weapons, reloads, confirmed hits/headshots, eliminations, damage, abilities, footsteps and round results. Opponent sounds use distance and direction in multiplayer. **Settings → Audio → Test Audio** previews the current volume. Training pause silences combat sounds while background music can continue; tab/focus loss silences both. Resuming does not replay missed events. All sounds are generated locally without asset downloads. See [audio behavior and controls](docs/AUDIO_SYSTEM.md).
 
 Build up to five presets in **Character & Loadout**, then Save & Equip to save all five and set your default. Guests save on this device; signed-in players save privately across devices. Best of Three offers a ten-second loadout phase before every round. Free Play offers a five-second preset swap window after death.
+
+Settings combines General, Controls, Graphics and Audio tabs. Edit FOV, hold/tap scope, damage numbers, crosshair, enemy aura, flashbang color and audio levels; rebind keyboard and mouse controls. Changes save locally; signed-in players can Save to Account for cross-device preferences. Multiplayer keeps running while alt-tabbed, with a click to recapture your mouse on return. See [settings](docs/SETTINGS.md).
 
 ## Multiplayer
 

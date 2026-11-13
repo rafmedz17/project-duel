@@ -25,7 +25,7 @@ export default function TacticalEffects() {
       marker.distance = Math.round(distance)
     })
     const dashing = time<s.abilities.dash.activeUntil
-    const fov = MathUtils.damp(camera.fov,aimFov(s,time,s.aiming,dashing),12,Math.min(delta,0.1))
+    const fov = MathUtils.damp(camera.fov,aimFov(s,time,s.aiming,dashing,s.settings.fov),12,Math.min(delta,0.1))
     if (Math.abs(camera.fov-fov)>0.001) { camera.fov = fov; camera.updateProjectionMatrix() }
   },-0.5)
   return <TacticalVisual read={() => ({ state:game.get(),time:game.now(),position:runtime.position,local:true })} />

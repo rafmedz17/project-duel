@@ -13,6 +13,7 @@ import WeaponView from './weapons/WeaponView.jsx'
 import { useCombatInput } from './weapons/useCombatInput.js'
 import { useAbilityInput } from './abilities/useAbilityInput.js'
 import TacticalEffects from './abilities/TacticalEffects.jsx'
+import { canonicalCode } from '../settings/preferences.js'
 
 export default function Player() {
   const body = useRef(), collider = useRef(), seenShot=useRef(0)
@@ -38,13 +39,14 @@ export default function Player() {
 
   useEffect(() => {
     const down = event => {
-      if (game.get().mode !== 'playing') return
-      if (['Space','KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight','KeyR'].includes(event.code)) event.preventDefault()
-      keys.current.add(event.code)
-      if (event.code === 'Space' && !event.repeat) motion.current.jump = true
-      if (event.code === 'KeyG' && !event.repeat) { event.preventDefault();game.toggleCourse() }
+      if (game.get().mode !== 'playing' || document.pointerLockElement!==gl.domElement) return
+      const code=canonicalCode(event,game.get().settings)
+      if (['Space','KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight','KeyR'].includes(code)) event.preventDefault()
+      keys.current.add(code)
+      if (code === 'Space' && !event.repeat) motion.current.jump = true
+      if (code === 'KeyG' && !event.repeat) { event.preventDefault();game.toggleCourse() }
     }
-    const up = event => keys.current.delete(event.code)
+    const up = event => keys.current.delete(canonicalCode(event,game.get().settings))
     const move = event => {
       if (game.get().mode !== 'playing' || document.pointerLockElement !== gl.domElement) return
       const sensitivity = PLAYER.sensitivity * game.get().settings.sensitivity
@@ -59,11 +61,13 @@ export default function Player() {
     const blur = () => { keys.current.clear(); if (game.get().mode === 'playing') { game.set({ mode: 'paused' }); document.exitPointerLock() } }
     const visibility = () => { if (document.hidden) blur() }
     const error = () => game.set({ error: 'Mouse capture was blocked. Click Resume to try again.', mode: 'paused' })
+    document.addEventListener('mousedown',down);document.addEventListener('mouseup',up)
     document.addEventListener('keydown', down); document.addEventListener('keyup', up)
     document.addEventListener('mousemove', move)
     document.addEventListener('pointerlockchange', lock); document.addEventListener('pointerlockerror', error)
     window.addEventListener('blur', blur); document.addEventListener('visibilitychange', visibility)
     return () => {
+      document.removeEventListener('mousedown',down);document.removeEventListener('mouseup',up)
       document.removeEventListener('keydown', down); document.removeEventListener('keyup', up)
       document.removeEventListener('mousemove', move)
       document.removeEventListener('pointerlockchange', lock); document.removeEventListener('pointerlockerror', error)

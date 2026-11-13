@@ -77,3 +77,5 @@
 .hit-feedback.headshot { color:#ff987d; }
 
 .hit-feedback.shield-hit { color:#7ae6ff; }
+
+.damage-numbers{position:absolute;inset:0;pointer-events:none}.classic-damage{animation:none;transition:top .1s ease-out}

@@ -8,7 +8,7 @@ import { readRecovery, saveRecovery, clearRecovery } from './recovery.js'
 import { queueShotTrail,trailScope } from '../game/effects/shotTrails.js'
 import { validateLoadoutBank,validSlot } from '../../../shared/loadoutBank.js'
 
-const empty = { status:'idle',room:null,bank:null,sessionId:'',error:'',notice:'',captured:false,captureError:'',arenaReady:false }
+const empty = { status:'idle',room:null,bank:null,sessionId:'',error:'',notice:'',captured:false,captureError:'',arenaReady:false,background:false }
 let snapshot = empty
 let activeRoom = null
 let attempt = 0
@@ -198,6 +198,7 @@ export const lobby = {
     activeRoom.send('select-loadout',{ slot,epoch:snapshot.room.arenaEpoch,round:snapshot.room.roundId })
   },
   setCaptured(captured) { update({ captured,captureError:'' }) },
+  setBackground(background) { if(snapshot.background!==background) update({ background }) },
   setArenaReady(arenaReady) { if (snapshot.arenaReady!==arenaReady) update({ arenaReady }) },
   async capture() {
     try {

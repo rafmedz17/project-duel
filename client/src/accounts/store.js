@@ -1,6 +1,8 @@
 import { useSyncExternalStore } from 'react'
 import { DEFAULT_LOADOUT, validateLoadout, migrateLoadout } from '../../../shared/loadout.js'
 import { makeLoadoutBank,validateLoadoutBank,bankFromRows } from '../../../shared/loadoutBank.js'
+import { game } from '../game/store.js'
+import { cleanPreferences } from '../settings/preferences.js'
 
 const configured = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY)
 function deviceLoadout() {
@@ -25,6 +27,7 @@ function check(result) { if (result.error) throw result.error; return result.dat
 async function loadUser(user) {
   const version = ++generation
   const bank=deviceBank()
+  if(user?.id!==state.user?.id) game.loadPreferences(user?.id,user?.user_metadata?.duel_settings)
   update({ user:user ? { id:user.id,email:user.email } : null,profile:null,stats:null,history:[],bank,loadout:bank.slots[bank.activeSlot],loading:Boolean(user),error:'' })
   if (!user) return
   try {
@@ -62,7 +65,8 @@ export const accounts = {
         // Auth callbacks stay synchronous: querying inside one can lock the SDK.
         if (event==='PASSWORD_RECOVERY') update({ recovery:true })
         if (event==='SIGNED_OUT') update({ recovery:false })
-        if (event!=='TOKEN_REFRESHED') setTimeout(() => { void loadUser(session?.user || null) },0)
+        if(event==='SIGNED_IN' && session?.user.id===state.user?.id) return
+        if (event!=='TOKEN_REFRESHED' && event!=='USER_UPDATED') setTimeout(() => { void loadUser(session?.user || null) },0)
       })
       const { data,error } = await db.auth.getSession()
       if (error) throw error
@@ -71,6 +75,18 @@ export const accounts = {
     return initialized
   },
   clear() { update({ error:'',notice:'' }) },
+  async savePreferences(value) {
+    const preferences=cleanPreferences(value),userId=state.user?.id
+    game.settings(preferences)
+    if(!userId) return
+    const db=await client()
+    const session=check(await db.auth.getSession())
+    if(session.session?.user.id!==userId) throw new Error('Your sign-in changed. Sign in and try again.')
+    // Cosmetic preferences are user-editable metadata, never authorization data.
+    const data=check(await db.auth.updateUser({ data:{ duel_settings:preferences } }))
+    if(data.user?.id!==userId || state.user?.id!==userId) throw new Error('Your account changed during saving.')
+    game.preferencesSaved(userId)
+  },
   signIn(email,password) { return run(async db => { check(await db.auth.signInWithPassword({ email:email.trim(),password })); update({ notice:'Signed in. Loading your profile…' }) }) },
   signUp(email,password) { return run(async db => {
     const data = check(await db.auth.signUp({ email:email.trim(),password,options:{ emailRedirectTo:location.origin } }))

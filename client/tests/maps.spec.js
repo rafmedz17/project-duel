@@ -36,7 +36,7 @@ test('host selects both new maps; players share the map, move, and return to cha
       await expect.poll(async () => (await snapshot(host)).captured).toBe(true)
       await host.keyboard.down('KeyW'); await host.waitForTimeout(600); await host.keyboard.up('KeyW')
       await host.screenshot({ path:`${mapId}-preview.png` })
-      await host.evaluate(() => document.exitPointerLock())
+      await host.keyboard.press('Escape');await host.evaluate(() => document.exitPointerLock())
       await host.getByRole('button',{ name:'RETURN TO LOBBY',exact:true }).click()
       await expect(guest.getByRole('dialog',{ name:'PRIVATE MULTIPLAYER' })).toBeVisible()
     }

@@ -34,6 +34,7 @@ test('multiplayer sniper scope stays clear while firing and returns to hip view 
     await page.getByLabel('Match format').selectOption('freeplay');peer.send('ready',{ ready:true })
     await page.getByRole('button',{ name:'READY UP',exact:true }).click();await page.getByRole('button',{ name:'START SHARED ARENA' }).click()
     await page.getByRole('button',{ name:'ENTER ARENA',exact:true }).click()
+    await expect.poll(()=>page.evaluate(()=>Boolean(document.pointerLockElement))).toBe(true)
     await page.mouse.down({ button:'right' });await expect(page.getByLabel('Precision scope')).toBeVisible()
     await expect.poll(async ()=>(await optics(page)).modelVisible).toBe(false)
     await page.mouse.down();await page.mouse.up();await expect(page.getByTestId('online-ammo')).toHaveText('02 / 3')

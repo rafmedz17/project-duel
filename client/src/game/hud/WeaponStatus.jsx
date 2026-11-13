@@ -1,8 +1,10 @@
 import { useGame } from '../store.js'
+import { bindingLabel } from '../../settings/preferences.js'
 import { WEAPONS } from '../../../../shared/weapons.js'
 import { activeOptic,reflexProfile } from '../weapons/optics.js'
 import './weaponStatus.css'
 export default function WeaponStatus({ state:s }) {
+  const settings=useGame(s=>s.settings)
   const aiming=useGame(s=>s.aiming),weapon=WEAPONS[s.weapon]
   const optic=activeOptic(s,s.time,aiming),reflex=reflexProfile(weapon)
   const charging=s.windupEnd>s.time && s.hp>0
@@ -16,6 +18,6 @@ export default function WeaponStatus({ state:s }) {
       <small>{reflex.name}<span>{reflex.zoom}</span></small>
     </div>}
     {charging && <div className="weapon-charge" role="status" style={{ '--weapon-color':weapon.color }}><span>{weapon.spinUp ? 'ROTARY SYSTEM SPINNING UP' : 'GRAVITY CORE CHARGING'}</span><strong>{Math.max(0,s.windupEnd-s.time).toFixed(1)}s</strong><i style={{ width:`${Math.min(1,(s.time-s.windupStart)/(s.windupEnd-s.windupStart))*100}%` }}/></div>}
-    {(weapon.scope || reflex) && !optic && <div className="scope-hint">HOLD RIGHT CLICK / {reflex ? 'RED-DOT AIM' : 'PRECISION SCOPE'}</div>}
+    {(weapon.scope || reflex) && !optic && <div className="scope-hint">{settings.scopeMode==='tap' ? 'TAP' : 'HOLD'} {bindingLabel(settings.bindings.aim)} / {reflex ? 'RED-DOT AIM' : 'PRECISION SCOPE'}</div>}
   </>
 }

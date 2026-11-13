@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react'
 import { WEAPONS, TARGETS, HAZARD, ABILITIES, OPPONENT } from './config.js'
 import { damageTargets, pelletDamage } from './combatRules.js'
 import { freshOpponent, damageOpponent } from './opponents/opponentRules.js'
-import { audioSettings,DEFAULT_AUDIO } from '../audio/settings.js'
+import { cleanPreferences } from '../settings/preferences.js'
 import { freshAbility } from '../../../shared/abilities.js'
 import { equipTime,isMelee,shotOffsets } from '../../../shared/weapons.js'
 import { rayBox } from '../../../shared/ballistics.js'
@@ -17,12 +17,12 @@ import { awardKill } from '../../../shared/killCombo.js'
 import { queueShotTrail } from './effects/shotTrails.js'
 import { loadTrainingOptions,trainingNoReload } from './training/options.js'
 
-const defaults = { sensitivity: 1, fps: false, quality: 'Medium',...DEFAULT_AUDIO }
+let preferencesOwner=null
+const preferencesKey=()=>preferencesOwner ? `duel-settings:${preferencesOwner}` : 'duel-settings'
 function loadSettings() {
   try {
-    const saved = JSON.parse(localStorage.getItem('duel-settings')) || {}
-    return { sensitivity: Math.max(0.2, Math.min(3, Number(saved.sensitivity) || 1)), fps: saved.fps === true, quality: ['Low', 'Medium', 'High'].includes(saved.quality) ? saved.quality : 'Medium',...audioSettings(saved) }
-  } catch { return defaults }
+    return cleanPreferences(JSON.parse(localStorage.getItem(preferencesKey())))
+  } catch { return cleanPreferences() }
 }
 const fresh = () => ({
   hp: 100, weapon: DEFAULT_LOADOUT.startingWeapon, loadout:DEFAULT_LOADOUT,
@@ -97,10 +97,24 @@ export const game = {
     game.set({ opponent:{ ...state.opponent,hits:state.opponent.hits+1 } })
     return true
   },
-  settings: (patch) => {
-    const settings = { ...state.settings,...patch,...audioSettings({ ...state.settings,...patch }) }
-    try { localStorage.setItem('duel-settings', JSON.stringify(settings)) } catch { /* Storage may be disabled. */ }
+  settings: (patch,{ dirty=true }={}) => {
+    const settings = cleanPreferences({ ...state.settings,...patch })
+    try {
+      localStorage.setItem(preferencesKey(), JSON.stringify(settings))
+      if(preferencesOwner && dirty) localStorage.setItem(`${preferencesKey()}:pending`,'1')
+    } catch { /* Storage may be disabled. */ }
     game.set({ settings })
+  },
+  loadPreferences: (userId,saved) => {
+    preferencesOwner=userId || null
+    let pending=false
+    try { pending=Boolean(preferencesOwner && localStorage.getItem(`${preferencesKey()}:pending`)==='1') } catch { /* Device storage may be disabled. */ }
+    const settings=saved && !pending ? cleanPreferences(saved) : loadSettings()
+    game.settings(settings,{ dirty:false })
+  },
+  preferencesSaved: userId => {
+    if(preferencesOwner!==userId) return
+    try { localStorage.setItem(`${preferencesKey()}:pending`,'0') } catch { /* Cloud save already succeeded. */ }
   },
   setTrainingOptions: value => {
     if(!value || typeof value.noReload!=='boolean') return false

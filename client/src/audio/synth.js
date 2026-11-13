@@ -49,7 +49,7 @@ for(let tier=2;tier<=5;tier++) {
 // One lazy AudioContext, bounded voices and one reused noise buffer. Nothing is
 // downloaded. Creation/resume happens from user interaction, never page load.
 export function createSynth() {
-  let context,master,compressor,analyser,noiseBuffer,active=false,settings=audioSettings(),unavailable=false
+  let context,master,compressor,analyser,noiseBuffer,sfx,music,musicActive=false,ambient=null,active=false,settings=audioSettings(),unavailable=false
   let played=0,spatial=0,peakRms=0,lastSpatial=null
   const counts={},voices=new Set(),events=[],samples=new Float32Array(512)
   function create() {
@@ -61,6 +61,8 @@ export function createSynth() {
       compressor=context.createDynamicsCompressor()
       compressor.threshold.value=-14; compressor.knee.value=8; compressor.ratio.value=8; compressor.attack.value=0.003; compressor.release.value=0.1
       master=context.createGain(); analyser=context.createAnalyser(); analyser.fftSize=512
+      sfx=context.createGain();sfx.gain.value=settings.sfxVolume**2;sfx.connect(compressor)
+      music=context.createGain();music.gain.value=settings.musicVolume**2;music.connect(compressor)
       compressor.connect(master); master.connect(analyser); analyser.connect(context.destination)
       master.gain.value=settings.muted ? 0 : settings.volume**2*0.65
       noiseBuffer=context.createBuffer(1,Math.ceil(context.sampleRate*0.6),context.sampleRate)
@@ -70,15 +72,32 @@ export function createSynth() {
     } catch { unavailable=true }
   }
   function stop() { for (const voice of [...voices]) voice.stop() }
+  function syncMusic() {
+    const enabled=musicActive && !settings.muted && settings.volume>0 && settings.musicVolume>0
+    if(!context || !enabled) {
+      if(ambient) { clearInterval(ambient.timer);for(const node of ambient.sources) { try { node.stop() } catch { /* Already stopped. */ } };for(const node of ambient.nodes) node.disconnect();ambient=null }
+      return
+    }
+    if(ambient) return
+    // A quiet evolving sci-fi pad, generated locally with independent mixing.
+    const filter=context.createBiquadFilter(),level=context.createGain(),sources=[]
+    filter.type='lowpass';filter.frequency.value=650;level.gain.value=.045
+    filter.connect(level);level.connect(music)
+    for(const ratio of [1,1.5,2.002]) { const oscillator=context.createOscillator();oscillator.type='triangle';oscillator.frequency.value=110*ratio;oscillator.connect(filter);oscillator.start();sources.push(oscillator) }
+    const chords=[110,87.31,130.81,98],ratios=[1,1.5,2.002];let chord=0
+    const timer=setInterval(()=> { if(!context || context.state!=='running') return;chord=(chord+1)%chords.length;for(const [i,node] of sources.entries()) node.frequency.setTargetAtTime(chords[chord]*ratios[i],context.currentTime,1.2) },4000)
+    ambient={ sources,nodes:[...sources,filter,level],timer }
+  }
   const synth = {
     async unlock() {
       create()
       if (!context) return false
       try {
-        if (context.state!=='running' && context.state!=='closed' && active) await context.resume()
-        else if (!active && context.state==='running') await context.suspend()
+        syncMusic()
+        if (context.state!=='running' && context.state!=='closed' && (active || musicActive)) await context.resume()
+        else if (!active && !musicActive && context.state==='running') await context.suspend()
         // Capture can become active while the browser is still suspending.
-        if (active && context.state==='suspended') await context.resume()
+        if ((active || musicActive) && context.state==='suspended') await context.resume()
         return context.state!=='closed'
       }
       catch { return false }
@@ -88,8 +107,16 @@ export function createSynth() {
       if (master) {
         master.gain.cancelScheduledValues(context.currentTime)
         master.gain.setValueAtTime(settings.muted ? 0 : settings.volume**2*0.65,context.currentTime)
+        sfx.gain.setTargetAtTime(settings.sfxVolume**2,context.currentTime,.025)
+        music.gain.setTargetAtTime(settings.musicVolume**2,context.currentTime,.08)
       }
       if (settings.muted || settings.volume===0) stop()
+      syncMusic()
+    },
+    setMusicActive(value) {
+      const changed=musicActive!==value
+      musicActive=value;syncMusic()
+      if(changed && ambient && context?.state==='suspended') void context.resume().catch(()=>{})
     },
     setActive(value) {
       if (active===value) return
@@ -99,7 +126,8 @@ export function createSynth() {
     },
     pause() {
       stop()
-      if (context?.state==='running') void context.suspend().then(() => { if (active && context?.state==='suspended') return context.resume() }).catch(() => {})
+      if (musicActive && ambient) return
+      if (context?.state==='running') void context.suspend().then(() => { if ((active || musicActive) && context?.state==='suspended') return context.resume() }).catch(() => {})
     },
     listener(position,yaw=0,pitch=0) {
       if (!context) return
@@ -115,7 +143,7 @@ export function createSynth() {
       } else { listener.setPosition(...position); listener.setOrientation(...forward,...up) }
     },
     play(name,{ position=null,gain=1,preview=false }={}) {
-      if (!context || unavailable || (!active && !preview) || context.state!=='running' || settings.muted || settings.volume===0 || !recipes[name]) return false
+      if (!context || unavailable || (!active && !preview) || context.state!=='running' || settings.muted || settings.volume===0 || settings.sfxVolume===0 || !recipes[name]) return false
       if (voices.size>=32) voices.values().next().value.stop()
       const mix=context.createGain(),sources=[],nodes=[mix]
       mix.gain.value=Math.max(0,Math.min(1,gain))
@@ -123,9 +151,9 @@ export function createSynth() {
         const panner=context.createPanner()
         panner.panningModel='HRTF'; panner.distanceModel='inverse'; panner.refDistance=8; panner.maxDistance=50; panner.rolloffFactor=1.2
         panner.positionX.value=position[0]; panner.positionY.value=position[1]; panner.positionZ.value=position[2]
-        mix.connect(panner); panner.connect(compressor); nodes.push(panner)
+        mix.connect(panner); panner.connect(sfx); nodes.push(panner)
         spatial++; lastSpatial=[...position]
-      } else mix.connect(compressor)
+      } else mix.connect(sfx)
       let remaining=recipes[name].length,stopped=false
       const finish=() => {
         if (stopped) return
@@ -167,9 +195,9 @@ export function createSynth() {
     diagnostics() {
       let rms=0
       if (context?.state==='running') { analyser.getFloatTimeDomainData(samples); rms=Math.sqrt(samples.reduce((total,v) => total+v*v,0)/samples.length); peakRms=Math.max(peakRms,rms) }
-      return { state:unavailable ? 'unavailable' : context?.state || 'locked',active,voices:voices.size,played,spatial,counts:{ ...counts },events:[...events],lastSpatial:lastSpatial && [...lastSpatial],peakRms,rms,volume:settings.volume,muted:settings.muted }
+      return { state:unavailable ? 'unavailable' : context?.state || 'locked',active,voices:voices.size,musicPlaying:Boolean(ambient),sfxVolume:settings.sfxVolume,musicVolume:settings.musicVolume,played,spatial,counts:{ ...counts },events:[...events],lastSpatial:lastSpatial && [...lastSpatial],peakRms,rms,volume:settings.volume,muted:settings.muted }
     },
-    dispose() { stop(); if (context) void context.close().catch(() => {}); context=null },
+    dispose() { musicActive=false;syncMusic();stop(); if (context) void context.close().catch(() => {}); context=null },
   }
   return synth
 }

@@ -88,7 +88,7 @@ function Robot({ index }) {
   }
   return <RigidBody ref={body} name={`training-robot-${index}`} type="kinematicPosition" colliders={false} position={def.position} rotation={[0,def.yaw,0]}>
     {ROBOT_PARTS.map(part=><CuboidCollider key={part.id} args={part.size.map(n=>n/2)} position={part.position} enabled={!down}/>)}
-    <RobotModel targetId={index} characterId={CHARACTER_IDS[index%4]} down={down} flash={s.time-target.hit<0.12 || s.time<(target.flashUntil || 0)} reveal={revealed}/>
+    <RobotModel enemy targetId={index} characterId={CHARACTER_IDS[index%4]} down={down} flash={s.time-target.hit<0.12 || s.time<(target.flashUntil || 0)} reveal={revealed}/>
     {combat && <group position={[0.25,-0.12,-0.35]} scale={0.65}><ArsenalModel weapon={WEAPONS.rifle} parts={{ flash:muzzle }} preview/></group>}
     <group ref={health} visible={!down} position={[0,1.08,0]}>
       <Box position={[0,0,0]} size={[0.95,0.07,0.04]} color="#23384b"/>

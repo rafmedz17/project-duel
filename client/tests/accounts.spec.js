@@ -17,10 +17,16 @@ async function mockCloud(context,shared=initial()) {
     if (method==='OPTIONS') { await route.fulfill({ status:204,headers:{ 'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET,POST,PATCH,PUT,DELETE,OPTIONS' } }); return }
     if (url.pathname==='/auth/v1/token') {
       if (body.password==='incorrect') { await route.fulfill({ status:400,contentType:'application/json',body:JSON.stringify({ msg:'Invalid login credentials',error_code:'invalid_credentials' }) }); return }
-      response={ access_token:token,token_type:'bearer',expires_in:3600,expires_at:Math.floor(Date.now()/1000)+3600,refresh_token:'fixture-refresh',user }
+      response={ access_token:token,token_type:'bearer',expires_in:3600,expires_at:Math.floor(Date.now()/1000)+3600,refresh_token:'fixture-refresh',user:{ ...user,user_metadata:shared.metadata || {} } }
     } else if (url.pathname==='/auth/v1/signup') response={ user,session:null }
     else if (url.pathname==='/auth/v1/recover' || url.pathname==='/auth/v1/logout') response={}
-    else if (url.pathname==='/auth/v1/user') response=user
+    else if (url.pathname==='/auth/v1/user') {
+      if(method==='PUT' && body.data) {
+        if(shared.failPreferences) { await route.fulfill({ status:403,contentType:'application/json',body:JSON.stringify({ msg:'Preference sync unavailable',error_code:'fixture_denied' }) });return }
+        shared.metadata={ ...shared.metadata,...body.data }
+      }
+      response={ ...user,user_metadata:shared.metadata || {} }
+    }
     else if (url.pathname==='/rest/v1/profiles') {
       if (method==='PATCH' || method==='POST') shared.profile={ callsign:body.callsign }
       response=shared.profile
@@ -47,6 +53,25 @@ async function signIn(page) {
   await dialog.getByRole('button',{ name:'SIGN IN',exact:true }).last().click()
   await expect(dialog.getByLabel('CALLSIGN')).toHaveValue('Nova Cloud')
 }
+test('account settings sync through Auth metadata, restore on another device, retry errors and preserve guest preferences',async ({ page,context,browser })=> {
+  const shared=await mockCloud(context)
+  await page.goto(cloudOrigin);await page.getByRole('button',{ name:/SETTINGS/ }).click();await page.getByLabel('Mouse sensitivity').fill('1.8');await page.getByRole('button',{ name:'BACK' }).click()
+  await signIn(page);await page.getByRole('dialog').getByRole('button',{ name:'BACK',exact:true }).click();await page.getByRole('button',{ name:/SETTINGS/ }).click()
+  await page.getByLabel('Field of view').fill('99');await page.getByLabel('Scope input').selectOption('tap');await page.getByRole('tab',{ name:'Controls',exact:true }).click();await page.getByRole('button',{ name:'Rebind Reload',exact:true }).click();await page.keyboard.press('KeyL')
+  shared.failPreferences=true;await page.getByRole('button',{ name:'SAVE TO ACCOUNT',exact:true }).click();await expect(page.getByRole('status')).toContainText('Could not sync')
+  expect((await state(page)).settings.bindings.reload).toBe('KeyL');shared.failPreferences=false
+  await page.getByRole('button',{ name:'SAVE TO ACCOUNT',exact:true }).click();await expect(page.getByRole('status')).toHaveText('Settings saved to your account.')
+  expect(shared.metadata.duel_settings).toMatchObject({ fov:99,scopeMode:'tap',bindings:{ reload:'KeyL' } })
+  await page.reload();await page.getByRole('button',{ name:/SETTINGS/ }).click();await expect(page.getByLabel('Field of view')).toHaveValue('99')
+  await page.getByLabel('Field of view').fill('101');await page.reload();await page.getByRole('button',{ name:/SETTINGS/ }).click();await expect(page.getByLabel('Field of view')).toHaveValue('101')
+  await page.getByLabel('Field of view').fill('99');await page.getByRole('button',{ name:'SAVE TO ACCOUNT',exact:true }).click();await expect(page.getByRole('status')).toHaveText('Settings saved to your account.')
+  const secondContext=await browser.newContext()
+  try {
+    await mockCloud(secondContext,shared);const second=await secondContext.newPage();await signIn(second);await second.getByRole('dialog').getByRole('button',{ name:'BACK',exact:true }).click();await second.getByRole('button',{ name:/SETTINGS/ }).click();await expect(second.getByLabel('Field of view')).toHaveValue('99');await second.getByRole('tab',{ name:'Controls',exact:true }).click();await expect(second.getByRole('button',{ name:'Rebind Reload',exact:true })).toHaveText('L')
+  } finally { await secondContext.close() }
+  await page.getByRole('button',{ name:'BACK' }).click();await page.getByRole('button',{ name:/^PLAYER PROFILE/ }).click();await page.getByRole('button',{ name:'SIGN OUT',exact:true }).click();await expect(page.getByLabel('EMAIL',{ exact:true })).toBeVisible();await page.getByRole('dialog').getByRole('button',{ name:'BACK',exact:true }).click();await page.getByRole('button',{ name:/SETTINGS/ }).click();await expect(page.getByLabel('Mouse sensitivity')).toHaveValue('1.8');await expect(page.getByLabel('Field of view')).toHaveValue('70')
+})
+
 test('guest loadout saves across reloads and controls training weapons and abilities',async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button',{ name:/^CHARACTER & LOADOUT/ }).click()

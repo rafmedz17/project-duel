@@ -12,7 +12,7 @@ async function pause(page) {
 async function startRifle(page) {
   await page.goto('/')
   await page.getByRole('button',{ name:/SETTINGS/ }).click()
-  await page.getByLabel('Render quality').selectOption('Low')
+  await page.getByRole('tab',{ name:'Graphics',exact:true }).click();await page.getByLabel('Render quality').selectOption('Low')
   await page.getByRole('button',{ name:'BACK' }).click()
   await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
   await expect(page.getByRole('button',{ name:'RESUME / ENTER ARENA' })).toBeEnabled({ timeout:30000 })

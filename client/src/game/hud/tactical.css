@@ -9,3 +9,6 @@
 .smoke-screen{position:fixed;inset:0;z-index:3;background:#71818bfa;pointer-events:none}
 .root-notice{position:absolute;top:64%;left:50%;transform:translateX(-50%);color:#c8b3ff;background:#221b38df;padding:12px 24px;border:1px solid #a98bff;font-size:13px;letter-spacing:2px;text-align:center}.root-notice small{display:block;font-size:9px;letter-spacing:1px;margin-top:6px}
 @media(max-width:800px){.ability.ultimate-slot{min-width:125px}.ultimate-notice{top:90px;min-width:280px}.ability-bar{gap:4px}.ability{min-width:95px;padding:8px}.fortress-charge{left:15px;bottom:125px}}
+
+.flash-screen.black-flash{background:#000}.flash-screen.black-flash span{color:#53606b}
+.ability>span{flex-wrap:wrap;gap:5px}.ability kbd{max-width:100%;white-space:normal;overflow-wrap:anywhere;line-height:1.3}

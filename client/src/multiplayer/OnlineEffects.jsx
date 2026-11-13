@@ -24,7 +24,7 @@ export default function OnlineEffects() {
     }
     arenaView.scanMarker = marker
     const dashing = time<s.abilities.dash.activeUntil && time>=s.disabledUntil && s.hp>0
-    const fov = MathUtils.damp(camera.fov,aimFov(s,time,game.get().aiming,dashing),12,Math.min(delta,0.1))
+    const fov = MathUtils.damp(camera.fov,aimFov(s,time,game.get().aiming,dashing,game.get().settings.fov),12,Math.min(delta,0.1))
     if (Math.abs(camera.fov-fov)>0.001) { camera.fov = fov; camera.updateProjectionMatrix() }
   },-0.5)
   return players.map(player => <TacticalVisual key={player.id} read={() => {
