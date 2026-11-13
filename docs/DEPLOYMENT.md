@@ -16,11 +16,19 @@ Attach a persistent volume at `/data`. Pending result uploads use `/data/results
 | `SUPABASE_SECRET_KEY` | Privileged key for server runtime only |
 | `PUBLIC_ORIGIN` | Exact public origin, such as `https://your-game.up.railway.app` |
 
-`PUBLIC_ORIGIN` falls back to `https://${RAILWAY_PUBLIC_DOMAIN}` when that variable exists. Optional `ALLOWED_ORIGINS` accepts comma-separated exact browser origins. Native clients without an Origin header remain supported. Origin checks supplement account verification, not authentication.
+`PUBLIC_ORIGIN` falls back to Render's `RENDER_EXTERNAL_URL`, then to `https://${RAILWAY_PUBLIC_DOMAIN}` when available. Explicit `PUBLIC_ORIGIN` takes priority, including for a custom domain. Optional `ALLOWED_ORIGINS` accepts comma-separated exact browser origins. Native clients without an Origin header remain supported. Origin checks supplement account verification, not authentication.
 
 Only the two public Supabase variables are Docker build arguments. Never supply the backend secret as a build argument or use a `VITE_` name for it. `.dockerignore` excludes local environment files, credentials, Git data and queued results. Rebuild after changing public client variables.
 
 Use the connected host's settings. Railway's old `railway.toml` format is deprecated; this new deployment uses the portable Dockerfile instead of a legacy service manifest. See the [current configuration reference](https://docs.railway.com/config-as-code/reference).
+
+## Render Free
+
+Create a Web Service from the connected GitHub repository, select branch `main`, choose Docker, leave Root Directory blank, use `./Dockerfile` with build context `.`, and select the Free instance type. Leave Docker Command blank and set Health Check Path to `/health`. Choose Singapore if available for your players. Add the four Supabase variables from the table above before building; Render supplies declared Docker build arguments from environment variables. Keep the privileged key only in `SUPABASE_SECRET_KEY`.
+
+Render supplies `RENDER_EXTERNAL_URL` automatically, so a separate `PUBLIC_ORIGIN` is optional for the default Render domain. For an older deployed commit that exits with **Set PUBLIC_ORIGIN or ALLOWED_ORIGINS for the deployed game**, add `PUBLIC_ORIGIN` in Render's Environment settings with the exact assigned HTTPS origin (no trailing slash), then save and redeploy. Editing a local `.env` does not change Render's environment. Alternatively, deploy the updated code that detects Render's URL. See [Render environment variables](https://render.com/docs/environment-variables).
+
+Use a Hobby workspace and a Free web service without adding a payment method to avoid usage overage charges. Free services sleep after 15 minutes without incoming HTTP or WebSocket traffic, wake in about a minute, have monthly usage limits, and may restart. They have no persistent disk: `/data/results` works as an ephemeral retry queue, but unsynced results can be lost on sleep, restart or deployment. Uploaded Supabase history persists. Keep one instance and deploy between matches because rooms are in memory. See [Render Free limits](https://render.com/docs/free).
 
 ## Accounts and launch
 
