@@ -20,6 +20,8 @@
 .round-banner.won strong { color:#8ceaff; }
 .round-banner>span:not(.eyebrow),.round-banner>small { display:block; font:10px Consolas,monospace; color:#a4bdd5; margin-top:10px; }
 .match-results .dialog { width:min(520px,90vw); }
+.match-kill-feedback:has(.kill-badge) { position:relative; height:112px; margin:8px 0; }
+.match-kill-feedback .kill-badge { top:0; bottom:auto; }
 .online-vitals { position:absolute; bottom:65px; left:3vw; right:3vw; display:flex; justify-content:space-between; align-items:end; gap:20px; }
 .online-respawn { position:absolute; top:38%; left:50%; transform:translate(-50%,-50%); text-align:center; color:#ffb59b; }
 .online-respawn strong { display:block; font-size:24px; letter-spacing:4px; }

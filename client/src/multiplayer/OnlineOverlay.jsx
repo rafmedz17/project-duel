@@ -37,7 +37,7 @@ export default function OnlineOverlay({ onLeave,onSettings }) {
       <div className="online-names"><span>{self.name} <small>YOU · {combat.kills} KILLS / {combat.deaths} DEATHS</small></span><span>{other?.name || 'OPEN SLOT'} <small>{other?.connected ? `CHALLENGER · ${other.combat.kills} KILLS` : 'RECONNECTING'}</small></span></div>
       {s.captured && !dead && live && <Crosshair shotgun={Boolean(weapon.pellets)} melee={melee}/>}
       <CombatFeedback state={feedback} />
-      <KillBadge state={feedback} visible={s.captured && live && !interrupted} />
+      <KillBadge state={feedback} visible={!interrupted && ((s.captured && live) || (duel && s.room.matchPhase==='roundOver'))} />
       <WeaponStatus state={feedback} />
       <AbilityBar state={feedback} />
       <OnlineScannerMarker other={other} />
@@ -49,7 +49,7 @@ export default function OnlineOverlay({ onLeave,onSettings }) {
       </div>
       <div className="online-bottom"><span>{settings.fps ? `${fps} FPS · ` : ''}{bindingLabel(settings.bindings.forward)} MOVE · {bindingLabel(settings.bindings.sprint)} SPRINT · {bindingLabel(settings.bindings.jump)} JUMP · ESC RELEASE</span><span>{bindingLabel(settings.bindings.scoreboard)} SCOREBOARD · {bindingLabel(settings.bindings.cycle)} CYCLE · {bindingLabel(settings.bindings.reload)} RELOAD</span></div>
     </div>
-    <MatchHud state={s} onLeave={onLeave} interrupted={interrupted} />
+    <MatchHud state={s} feedback={feedback} onLeave={onLeave} interrupted={interrupted} />
     {!s.captured && s.background && live && !dead && !interrupted && <div className="recapture-actions"><button className="recapture-hint" onClick={()=>lobby.capture()}>MATCH LIVE · CLICK TO AIM <small>ESC FOR MENU</small></button><button className="arena-menu-button" onClick={()=>lobby.setBackground(false)}>MENU / SETTINGS</button></div>}
     {selecting && <LoadoutPhase state={s} combat={combat} onLeave={onLeave}/>}
     {!selecting && ((!s.captured && !s.background && !finished && (!duel || s.room.matchPhase==='live')) || interrupted) && <div className="overlay online-overlay"><section className="dialog" role="dialog" aria-modal="true" aria-labelledby="online-title">

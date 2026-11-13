@@ -56,3 +56,15 @@ test('transient trail queue rejects malformed/replayed shots, drops other rounds
   const pending=takeShotTrails('test:1');assert.equal(pending.length,32);assert.equal(pending.at(-1).shot,49)
   assert.equal(takeShotTrails('test:1').length,0)
 })
+
+test('multiplayer trail IDs accept a respawned first shot once without replaying earlier shots',()=> {
+  const shot={scope:'respawn:1',id:'peer',shot:1,trailId:1,weapon:'rifle',origin:[0,1,0],ends:[[0,1,-5]]}
+  assert.equal(queueShotTrail(shot),true)
+  assert.equal(takeShotTrails(shot.scope).length,1)
+  const respawned={...shot,trailId:2}
+  assert.equal(queueShotTrail(respawned),true)
+  assert.equal(queueShotTrail(respawned),false)
+  assert.equal(queueShotTrail(shot),false)
+  assert.equal(takeShotTrails(shot.scope).length,1)
+  assert.equal(queueShotTrail({...shot,trailId:NaN}),false)
+})

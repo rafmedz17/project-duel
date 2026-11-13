@@ -26,7 +26,7 @@ npm.cmd run dev:client
 6. Select **Enter Arena** to capture the mouse and play together. Escape releases controls. In Best of Three, use **Forfeit Match** to concede, then **Return to Lobby** after results to ready up again. In Free Play, Return to Lobby ends practice for both.
 7. Choose **Leave Room** to leave. Escape also closes the lobby while outside the arena. Local training is available from the main menu.
 
-The shared arena supports all 17 weapons, server-validated regional damage, all four abilities and kills/deaths. Free Play has five-second respawns with preset selection; Best of Three resets eliminated players for the next round. Best of Three awards the match after two round wins, with a scoreboard, ten-second loadout phases, countdowns, fresh rounds and results. Higher HP wins after 90 seconds; ties replay. Free Play keeps unlimited respawns. Results are held in memory only.
+The shared arena supports all 17 weapons, server-validated regional damage, all four abilities and kills/deaths. Free Play has five-second respawns with preset selection; Best of Three resets eliminated players for the next round. Best of Three awards the match after two round wins, with a scoreboard, five-second loadout phases, countdowns, fresh rounds and results. Higher HP wins after 90 seconds; ties replay. Free Play keeps unlimited respawns. Results are held in memory only.
 
 ## Two computers on the same network
 

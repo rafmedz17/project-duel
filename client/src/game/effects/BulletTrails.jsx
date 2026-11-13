@@ -13,7 +13,9 @@ export default function BulletTrails({ online=false }) {
   useFrame((_,delta)=> {
     work.current ||= { scope:'',items:[],dummy:new Object3D(),up:new Vector3(0,1,0),direction:new Vector3(),color:new Color() }
     const w=work.current,local=game.get(),network=lobby.get(),scope=online ? trailScope(network.room) : `training:${local.generation}`
-    const active=online ? network.status==='connected' && network.room?.phase==='arena' && network.captured : local.mode==='playing'
+    // The server keeps combat live without mouse capture, and the winning shot
+    // still needs to finish its flight when the round/result screen opens.
+    const active=online ? network.status==='connected' && network.room?.phase==='arena' : local.mode==='playing'
     if(w.scope!==scope || !active) { w.items=[];w.scope=scope }
     const incoming=takeShotTrails(scope)
     if(active) for(const event of incoming) {

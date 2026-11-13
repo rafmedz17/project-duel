@@ -31,7 +31,7 @@ function setup(t,selecting=false) {
   return { state,sim,match,advance,send,shoot,win,nextRound,a:state.players.get('a'),b:state.players.get('b') }
 }
 
-test('initial selection lasts ten seconds before the countdown and blocks combat until the round is live',t=> {
+test('initial selection lasts five seconds before the countdown and blocks combat until the round is live',t=> {
   const { state,advance,shoot }=setup(t,true)
   assert.equal(state.matchPhase,'loadout');assert.equal(shoot('a'),false)
   advance(MATCH.loadoutSeconds-0.05);assert.equal(state.matchPhase,'loadout')

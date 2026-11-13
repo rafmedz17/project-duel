@@ -69,6 +69,21 @@ test('one accepted shotgun shell emits all ten finite pellet trails and awards a
   advance(1);send('switch',{ weapon:'blade' });advance(0.3);shoot()
   assert.equal(events.length,1)
 })
+
+test('accepted shot trails have monotonic IDs across respawns while animation shot counts reset',t=> {
+  const {a,combat,shoot,advance}=setup(t),events=[]
+  combat.onShot=event=>events.push(event)
+  assert.equal(shoot(),true)
+  assert.equal(events[0].trailId,1)
+  combat.applyDamage('b','a',100)
+  assert.equal(a.hp,0)
+  advance(5.1)
+  assert.equal(a.hp,100)
+  assert.equal(a.shot,0)
+  assert.equal(shoot(),true)
+  assert.equal(events[1].shot,1)
+  assert.equal(events[1].trailId,2)
+})
 test('all 99 primary/pistol/melee combinations are legal, with exactly one of each and no extra gear',()=> {
   assert.equal(WEAPON_IDS.length,17)
   for(const primary of WEAPON_IDS.filter(id=>WEAPONS[id].slot==='1')) for(const secondary of ['pistol','magnus','volt']) for(const melee of ['blade','gravity','fangs']) {

@@ -52,6 +52,7 @@ export class ArenaCombat {
     this.grenades = new Map()
     this.attacks = new Map()
     this.held = new Map()
+    this.trailSequences = new Map()
     this.onShot = () => {}
     for (const player of players.values()) {
       if (!player.startingWeapon) {
@@ -224,7 +225,12 @@ export class ArenaCombat {
       }
     }
     this.feedback(player,actual,absorbed,defeated,headshot)
-    if (!melee) this.onShot({ epoch:this.epoch,round:this.round,id,shot:player.shot,weapon:player.weapon,origin,ends })
+    if (!melee) {
+      // Animation/spread counters reset on respawn; cosmetic event IDs must not.
+      const trailId=(this.trailSequences.get(id) || 0)+1
+      this.trailSequences.set(id,trailId)
+      this.onShot({ epoch:this.epoch,round:this.round,id,shot:player.shot,trailId,weapon:player.weapon,origin,ends })
+    }
     if (!melee && player[ammoField(player.weapon)]===0) this.reload(player,'auto')
     return true
   }
