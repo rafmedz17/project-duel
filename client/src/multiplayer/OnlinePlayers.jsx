@@ -7,9 +7,13 @@ import { canPlayArena } from '../../../shared/match.js'
 import { PLAYER, ONLINE } from '../../../shared/arena.js'
 import RobotModel from '../game/characters/RobotModel.jsx'
 import WeaponView from '../game/weapons/WeaponView.jsx'
-import { ABILITIES } from '../../../shared/abilities.js'
+import { abilityForBinding } from '../../../shared/abilities.js'
+import { weaponForBinding,weaponSlots } from '../../../shared/loadout.js'
+import { ultimateModifiers } from '../../../shared/characters.js'
+import { throughSmoke,blocked } from '../../../shared/tactical.js'
+import { getMap } from '../../../shared/maps.js'
 import OnlineEffects from './OnlineEffects.jsx'
-import { WEAPONS, WEAPON_IDS } from '../../../shared/weapons.js'
+import { WEAPONS } from '../../../shared/weapons.js'
 import { onlineWeapon } from './onlineWeapon.js'
 import { game } from '../game/store.js'
 import { lobby, useLobby } from './lobby.js'
@@ -45,20 +49,20 @@ function LocalCamera({ id }) {
     clearInput.current = clear
     const down = event => {
       if (!active() || lobby.self()?.hp<=0) return
-      const ability = Object.keys(ABILITIES).find(id => ABILITIES[id].binding===event.code)
+      const ability = abilityForBinding(lobby.self().loadout,event.code)
       if (ability) {
         event.preventDefault()
-        if (!event.repeat) { send(); lobby.combat('ability',{ ability }) }
+        if (!event.repeat) { send(); lobby.combat('ability',{ ability,yaw:look.current?.yaw || 0,pitch:look.current?.pitch || 0 }) }
         return
       }
-      const weapon = WEAPON_IDS.find(id => WEAPONS[id].binding===event.code)
+      const weapon = weaponForBinding(lobby.self().loadout,event.code)
       if (weapon || event.code==='KeyQ' || event.code==='KeyR') {
         event.preventDefault()
         if (event.repeat) return
         held.current = false
         if (event.code==='KeyR') lobby.combat('reload')
         else {
-          const equipped = lobby.self().loadout.weapons
+          const equipped = weaponSlots(lobby.self().loadout)
           lobby.combat('switch',{ weapon:weapon || equipped[(equipped.indexOf(lobby.self().weapon)+1)%equipped.length] })
         }
         return
@@ -79,7 +83,7 @@ function LocalCamera({ id }) {
     const fire = event => {
       if (event.button!==0 || !active() || lobby.self()?.hp<=0 || lobby.self()?.reloading || !look.current) return
       held.current = true
-      nextFire.current = performance.now()+WEAPONS[lobby.self().weapon].cooldown*1000+10
+      nextFire.current = performance.now()+WEAPONS[lobby.self().weapon].cooldown/ultimateModifiers(lobby.self(),lobby.get().room.time).fireRate*1000+10
       lobby.combat('fire',look.current)
     }
     const release = event => { if (event.button===0) held.current = false }
@@ -130,7 +134,7 @@ function LocalCamera({ id }) {
       const self = lobby.self()
       if (self.weapon==='rifle' && !self.reloading && performance.now()>=nextFire.current) {
         lobby.combat('fire',look.current)
-        nextFire.current = performance.now()+WEAPONS.rifle.cooldown*1000+10
+        nextFire.current = performance.now()+WEAPONS.rifle.cooldown/ultimateModifiers(self,lobby.get().room.time).fireRate*1000+10
       }
     }
     const engine = prediction.current
@@ -168,9 +172,15 @@ function RemotePlayer({ player }) {
     head.current.rotation.x = pose.pitch
     arenaView.remotes[player.id] = { position:[pose.x,pose.y,pose.z],yaw:pose.yaw,pitch:pose.pitch }
   })
-  const color = player.slot === 0 ? '#58dcff' : '#ffb95c'
+  const reveal = () => {
+    const self = lobby.self(), time = lobby.get().room.time, pose = samplePose(player.id)
+    if (!self || self.hp<=0 || !pose) return false
+    if (time<self.abilities.scanner.activeUntil) return true
+    const smoke = self.abilities.smoke, origin = arenaView.position.map((v,i) => v+(i===1 ? PLAYER.eye : 0)), target = [pose.x,pose.y,pose.z]
+    return time<smoke.activeUntil && throughSmoke(origin,target,[{ origin:smoke.origin.map((v,i)=>v+(i===1 ? 1 : 0)),radius:4 }]) && !blocked(origin,target,getMap(lobby.get().room.mapId).solids)
+  }
   return <group ref={root} name={`remote-player-${player.id}`}>
-    <RobotModel headRef={head} color={player.connected ? color : '#728599'} />
+    <RobotModel headRef={head} characterId={player.combat.characterId} color={player.connected ? undefined : '#728599'} reveal={reveal} />
   </group>
 }
 

@@ -4,6 +4,10 @@ import { BLADE, WEAPONS, WEAPON_SWITCH, TARGET, TARGETS, HAZARD, ABILITIES, OPPO
 import { damageTargets, pelletDamage } from './combatRules.js'
 import { freshOpponent, damageOpponent } from './opponents/opponentRules.js'
 import { audioSettings,DEFAULT_AUDIO } from '../audio/settings.js'
+import { freshAbility } from '../../../shared/abilities.js'
+import { ultimateModifiers } from '../../../shared/characters.js'
+import { resetTrainingAbilities,activateTraining,stepTrainingAbilities } from './abilities/trainingRules.js'
+import { runtime } from './runtime.js'
 
 const defaults = { sensitivity: 1, fps: false, quality: 'Medium',...DEFAULT_AUDIO }
 function loadSettings() {
@@ -18,8 +22,8 @@ const fresh = () => ({
   weaponStats: Object.fromEntries(Object.entries(WEAPONS).filter(([,w]) => w.magazine).map(([id]) => [id,{ shots:0,hits:0 }])),
   reloading: false, reloadWeapon: null, reloadStart: 0, reloadEnd: 0, reloadReason: null, attackReadyAt: 0, lastSwitch: -10, lastShot: -10, lastSwing: -10,
   shot: 0, swings: 0, meleeHits: 0, hit: -10, hitId: 0, hitDamage: 0, hitDefeated: 0, hitHeadshot: false, hurt: -10, score: 0, hits: 0, shots: 0, time: 0,
-  shieldCharge: 0, shieldHit: -10, empHits: 0,
-  abilities: Object.fromEntries(Object.keys(ABILITIES).map(id => [id,{ readyAt:0,activeUntil:0,startedAt:-10,uses:0,origin:[0,0,0],direction:[0,-1],result:0 }])),
+  shieldCharge: 0, ultimateShield:0,shieldHit: -10, empHits: 0,flashUntil:0,flashStarted:0,rootedUntil:0,
+  abilities: Object.fromEntries(Object.keys(ABILITIES).map(id => [id,freshAbility()])),
   hazards: HAZARD.centers.map(() => ({ disabledUntil:0 })),
   targets: TARGETS.map(() => ({ hp: TARGET.health, hit: -10, resetAt: 0, disabledUntil:0 })),
   opponent: freshOpponent(),
@@ -31,7 +35,7 @@ const opponentPosition = [...OPPONENT.spawn]
 const listeners = new Set()
 function canAttack() {
   return state.mode === 'playing' && !state.reloading && clock >= state.attackReadyAt &&
-    (WEAPONS[state.weapon].fireMode === 'melee' || state.magazines[state.weapon] > 0)
+    (WEAPONS[state.weapon].fireMode === 'melee' || ultimateModifiers(state,clock).noReload || state.magazines[state.weapon] > 0)
 }
 const clearReload = { reloading:false,reloadWeapon:null,reloadStart:0,reloadEnd:0,reloadReason:null }
 function beginReload(weapon, reason) {
@@ -46,7 +50,7 @@ export const game = {
   now: () => clock,
   set: (patch) => { state = { ...state, ...patch }; listeners.forEach(fn => fn()) },
   reset: ({ opponentEnabled = false,loadout = DEFAULT_LOADOUT } = {}) => {
-    const equipped = validateLoadout(loadout) || DEFAULT_LOADOUT; clock = 0; opponentPosition.splice(0,3,...OPPONENT.spawn); game.set({ ...fresh(),loadout:equipped,weapon:equipped.startingWeapon,opponent:freshOpponent(opponentEnabled),generation: state.generation + 1 }) },
+    const equipped = validateLoadout(loadout) || DEFAULT_LOADOUT; clock = 0; resetTrainingAbilities(); opponentPosition.splice(0,3,...OPPONENT.spawn); game.set({ ...fresh(),loadout:equipped,weapon:equipped.startingWeapon,opponent:freshOpponent(opponentEnabled),generation: state.generation + 1 }) },
   opponentPosition: () => [...opponentPosition],
   reportOpponentPosition: (position) => { opponentPosition.splice(0,3,...position) },
   setOpponentEnabled: (enabled) => {
@@ -75,41 +79,25 @@ export const game = {
   },
   damage: (amount) => {
     if (state.mode !== 'playing' || !Number.isFinite(amount) || amount <= 0) return
-    const absorbed = clock < state.abilities.shield.activeUntil ? Math.min(state.shieldCharge,amount) : 0
+    const bonus = ultimateModifiers(state,clock).effect==='shield' ? Math.min(state.ultimateShield,amount) : 0
+    const normal = clock < state.abilities.shield.activeUntil ? Math.min(state.shieldCharge,amount-bonus) : 0
+    const absorbed = bonus+normal
     const healthDamage = amount-absorbed
-    game.set({ hp: Math.max(0, state.hp-healthDamage), shieldCharge:Math.max(0,state.shieldCharge-absorbed), ...(absorbed ? { shieldHit:clock } : {}), ...(healthDamage ? { hurt:clock } : {}), time: clock })
-    if (state.hp === 0) { document.exitPointerLock(); game.set({ mode: 'dead' }) }
-  },
-  activateAbility: (id,{ position = [0,0,0], direction = [0,-1] } = {}) => {
-    if (state.mode !== 'playing' || !Object.hasOwn(ABILITIES,id) || !state.loadout.abilities.includes(id) || clock < state.abilities[id].readyAt) return false
-    if (position.length !== 3 || !position.every(Number.isFinite) || direction.length !== 2 || !direction.every(Number.isFinite)) return false
-    const tuning = ABILITIES[id], previous = state.abilities[id]
-    const length = Math.hypot(...direction) || 1
-    const ability = { ...previous,readyAt:clock+tuning.cooldown,activeUntil:clock+tuning.duration,startedAt:clock,uses:previous.uses+1,origin:[...position],direction:direction.map(n => n/length),result:0 }
-    const patch = { time:clock }
-    if (id === 'shield') patch.shieldCharge = tuning.capacity
-    if (id === 'emp') {
-      const damage = new Map()
-      TARGETS.forEach((target,index) => { if (Math.hypot(...target.map((v,axis) => v-position[axis])) <= tuning.radius) damage.set(index,tuning.damage) })
-      const disabled = state.targets.map((target,index) => damage.has(index) ? { ...target,disabledUntil:clock+tuning.duration } : target)
-      const result = damageTargets(disabled,damage,clock)
-      const nearbyOpponent = state.opponent.enabled && state.opponent.hp>0 && Math.hypot(...opponentPosition.map((v,axis) => v-position[axis]))<=tuning.radius
-      const enemy = damageOpponent(nearbyOpponent ? { ...state.opponent,disabledUntil:clock+tuning.duration,phase:'jammed' } : state.opponent,nearbyOpponent ? tuning.damage : 0,clock)
-      if (nearbyOpponent) patch.opponent = enemy.opponent
-      patch.targets = result.targets
-      patch.score = state.score+result.defeated*100+enemy.defeated*OPPONENT.score
-      patch.empHits = state.empHits+result.affected+(enemy.damage>0 ? 1 : 0)
-      patch.hazards = state.hazards.map((hazard,index) => Math.hypot(HAZARD.centers[index]-position[0],position[1],HAZARD.z-position[2]) <= tuning.radius ? { disabledUntil:clock+tuning.duration } : hazard)
-      ability.result = result.affected+(nearbyOpponent ? 1 : 0)+patch.hazards.filter((h,i) => h.disabledUntil>state.hazards[i].disabledUntil).length
-      if (result.damage+enemy.damage > 0) Object.assign(patch,hitFeedback(result.damage+enemy.damage,result.defeated+enemy.defeated))
+    game.set({ hp: Math.max(0, state.hp-healthDamage),ultimateShield:state.ultimateShield-bonus,shieldCharge:state.shieldCharge-normal, ...(absorbed ? { shieldHit:clock } : {}), ...(healthDamage ? { hurt:clock } : {}), time: clock })
+    if (state.hp === 0) {
+      document.exitPointerLock(); resetTrainingAbilities()
+      game.set({ mode:'dead',shieldCharge:0,ultimateShield:0,flashUntil:0,rootedUntil:0,abilities:Object.fromEntries(Object.entries(state.abilities).map(([id,a]) => [id,{ ...a,activeUntil:0,flying:false }])) })
     }
-    patch.abilities = { ...state.abilities,[id]:ability }
+  },
+  activateAbility: (id,details = {}) => {
+    const patch = activateTraining(state,clock,id,details)
+    if (!patch) return false
     game.set(patch)
     return true
   },
   reload: () => {
     const tuning = WEAPONS[state.weapon]
-    if (state.mode === 'playing' && tuning.magazine && !state.reloading && state.magazines[state.weapon] < tuning.magazine && clock-state.lastSwitch >= WEAPON_SWITCH) {
+    if (state.mode === 'playing' && !ultimateModifiers(state,clock).noReload && tuning.magazine && !state.reloading && state.magazines[state.weapon] < tuning.magazine && clock-state.lastSwitch >= WEAPON_SWITCH) {
       game.set({ ...beginReload(state.weapon,'manual'),time:clock })
     }
   },
@@ -123,10 +111,10 @@ export const game = {
   canAttack,
   attack: (hitRecords) => {
     if (!canAttack()) return false
-    const melee = WEAPONS[state.weapon].fireMode === 'melee', tuning = WEAPONS[state.weapon]
-    const patch = { attackReadyAt: clock + tuning.cooldown, time: clock,
+    const melee = WEAPONS[state.weapon].fireMode === 'melee', tuning = WEAPONS[state.weapon], modifiers = ultimateModifiers(state,clock)
+    const patch = { attackReadyAt: clock + tuning.cooldown/modifiers.fireRate, time: clock,
       ...(melee ? { lastSwing: clock, swings: state.swings + 1 } : {
-        magazines: { ...state.magazines,[state.weapon]:state.magazines[state.weapon]-1 },
+        magazines: { ...state.magazines,[state.weapon]:state.magazines[state.weapon]-(modifiers.noReload ? 0 : 1) },
         weaponStats: { ...state.weaponStats,[state.weapon]:{ ...state.weaponStats[state.weapon],shots:state.weaponStats[state.weapon].shots+1 } },
         lastShot: clock, shot: state.shot + 1, shots: state.shots + 1,
       }),
@@ -137,7 +125,7 @@ export const game = {
     let headshot = false
     records.slice(0,tuning.pellets || 1).forEach(({ targetId,distance,region = 'body' }) => {
       if ((Number.isInteger(targetId) && state.targets[targetId]) || targetId === OPPONENT.id) {
-        const amount = pelletDamage(tuning,distance,region)
+        const amount = Math.round(pelletDamage(tuning,distance,region)*modifiers.damage)
         damage.set(targetId,(damage.get(targetId) || 0)+amount)
         if (amount>0 && region==='head' && (targetId===OPPONENT.id ? state.opponent.hp>0 : state.targets[targetId].hp>0)) headshot = true
       }
@@ -161,13 +149,15 @@ export const game = {
   tick: (dt, publish = true) => {
     if (state.mode !== 'playing') return
     clock += dt
+    const tactical = stepTrainingAbilities(state,clock,dt,{ x:runtime.position[0],y:runtime.position[1],z:runtime.position[2],yaw:runtime.yaw,pitch:runtime.pitch },publish)
+    if (tactical) game.set(tactical)
     if (!publish) return
     const time = clock
     const respawning = state.opponent.enabled && state.opponent.hp === 0 && time>=state.opponent.resetAt && time>=state.opponent.disabledUntil
     if (respawning) opponentPosition.splice(0,3,...OPPONENT.spawn)
     // An empty weapon whose reload was cancelled starts again after it is equipped.
-    const autoReload = !state.reloading && WEAPONS[state.weapon].magazine && state.magazines[state.weapon] === 0 && time-state.lastSwitch >= WEAPON_SWITCH
-    game.set({ time,
+    const autoReload = !ultimateModifiers(state,time).noReload && !state.reloading && WEAPONS[state.weapon].magazine && state.magazines[state.weapon] === 0 && time-state.lastSwitch >= WEAPON_SWITCH
+    game.set({ time,ultimateShield:ultimateModifiers(state,time).effect==='shield' ? state.ultimateShield : 0,
       ...(state.reloading && time >= state.reloadEnd ? {
         magazines: { ...state.magazines,[state.reloadWeapon]:WEAPONS[state.reloadWeapon].magazine },
         ...clearReload,

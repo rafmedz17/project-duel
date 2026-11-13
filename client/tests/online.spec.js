@@ -17,8 +17,9 @@ async function open(page,name) {
   await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
   await page.getByLabel('YOUR CALLSIGN').fill(name)
 }
-async function pair(browser,format = 'freeplay') {
+async function pair(browser,format = 'freeplay',primary = 'rifle',unique = 'scanner',character = 'vex') {
   const contexts = await Promise.all([browser.newContext(),browser.newContext()])
+  await Promise.all(contexts.map(context => context.addInitScript(loadout => localStorage.setItem('duel-loadout',JSON.stringify(loadout)),{ character,primary,unique })))
   const [host,guest] = await Promise.all(contexts.map(context => context.newPage()))
   await open(host,'Nova')
   await host.getByRole('button',{ name:'CREATE PRIVATE ROOM' }).click()
@@ -39,6 +40,58 @@ async function enter(page) {
   await page.getByRole('button',{ name:'ENTER ARENA',exact:true }).click()
   await expect.poll(async () => (await onlineState(page)).captured).toBe(true)
 }
+
+test('selected online shotgun uses a dotted ring and automatically reloads its empty magazine',async ({ browser }) => {
+  const { host,contexts }=await pair(browser,'freeplay','shotgun')
+  try {
+    await host.getByRole('button',{ name:'START SHARED ARENA' }).click()
+    await host.getByRole('button',{ name:'ENTER ARENA',exact:true }).click()
+    await expect.poll(async () => (await onlineState(host)).captured).toBe(true)
+    await look(host,0,0.6); await host.keyboard.press('Digit1')
+    await expect.poll(async () => (await selfCombat(host)).weapon).toBe('shotgun')
+    await expect(host.locator('.shotgun-crosshair')).toHaveText('')
+    for(let i=0;i<6;i++) { await fire(host); await expect.poll(async () => (await selfCombat(host)).magazines.shotgun).toBe(5-i) }
+    expect((await selfCombat(host)).reloadReason).toBe('auto')
+    await expect(host.getByRole('progressbar',{ name:'Reload progress' })).toBeVisible()
+    await expect.poll(async () => (await selfCombat(host)).magazines.shotgun,{ timeout:5000 }).toBe(6)
+    expect((await selfCombat(host)).magazines.pistol).toBe(12)
+  } finally { await Promise.all(contexts.map(context=>context.close())) }
+})
+
+for(const unique of ['flashbang','stun','smoke']) test(`online ${unique} renders the server-validated grenade and its effect`,async ({ browser }) => {
+  test.setTimeout(90000)
+  const { host,guest,contexts }=await pair(browser,'freeplay','rifle',unique),errors=[]
+  for(const page of [host,guest]) page.on('pageerror',e=>errors.push(e.message))
+  try {
+    await host.getByRole('button',{ name:'START SHARED ARENA' }).click()
+    await enter(host)
+    if(unique==='flashbang') await look(host,0,-1.2)
+    else { await host.keyboard.down('ShiftLeft'); await moveTo(host,'KeyW',2,-8,-1); await host.keyboard.up('ShiftLeft'); await look(host,0,-0.2) }
+    await host.keyboard.press('KeyC')
+    await expect.poll(async () => (await selfCombat(host)).abilities[unique].uses).toBe(1)
+    await expect.poll(async () => (await selfCombat(host)).abilities[unique].detonatedAt).toBeGreaterThan(0)
+    const ability=(await selfCombat(host)).abilities[unique]
+    expect(ability.flying).toBe(false)
+    if(unique==='flashbang') await expect(host.getByTestId('flash-screen')).toBeVisible()
+    if(unique==='stun') {
+      await expect(guest.locator('.root-notice')).toBeVisible()
+      expect((await selfCombat(guest)).hp).toBe(100)
+      expect((await selfCombat(host)).rooted).toBe(false)
+    }
+    if(unique==='smoke') {
+      expect(Math.abs(ability.activeUntil-ability.detonatedAt-8)).toBeLessThan(0.001)
+      await expect(guest.getByLabel('Inside enemy smoke')).toBeVisible()
+      const revealed=await host.evaluate(async () => {
+        const url=performance.getEntriesByType('resource').find(e=>new URL(e.name).pathname.endsWith('/@react-three_fiber.js')).name
+        const { _roots }=await import(url),scene=_roots.get(document.querySelector('canvas')).store.getState().scene
+        return scene.getObjectsByProperty('name','robot-torso').some(mesh=>mesh.material.transparent && !mesh.material.depthTest)
+      })
+      expect(revealed).toBe(true)
+    }
+    await host.screenshot({ path:`online-${unique}-preview.png` })
+    expect(errors).toEqual([])
+  } finally { await Promise.all(contexts.map(context=>context.close())) }
+})
 async function look(page,yaw,pitch = 0) {
   const s = await onlineState(page)
   const yawDelta = Math.atan2(Math.sin(s.view.yaw-yaw),Math.cos(s.view.yaw-yaw))
@@ -169,7 +222,7 @@ test('two browsers confirm body, head and foot damage, a single kill, death feed
   } finally { await Promise.all(contexts.map(context => context.close())) }
 })
 
-test('online rifle hold, reload animation, shotgun ring, automatic empty reload and focus release use server snapshots',async ({ browser }) => {
+test('online rifle hold, reload animation and focus release use server snapshots',async ({ browser }) => {
   test.setTimeout(120000)
   const { host,contexts } = await pair(browser), errors = []
   host.on('pageerror',error => errors.push(error.message))
@@ -177,7 +230,7 @@ test('online rifle hold, reload animation, shotgun ring, automatic empty reload 
     await host.getByRole('button',{ name:'START SHARED ARENA' }).click()
     await expect(host.getByRole('dialog',{ name:'SHARED ARENA' })).toBeVisible({ timeout:10000 })
     await enter(host); await look(host,0,0.6)
-    await host.keyboard.press('Digit3')
+    await host.keyboard.press('Digit1')
     await expect.poll(async () => (await selfCombat(host)).weapon).toBe('rifle')
     await host.waitForTimeout(300)
     await host.mouse.down()
@@ -186,21 +239,7 @@ test('online rifle hold, reload animation, shotgun ring, automatic empty reload 
     await host.keyboard.press('KeyR')
     await expect(host.getByRole('progressbar',{ name:'Reload progress' })).toBeVisible()
     await expect.poll(async () => (await selfCombat(host)).magazines.rifle).toBe(30)
-    await host.keyboard.press('Digit4')
-    await expect.poll(async () => (await selfCombat(host)).weapon).toBe('shotgun')
-    await host.waitForTimeout(300)
-    expect(await host.locator('.shotgun-crosshair').textContent()).toBe('')
-    await expect(host.locator('.shotgun-crosshair')).toHaveCSS('width','44px')
-    for (let i=0;i<6;i++) {
-      await fire(host)
-      await expect.poll(async () => (await selfCombat(host)).magazines.shotgun).toBe(5-i)
-    }
-    await expect.poll(async () => (await selfCombat(host)).magazines.shotgun).toBe(0)
-    expect((await selfCombat(host)).reloadReason).toBe('auto')
-    await expect(host.getByRole('status')).toContainText('RELOADING')
-    await expect.poll(async () => (await selfCombat(host)).magazines.shotgun,{ timeout:5000 }).toBe(6)
-    expect((await selfCombat(host)).magazines.pistol).toBe(12)
-    await host.keyboard.press('Digit3'); await host.waitForTimeout(350)
+    await host.keyboard.press('Digit1'); await host.waitForTimeout(350)
     await host.mouse.down()
     await expect.poll(async () => (await selfCombat(host)).magazines.rifle).toBeLessThan(30)
     await host.evaluate(() => window.dispatchEvent(new Event('blur')))
@@ -291,56 +330,28 @@ test('online scanner reveals the opponent; dash travels once, respects cooldown 
   } finally { await Promise.all(contexts.map(context => context.close())) }
 })
 
-test('online shield absorbs weapon hits; EMP removes shield, damages and jams abilities until recovery',async ({ browser }) => {
-  test.setTimeout(120000)
-  const { host,guest,contexts } = await pair(browser), errors = []
-  for (const page of [host,guest]) page.on('pageerror',error => errors.push(error.message))
+test('online shields absorb actual hits and VEX overdrive allows repeated dash without spending shield',async ({ browser }) => {
+  const { host,guest,contexts }=await pair(browser),errors=[]
+  for(const page of [host,guest]) page.on('pageerror',e=>errors.push(e.message))
   try {
     await host.getByRole('button',{ name:'START SHARED ARENA' }).click()
     await expect(host.getByRole('dialog',{ name:'SHARED ARENA' })).toBeVisible({ timeout:10000 })
-    await enter(host)
-    await host.keyboard.down('ShiftLeft'); await moveTo(host,'KeyW',2,-9,-1); await host.keyboard.up('ShiftLeft')
+    await enter(host); await observeHitFeedback(host); await aimAtPlayer(host)
     await host.evaluate(() => document.exitPointerLock())
-    await enter(guest)
-    await guest.keyboard.press('KeyF'); await guest.keyboard.press('KeyC')
+    await enter(guest); await guest.keyboard.press('KeyF')
     await expect(guest.getByTestId('online-shield-charge')).toContainText('50 / 50')
-    await expect(guest.getByTestId('ability-scanner')).toContainText('ACTIVE')
     await guest.evaluate(() => document.exitPointerLock())
-    await enter(host); await observeHitFeedback(host); await aimAtPlayer(host); await fire(host)
+    await enter(host); await fire(host)
     await expect.poll(async () => (await selfCombat(guest)).shieldCharge).toBe(30)
     expect((await selfCombat(guest)).hp).toBe(100)
     expect((await selfCombat(host)).hitShieldDamage).toBe(20)
-    expect((await selfCombat(host)).hitDamage).toBe(0)
-    await expect.poll(async () => (await observedFeedback(host))?.text).toContain('SHIELD HIT')
-    expect((await observedFeedback(host)).damage).toBe(0)
-    await host.keyboard.press('KeyV')
-    await expect.poll(async () => (await selfCombat(guest)).hp).toBe(60)
-    const victim = await selfCombat(guest), attacker = await selfCombat(host)
-    expect(victim.shieldCharge).toBe(0)
-    expect(victim.abilities.scanner.activeUntil).toBe(0)
-    expect(attacker.hitDamage).toBe(40)
-    await host.keyboard.press('KeyV')
-    await host.evaluate(() => document.exitPointerLock()); await enter(guest)
-    await expect(guest.getByTestId('ability-dash')).toContainText('JAMMED')
-    const before = victim.abilities
-    // Send the rejected controls in one browser task while the short jam is
-    // active; separate automation round trips can outlast it on a slow GPU.
-    await guest.evaluate(() => {
-      for (const code of ['KeyE','KeyF','KeyC','KeyV']) {
-        document.dispatchEvent(new KeyboardEvent('keydown',{ code,bubbles:true }))
-        document.dispatchEvent(new KeyboardEvent('keyup',{ code,bubbles:true }))
-      }
-    })
-    for (const id of Object.keys(before)) expect((await selfCombat(guest)).abilities[id].uses).toBe(before[id].uses)
-    expect((await selfCombat(host)).abilities.emp.uses).toBe(1)
-    await expect(guest.getByTestId('online-scan-opponent')).toHaveCSS('opacity','0')
-    await guest.screenshot({ path:'online-emp-preview.png' })
-    await expect(guest.getByTestId('ability-dash')).toContainText('READY',{ timeout:7000 })
-    await guest.keyboard.press('KeyE')
-    await expect.poll(async () => (await selfCombat(guest)).abilities.dash.uses).toBe(1)
-    expect((await selfCombat(guest)).hp).toBe(60)
+    await host.keyboard.press('KeyX')
+    await expect(host.getByTestId('ability-ultimate')).toContainText('ACTIVE')
+    await host.keyboard.press('KeyE'); await host.waitForTimeout(250); await host.keyboard.press('KeyE')
+    await expect.poll(async () => (await selfCombat(host)).abilities.dash.uses).toBe(2)
+    await expect(host.getByTestId('ability-ultimate')).not.toContainText('ACTIVE',{ timeout:7000 })
     expect(errors).toEqual([])
-  } finally { await Promise.all(contexts.map(context => context.close())) }
+  } finally { await Promise.all(contexts.map(context=>context.close())) }
 })
 
 async function winRound(shooter,target) {
@@ -376,7 +387,7 @@ test('best of three plays a 2–1 deciding match with shared scoreboard, locked 
     await expect(guest.getByTestId('round-result')).toContainText('ROUND LOST')
     expect((await onlineState(host)).room.players.find(p => p.name==='Nova').roundWins).toBe(1)
     const ammo = (await selfCombat(host)).magazines.pistol
-    await fire(host); await host.keyboard.press('KeyV')
+    await fire(host); await host.keyboard.press('KeyX')
     expect((await selfCombat(host)).magazines.pistol).toBe(ammo)
     expect((await selfCombat(guest)).hp).toBe(0)
     await awaitNextRound(host,2)

@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { accounts, useAccount } from './store.js'
-import { WEAPONS } from '../../../shared/weapons.js'
-import { ABILITIES } from '../../../shared/abilities.js'
 import { getMap } from '../../../shared/maps.js'
 import './accounts.css'
+import CharacterLoadout from './CharacterLoadout.jsx'
 
 function PasswordRecovery({ s,onComplete }) {
   const [password,setPassword] = useState('')
@@ -33,21 +32,6 @@ function Profile({ s }) {
     </form>
   </>
 }
-function Loadout({ s }) {
-  const [value,setValue] = useState(s.loadout)
-  const toggle = (field,id) => setValue(old => {
-    const items = old[field].includes(id) ? old[field].filter(item => item!==id) : [...old[field],id]
-    if (field==='weapons' && !items.length) return old
-    return { ...old,[field]:items,...(field==='weapons' && !items.includes(old.startingWeapon) ? { startingWeapon:items[0] } : {}) }
-  })
-  return <form onSubmit={e => { e.preventDefault(); void accounts.saveLoadout(value) }}>
-    <p>Choose the weapons and abilities you want available. Your selection is locked when you join a room.</p>
-    <fieldset disabled={s.busy || s.loading}><legend>WEAPONS / SELECT AT LEAST ONE</legend><div className="equipment-grid">{Object.entries(WEAPONS).map(([id,item]) => <label className="equipment" key={id}><input type="checkbox" checked={value.weapons.includes(id)} onChange={() => toggle('weapons',id)} /><span>{item.name}<small>KEY {item.slot}</small></span></label>)}</div>
-    <label>STARTING WEAPON<select value={value.startingWeapon} onChange={e => setValue({ ...value,startingWeapon:e.target.value })}>{value.weapons.map(id => <option key={id} value={id}>{WEAPONS[id].name}</option>)}</select></label></fieldset>
-    <fieldset disabled={s.busy || s.loading}><legend>ABILITIES</legend><div className="equipment-grid">{Object.entries(ABILITIES).map(([id,item]) => <label className="equipment" key={id}><input type="checkbox" checked={value.abilities.includes(id)} onChange={() => toggle('abilities',id)} /><span>{item.name}<small>KEY {item.key}</small></span></label>)}</div></fieldset>
-    <p className="muted">{s.user ? 'Saved to your account for your next training session or room.' : 'Guest loadouts save on this device. Sign in to sync across devices.'}</p><button className="primary" disabled={s.busy || s.loading}>SAVE LOADOUT</button>
-  </form>
-}
 function History({ s }) {
   useEffect(() => { if (accounts.get().user) void accounts.history() },[])
   if (!s.user) return <p>Sign in to view your match history.</p>
@@ -71,7 +55,7 @@ export default function AccountPanel({ initial='profile',onClose,onShowProfile }
     return () => previous?.focus()
   },[initial])
   const current = s.recovery ? 'profile' : tab
-  const titles = { profile:'PLAYER PROFILE',loadout:'LOADOUT',history:'MATCH HISTORY',leaderboard:'LEADERBOARD' }
+  const titles = { profile:'PLAYER PROFILE',loadout:'CHARACTER & LOADOUT',history:'MATCH HISTORY',leaderboard:'LEADERBOARD' }
   return <div className="overlay modal" onKeyDown={e => {
     if (e.key==='Escape') { e.preventDefault(); if (!s.recovery) onClose() }
     if (e.key!=='Tab') return
@@ -81,7 +65,7 @@ export default function AccountPanel({ initial='profile',onClose,onShowProfile }
   }}><section className="dialog account-dialog" role="dialog" aria-modal="true" aria-labelledby="account-title"><div className="eyebrow">PROJECT DUEL / PLAYER SERVICES</div><h2 id="account-title">{titles[current]}</h2><div className="account-tabs">{Object.entries(titles).map(([id,label]) => <button key={id} aria-pressed={current===id} disabled={s.busy} onClick={() => { setTab(id); accounts.clear() }}>{label}</button>)}</div>
     {!s.configured && <p className="cloud-notice">Cloud accounts and rankings are not enabled for this game yet. Guest play and device-saved loadouts are available.</p>}
     {s.error && <p className="error" role="alert">{s.error}</p>}{s.notice && <p className="account-notice" role="status">{s.notice}</p>}{s.loading && <p role="status">Loading your saved profile…</p>}
-    {s.recovery ? <PasswordRecovery s={s} onComplete={onShowProfile} /> : current==='profile' ? <Profile key={`${s.user?.id || 'guest'}-${s.profile?.callsign || ''}`} s={s} /> : current==='loadout' ? <Loadout key={JSON.stringify(s.loadout)} s={s} /> : current==='history' ? <History s={s} /> : <Leaderboard s={s} />}
+    {s.recovery ? <PasswordRecovery s={s} onComplete={onShowProfile} /> : current==='profile' ? <Profile key={`${s.user?.id || 'guest'}-${s.profile?.callsign || ''}`} s={s} /> : current==='loadout' ? <CharacterLoadout key={JSON.stringify(s.loadout)} s={s} /> : current==='history' ? <History s={s} /> : <Leaderboard s={s} />}
     <button ref={closeRef} disabled={s.recovery && s.busy} onClick={s.recovery ? () => { void accounts.signOut().then(() => { if (!accounts.get().recovery) onClose() }) } : onClose}>{s.recovery ? 'CANCEL PASSWORD RESET' : 'BACK'}</button>
   </section></div>
 }

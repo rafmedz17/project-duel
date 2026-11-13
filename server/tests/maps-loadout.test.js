@@ -10,7 +10,7 @@ import { rayBox } from '../../shared/ballistics.js'
 test('loadout validation rejects unknown, duplicate, empty and unequipped starting weapons',() => {
   assert.deepEqual(validateLoadout(DEFAULT_LOADOUT),DEFAULT_LOADOUT)
   for (const value of [null,{},[],{ ...DEFAULT_LOADOUT,weapons:[] },{ ...DEFAULT_LOADOUT,weapons:['rifle'] },{ ...DEFAULT_LOADOUT,weapons:['pistol','pistol'] },{ ...DEFAULT_LOADOUT,abilities:['fly'] },{ ...DEFAULT_LOADOUT,abilities:['dash','dash'] },{ ...DEFAULT_LOADOUT,admin:true }]) assert.equal(validateLoadout(value),null)
-  assert.deepEqual(validateLoadout({ startingWeapon:'shotgun',weapons:['shotgun'],abilities:[] }),{ startingWeapon:'shotgun',weapons:['shotgun'],abilities:[] })
+  assert.equal(validateLoadout({ startingWeapon:'shotgun',weapons:['shotgun'],abilities:[] }),null)
 })
 for (const [mapId,map] of Object.entries(MAPS)) test(`${mapId} has clear spawns, walls, solid cover and matching shot occlusion`,t => {
   const players=new Map([['a',Object.assign(new LobbyPlayer(),{ slot:0 })],['b',Object.assign(new LobbyPlayer(),{ slot:1 })]])

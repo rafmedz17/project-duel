@@ -48,19 +48,19 @@ test('audio waits for interaction, generates a real waveform, and saves volume a
   await expect(page.getByLabel('Mute sound')).toBeChecked()
   await expect(page.getByLabel('Sound volume')).toHaveValue('2')
 })
-test('training plays all weapon, reload, hit, ability and footstep cues; pausing clears active voices',async ({ page }) => {
+test('training plays equipped weapon, reload, hit, ability and footstep cues; pausing clears active voices',async ({ page }) => {
   test.setTimeout(90000)
   const errors=[]; page.on('pageerror',e => errors.push(e.message))
   await start(page)
   await expect.poll(async () => (await sound(page)).state).toBe('running')
-  await page.keyboard.press('Digit3'); await page.waitForTimeout(350)
+  await page.keyboard.press('Digit1'); await page.waitForTimeout(350)
   await page.mouse.down(); await page.waitForTimeout(750); await page.mouse.up()
   await expect.poll(async () => (await sound(page)).counts.rifle || 0).toBeGreaterThan(2)
   expect((await sound(page)).peakRms).toBeGreaterThan(0.0001)
   await page.keyboard.press('KeyR')
   await expect.poll(async () => (await sound(page)).counts['reload-start'] || 0).toBe(1)
   await expect.poll(async () => (await sound(page)).counts['reload-end'] || 0).toBe(1)
-  for (const [key,cue] of [['Digit4','shotgun'],['Digit2','blade'],['Digit1','pistol']]) {
+  for (const [key,cue] of [['Digit3','blade'],['Digit2','pistol']]) {
     await page.keyboard.press(key); await page.waitForTimeout(400); await fire(page)
     await expect.poll(async () => (await sound(page)).counts[cue] || 0).toBeGreaterThan(0)
     await page.waitForTimeout(850)
@@ -73,7 +73,7 @@ test('training plays all weapon, reload, hit, ability and footstep cues; pausing
   await lookAt(page,0,0)
   await moveUntil(page,'KeyW',2,9,-1)
   await expect.poll(async () => (await sound(page)).counts.step || 0).toBeGreaterThan(0)
-  for (const [key,cue] of [['KeyE','dash'],['KeyF','shield'],['KeyC','scanner'],['KeyV','emp']]) {
+  for (const [key,cue] of [['KeyE','dash'],['KeyF','shield'],['KeyC','flashbang'],['KeyX','ultimate']]) {
     await page.keyboard.press(key)
     await expect.poll(async () => (await sound(page)).counts[cue] || 0).toBe(1)
   }
@@ -155,8 +155,8 @@ test('online opponent sounds use authoritative positions; replays, focus loss an
     }
     peer.send('move',{ sequence:11,x:0,z:0,yaw:0,pitch:0,sprint:false,jump:false,active:false,round:peer.state.roundId })
     await expect.poll(() => me().x).toBeGreaterThan(2)
-    combat('ability',{ ability:'scanner' })
-    await expect.poll(async () => (await sound(page)).counts.scanner || 0).toBe(1)
+    combat('ability',{ ability:'flashbang' })
+    await expect.poll(async () => (await sound(page)).counts.flashbang || 0).toBe(1)
     expect((await sound(page)).lastSpatial[0]).toBeGreaterThan(2)
     await page.evaluate(() => window.dispatchEvent(new Event('blur')))
     await expect.poll(async () => (await sound(page)).state).toBe('suspended')

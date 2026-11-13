@@ -4,6 +4,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { Client } from '@colyseus/sdk'
 import { createLobbyServer } from '../src/createServer.js'
 import { LOBBY } from '../src/config.js'
+import { validateLoadout } from '../../shared/loadout.js'
 import { ROBOT_HEAD_Y } from '../../shared/robot.js'
 
 const { server,httpServer } = createLobbyServer()
@@ -21,13 +22,13 @@ async function until(predicate,timeout = 5000) {
   }
 }
 async function create(t, name = 'Nova') {
-  const room = await client.create(LOBBY.roomType,{ name })
+  const room = await client.create(LOBBY.roomType,{ name,loadout:validateLoadout({ character:'vex',primary:'rifle',unique:'scanner' }) })
   t.after(() => room.leave().catch(() => {}))
   await until(() => room.state?.players?.has(room.sessionId))
   return room
 }
 async function join(t, code, name = 'Echo') {
-  const room = await client.joinById(code,{ name })
+  const room = await client.joinById(code,{ name,loadout:validateLoadout({ character:'aegis',primary:'rifle',unique:'scanner' }) })
   t.after(() => room.leave().catch(() => {}))
   await until(() => room.state?.players?.has(room.sessionId))
   return room
@@ -300,44 +301,27 @@ test('disconnect freezes authoritative reload and combat clocks until reconnecti
   assert.equal(host.state.players.get(host.sessionId).reloading,false)
 })
 
-test('real ability messages synchronize shields, dash, scanner and in-range EMP while rejecting claimed effects',async t => {
+test('real ability messages synchronize selected skills, ultimates and authoritative shields while rejecting claimed effects',async t => {
   const { host,guest } = await pair(t)
   await launch(host,guest)
-  await until(() => host.state.players.get(host.sessionId).grounded)
-  let sequence = 0, moveSequence = 0
-  const send = (ability,extra = {}) => host.send('combat',{ sequence:sequence++,epoch:1,action:'ability',ability,...extra })
-  send('emp',{ origin:[0,1,-15],damage:999 })
+  let sequence=0
+  const send=(ability,extra={}) => host.send('combat',{ sequence:sequence++,epoch:1,action:'ability',ability,...extra })
+  send('ultimate',{ activeUntil:999 })
   await delay(100)
-  assert.equal(host.state.players.get(host.sessionId).abilities.get('emp').uses,0)
-  send('shield'); send('scanner')
-  await until(() => guest.state.players.get(host.sessionId).shieldCharge===50)
-  assert.equal(guest.state.players.get(host.sessionId).abilities.get('scanner').uses,1)
-  host.send('move',movement(moveSequence++))
-  send('dash')
+  assert.equal(host.state.players.get(host.sessionId).abilities.get('ultimate').uses,0)
+  send('shield'); send('scanner'); send('ultimate')
+  await until(() => guest.state.players.get(host.sessionId).abilities.get('ultimate').uses===1)
+  const source=guest.state.players.get(host.sessionId)
+  assert.equal(source.shieldCharge,50); assert.equal(source.characterId,'vex')
+  assert.equal(source.abilities.get('scanner').uses,1)
+  assert.ok(Math.abs(source.abilities.get('ultimate').activeUntil-source.abilities.get('ultimate').startedAt-5)<0.001)
+  host.send('move',movement(0)); send('dash')
   await until(() => guest.state.players.get(host.sessionId).z<12)
-  assert.equal(guest.state.players.get(host.sessionId).abilities.get('dash').uses,1)
-  const deadline = Date.now()+7000
-  while (host.state.players.get(host.sessionId).z>-9) {
-    if (Date.now()>deadline) throw new Error('Could not approach opponent for authoritative EMP test')
-    host.send('move',movement(moveSequence++,{ z:-1,sprint:true }))
-    await delay(50)
-  }
-  host.send('move',movement(moveSequence,{ active:false }))
-  guest.send('combat',{ sequence:0,epoch:1,action:'ability',ability:'shield' })
-  guest.send('combat',{ sequence:1,epoch:1,action:'ability',ability:'scanner' })
-  await until(() => host.state.players.get(guest.sessionId).shieldCharge===50)
-  send('emp')
-  await until(() => guest.state.players.get(guest.sessionId).hp===60)
-  const target = guest.state.players.get(guest.sessionId)
-  assert.equal(target.shieldCharge,0)
-  assert.equal(target.abilities.get('scanner').activeUntil,0)
-  assert.ok(target.disabledUntil>guest.state.tick/60)
-  guest.send('combat',{ sequence:2,epoch:1,action:'ability',ability:'dash' })
-  send('emp')
-  await delay(120)
-  assert.equal(target.abilities.get('dash').uses,0)
-  assert.equal(target.hp,60)
-  assert.equal(host.state.players.get(host.sessionId).hitDamage,40)
+  await delay(250); host.send('move',movement(1)); send('dash')
+  await until(() => guest.state.players.get(host.sessionId).abilities.get('dash').uses===2)
+  send('flashbang'); send('emp')
+  await delay(100)
+  assert.equal(source.abilities.get('flashbang').uses,0)
 })
 
 test('only the host can select a valid format; changing it clears readiness and cannot alter a running match',async t => {

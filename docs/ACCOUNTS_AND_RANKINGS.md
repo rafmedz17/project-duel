@@ -27,7 +27,7 @@ These are **hosted** operations. The implementation does not run them without an
 
 ## Equipment and maps
 
-Choose one to four weapons, zero to four abilities, and a starting weapon from the equipped list. Weapon number keys retain their usual slots; Q cycles only equipped weapons. Unequipped actions are blocked in training and on the server, and the HUD dims their slots. Each round restores the selected starting weapon. Selections lock on room join; leave the room to change them.
+Choose one of four characters, one primary and any one unique skill. Pistol, melee, Dash and Shield are always equipped, along with the character ultimate. Keys 1 / 2 / 3 select Primary / Pistol / Melee; Q cycles those three. Rifle and shotgun are playable; sniper, SMG and LMG are Coming Soon. Each round restores the selected starting weapon. Selections lock on room join; leave the room to change them. See [characters and loadouts](CHARACTERS_AND_LOADOUT.md).
 
 The host selects **Training Facility**, **Neon District**, or **Orbital Station**. Neon District has tall street kiosks and offset cover; Orbital Station has reactor cover and cargo lanes. The server and renderer consume the same static solids, including hitscan occlusion. Both spawn points remain clear. Map/format changes clear readiness, and map changes are blocked after launch. Training remains in the Facility.
 
@@ -45,9 +45,9 @@ This is private-room ranking, without public matchmaking, seasonal ranks or comp
 
 ## Verification
 
-`npm.cmd run test:server` runs 59 cases, including actual PostgreSQL grants/RLS/result transactions, token verification, durable retries, map physics, loadout enforcement, movement prediction and production HTTP/WebSocket serving. PostgreSQL tests bootstrap Auth roles and UID claims locally; they do not replace a live Supabase Auth test.
+`npm.cmd run test:server` covers, including actual PostgreSQL grants/RLS/result transactions, token verification, durable retries, map physics, loadout enforcement, movement prediction and production HTTP/WebSocket serving. PostgreSQL tests bootstrap Auth roles and UID claims locally; they do not replace a live Supabase Auth test.
 
-The 34 browser scenarios include account forms, confirmation/errors/recovery, restored sessions, cross-browser loadouts, history/leaderboard, guest equipment, audio, maps, arena refresh recovery and paused rendering. Account HTTP responses use fixtures on a separate Vite instance at port 5174. Normal gameplay tests use fresh guest contexts on port 5173 and do not write cloud stats. The hosted smoke check in step 5 is required after connecting a new project.
+The browser scenarios include account forms, confirmation/errors/recovery, restored sessions, cross-browser loadouts, history/leaderboard, guest equipment, audio, maps, arena refresh recovery and paused rendering. Account HTTP responses use fixtures on a separate Vite instance at port 5174. Normal gameplay tests use fresh guest contexts on port 5173 and do not write cloud stats. The hosted smoke check in step 5 is required after connecting a new project.
 
 The opt-in live check can also be repeated from `server` while the frontend and backend are running:
 

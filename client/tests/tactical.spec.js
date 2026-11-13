@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test'
-import { state, position, lookAt, aimAtTarget, moveUntil } from './helpers.js'
+import { state, position, lookAt, aimAtTarget, moveUntil, presetLoadout } from './helpers.js'
 import { TARGETS } from '../src/game/config.js'
 
-async function start(page) {
+async function start(page,primary='rifle') {
+  await presetLoadout(page,{ character:'aegis',primary,unique:'scanner' })
   await page.goto('/')
   await page.getByRole('button',{ name:/SETTINGS/ }).click()
   await page.getByLabel('Render quality').selectOption('Low')
@@ -26,9 +27,9 @@ function errorsFor(page) {
 
 test('shotgun has finite spread/range, close-range pellet damage, semi-auto fire and its own reload', async ({ page }) => {
   const errors = errorsFor(page)
-  await start(page)
-  await page.keyboard.press('Digit4')
-  await expect(page.getByText('04 / PLASMA SHOTGUN',{ exact:true })).toBeVisible()
+  await start(page,'shotgun')
+  await page.keyboard.press('Digit1')
+  await expect(page.getByText('1 / PLASMA SHOTGUN',{ exact:true })).toBeVisible()
   await page.waitForTimeout(300)
   await aimAtTarget(page); await attack(page)
   expect((await state(page)).targets[1].hp).toBe(100) // outside the 24-unit cone
@@ -51,7 +52,7 @@ test('shotgun has finite spread/range, close-range pellet damage, semi-auto fire
   expect(errors).toEqual([])
 })
 
-test('scanner reveals targets, dash moves and respects the boundary, EMP affects targets, pause and restart clear ability state', async ({ page }) => {
+test('scanner reveals targets, dash respects cooldown and boundaries, pause and restart clear ability state', async ({ page }) => {
   const errors = errorsFor(page)
   await start(page)
   await page.keyboard.press('KeyC')
@@ -77,11 +78,6 @@ test('scanner reveals targets, dash moves and respects the boundary, EMP affects
   await resume(page)
   await moveUntil(page,'KeyW',2,-12,-1)
   await expect(page.getByTestId('ability-scanner')).not.toContainText('ACTIVE')
-  await page.keyboard.press('KeyV')
-  expect((await state(page)).targets.map(t => t.hp)).toEqual([100,60,60,100])
-  expect((await state(page)).empHits).toBe(2)
-  await page.keyboard.press('KeyV')
-  expect((await state(page)).abilities.emp.uses).toBe(1)
   await moveUntil(page,'KeyW',2,-18,-1)
   await page.keyboard.press('KeyE'); await page.waitForTimeout(400)
   expect((await state(page)).abilities.dash.uses).toBe(2)
@@ -98,7 +94,7 @@ test('scanner reveals targets, dash moves and respects the boundary, EMP affects
   expect(errors).toEqual([])
 })
 
-test('dash stops at cover, shield absorbs hazard ticks, EMP disables the pad, and protection expires', async ({ page }) => {
+test('dash stops at cover, general and ultimate shields absorb hazards and protection expires', async ({ page }) => {
   const errors = errorsFor(page)
   await start(page)
   await moveUntil(page,'KeyD',0,7.7,1)
@@ -114,15 +110,11 @@ test('dash stops at cover, shield absorbs hazard ticks, EMP disables the pad, an
   await moveUntil(page,'KeyW',2,3.3,-1)
   await expect.poll(async () => (await state(page)).shieldCharge).toBeLessThan(50)
   expect((await state(page)).hp).toBe(health)
-  await page.keyboard.press('KeyV')
-  const jammed = await state(page)
-  expect(jammed.hazards[1].disabledUntil).toBeGreaterThan(jammed.time)
-  expect(jammed.hazards[0].disabledUntil).toBe(0)
-  const charge = jammed.shieldCharge
-  await page.screenshot({ path:'abilities-preview.png' })
+  await page.keyboard.press('KeyX')
+  await expect(page.getByTestId('ultimate-shield')).toContainText('FORTRESS SHIELD')
   await page.waitForTimeout(2000)
   expect((await state(page)).hp).toBe(health)
-  expect((await state(page)).shieldCharge).toBe(charge)
+  expect((await state(page)).ultimateShield).toBeGreaterThan(0)
   await expect.poll(async () => (await state(page)).hp,{ timeout:6000 }).toBeLessThan(health)
   expect(errors).toEqual([])
 })

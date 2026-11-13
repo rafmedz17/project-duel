@@ -11,6 +11,8 @@ function setup(t) {
   const simulation = new ArenaSimulation(players)
   t.after(() => simulation.free())
   const combat = new ArenaCombat(players,simulation,1)
+  // This weapon lifecycle fixture exercises both primaries independently of lobby selection.
+  players.get('a').allowedWeapons.push('shotgun')
   const a = players.get('a'), b = players.get('b')
   Object.assign(a,{ x:0,y:0.87,z:8,yaw:0,pitch:0 })
   Object.assign(b,{ x:0,y:0.87,z:-8,yaw:Math.PI,pitch:0 })

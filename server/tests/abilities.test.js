@@ -2,12 +2,12 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { ArenaCombat } from '../src/arena/ArenaCombat.js'
 import { ArenaSimulation } from '../src/arena/ArenaSimulation.js'
-import { ABILITIES } from '../../shared/abilities.js'
 
 function setup(t) {
   const players = new Map([['a',{ slot:0,connected:true }],['b',{ slot:1,connected:true }]])
   const sim = new ArenaSimulation(players), combat = new ArenaCombat(players,sim,1)
   t.after(() => sim.free())
+  for (const player of players.values()) player.allowedAbilities = ['dash','shield','scanner','ultimate','flashbang','stun','smoke']
   let sequence = 0, inputSequence = 0
   const send = (id,action,details = {}) => combat.receive(id,{ action,epoch:1,sequence:sequence++,...details })
   const ability = (id,name) => send(id,'ability',{ ability:name })
@@ -86,22 +86,23 @@ test('shield absorbs real weapon hits, spills excess into health and expires wit
   assert.equal(b.hp,70)
 })
 
-test('EMP uses the server origin and radius, bypasses cover, strips shield, cancels effects and jams only abilities',t => {
-  const { a,b,ability,advance,teleport,move,fire } = setup(t)
-  teleport('a',8,9); teleport('b',8,3) // Visible tall cover between both players.
-  ability('b','shield'); ability('b','scanner'); move('b'); ability('b','dash')
-  assert.equal(ability('a','emp'),true)
-  assert.equal(b.hp,60); assert.equal(b.shieldCharge,0)
-  assert.equal(a.hitDamage,40); assert.equal(a.hitHeadshot,false)
-  assert.equal(a.abilities.get('emp').result,1)
-  assert.ok(b.disabledUntil>0)
-  for (const name of Object.keys(ABILITIES)) { assert.equal(b.abilities.get(name).activeUntil,0); assert.equal(ability('b',name),false) }
-  assert.equal(fire('b','a',{ yaw:Math.PI,pitch:0.5 }),true) // Weapons still work while jammed.
-  move('b',{ x:-1 }); advance(0.2); assert.ok(b.x>8)
-  advance(4); assert.equal(ability('b','emp'),true)
-  advance(12); teleport('b',8,-2); const hp = b.hp
-  ability('a','emp'); assert.equal(b.hp,hp)
-  assert.equal(a.abilities.get('emp').result,0)
+test('stun grenades are fused, root enemies without damage and preserve their weapons and shields',t => {
+  const { a,b,ability,advance,teleport,fire,combat } = setup(t)
+  teleport('a',0,6); teleport('b',0,-1)
+  ability('b','shield')
+  assert.equal(ability('a','stun'),true)
+  assert.equal(a.abilities.get('stun').flying,true)
+  assert.equal(b.rooted,false)
+  advance(0.91)
+  assert.equal(a.abilities.get('stun').flying,false)
+  assert.equal(b.rooted,true)
+  assert.equal(b.hp,100); assert.equal(b.shieldCharge,50)
+  assert.equal(a.rooted,false)
+  assert.equal(ability('b','dash'),false)
+  assert.equal(fire('b','a'),true)
+  const deadline=b.rootedUntil
+  advance(deadline-combat.time+0.01)
+  assert.equal(b.rooted,false)
 })
 
 test('death cancels effects but preserves cooldowns through respawn; a new arena resets abilities',t => {
@@ -109,7 +110,7 @@ test('death cancels effects but preserves cooldowns through respawn; a new arena
   advance(0.2); ability('b','scanner'); ability('b','shield')
   const readyAt = b.abilities.get('scanner').readyAt
   teleport('a',0,-10); b.hp = 20
-  ability('a','emp') // Kills through shield and awards exactly one kill.
+  combat.applyDamage('a','b',100) // Kills through the remaining shield.
   assert.equal(b.hp,0); assert.equal(a.kills,1)
   assert.equal(b.abilities.get('scanner').activeUntil,0)
   assert.equal(b.shieldCharge,0)

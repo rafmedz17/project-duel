@@ -31,6 +31,7 @@ export class Prediction {
     this.pose = pose
   }
   restore(pose) {
+    this.rooted = pose.rooted
     const entry = this.entry
     entry.body.setTranslation({ x:pose.x,y:pose.y,z:pose.z },true)
     entry.body.setNextKinematicTranslation({ x:pose.x,y:pose.y,z:pose.z })
@@ -58,6 +59,7 @@ export class Prediction {
     return [before.x-after.x,before.y-after.y,before.z-after.z]
   }
   simulate(input,jump) {
+    if (this.rooted) { input = input ? { ...input,x:0,z:0 } : null; jump = false; this.entry.vx = 0; this.entry.vz = 0; this.entry.dash = null }
     if (!input?.active) { this.entry.vx = 0; this.entry.vz = 0; this.entry.dash = null }
     stepCharacter(this.entry,input,jump)
     this.world.step()

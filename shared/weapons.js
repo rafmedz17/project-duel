@@ -4,10 +4,10 @@ export const RIFLE = { magazine:30,damage:14,cooldown:0.12,reload:2,range:75 }
 export const SHOTGUN = { magazine:6,damage:14,pellets:8,spread:0.065,fullDamageRange:6,minDamageMultiplier:0.35,cooldown:0.8,reload:2.3,range:24 }
 export const WEAPON_SWITCH = 0.25
 export const WEAPONS = {
-  pistol:{ ...PISTOL,name:'ENERGY PISTOL',shortName:'PISTOL',slot:'01',binding:'Digit1',fireMode:'semi' },
-  blade:{ ...BLADE,name:'ENERGY BLADE',shortName:'BLADE',slot:'02',binding:'Digit2',fireMode:'melee' },
-  rifle:{ ...RIFLE,name:'PULSE RIFLE',shortName:'RIFLE',slot:'03',binding:'Digit3',fireMode:'auto' },
-  shotgun:{ ...SHOTGUN,name:'PLASMA SHOTGUN',shortName:'SHOTGUN',slot:'04',binding:'Digit4',fireMode:'semi' },
+  pistol:{ ...PISTOL,name:'ENERGY PISTOL',shortName:'PISTOL',slot:'2',binding:'Digit2',fireMode:'semi' },
+  blade:{ ...BLADE,name:'ENERGY BLADE',shortName:'BLADE',slot:'3',binding:'Digit3',fireMode:'melee' },
+  rifle:{ ...RIFLE,name:'PULSE RIFLE',shortName:'RIFLE',slot:'1',binding:'Digit1',fireMode:'auto' },
+  shotgun:{ ...SHOTGUN,name:'PLASMA SHOTGUN',shortName:'SHOTGUN',slot:'1',binding:'Digit1',fireMode:'semi' },
 }
 export const WEAPON_IDS = Object.keys(WEAPONS)
 export const DAMAGE_MULTIPLIERS = Object.freeze({ head:2,body:1,limb:0.75,foot:0.5 })

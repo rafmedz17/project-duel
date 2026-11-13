@@ -8,7 +8,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { Client } from '@colyseus/sdk'
 import { createAccountsService } from '../src/accounts.js'
 import { createLobbyServer } from '../src/createServer.js'
-import { DEFAULT_LOADOUT } from '../../shared/loadout.js'
+import { DEFAULT_LOADOUT,validateLoadout } from '../../shared/loadout.js'
 
 const userId='11111111-1111-4111-8111-111111111111'
 async function temp(t) {
@@ -23,10 +23,10 @@ test('Auth validates the token remotely and loads canonical profile/equipment, i
   let token
   const client = {
     auth:{ getUser:async value => { token=value; return value==='valid' ? { data:{ user:{ id:userId,user_metadata:{ callsign:'Forged',rating:99999 } } } } : { error:value==='offline' ? Object.assign(new Error('Offline'),{ status:0,name:'AuthRetryableFetchError' }) : new Error('Invalid') } } },
-    from(table) { return { select() { return this },eq() { return this },async maybeSingle() { return { data:table==='profiles' ? { callsign:'Canonical' } : { starting_weapon:'rifle',weapons:['rifle'],abilities:[] } } } } },
+    from(table) { return { select() { return this },eq() { return this },async maybeSingle() { return { data:table==='profiles' ? { callsign:'Canonical' } : { character_id:'ion',primary_weapon:'rifle',unique_skill:'smoke',starting_weapon:'rifle',weapons:['pistol','blade','rifle'],abilities:['dash','shield','smoke','ultimate'] } } } } },
   }
   const service=createAccountsService({ client,directory:await temp(t) }); t.after(() => service.close())
-  assert.deepEqual(await service.verify('valid'),{ userId,name:'Canonical',loadout:{ startingWeapon:'rifle',weapons:['rifle'],abilities:[] } })
+  assert.deepEqual(await service.verify('valid'),{ userId,name:'Canonical',loadout:validateLoadout({ character:'ion',primary:'rifle',unique:'smoke',startingWeapon:'rifle' }) })
   assert.equal(token,'valid')
   await assert.rejects(service.verify('forged'),/expired/)
   await assert.rejects(service.verify('offline'),/temporarily unavailable/)
@@ -59,7 +59,7 @@ test('real rooms use verified identities/loadouts, reject duplicate accounts, ho
   const saved=[]
   const accounts={ configured:true,verify:async token => {
     if (!['alpha','bravo'].includes(token)) throw new Error('Invalid token')
-    return { userId:token==='alpha' ? userId : '22222222-2222-4222-8222-222222222222',name:token==='alpha' ? 'Verified Nova' : 'Verified Echo',loadout:{ startingWeapon:'rifle',weapons:['rifle'],abilities:['shield'] } }
+    return { userId:token==='alpha' ? userId : '22222222-2222-4222-8222-222222222222',name:token==='alpha' ? 'Verified Nova' : 'Verified Echo',loadout:validateLoadout({ character:'ion',primary:'rifle',unique:'smoke',startingWeapon:'rifle' }) }
   },save:async result => { saved.push(structuredClone(result)); return { status:'saved',ranked:false } } }
   const { server,httpServer }=createLobbyServer({ accounts })
   await server.listen(0,'127.0.0.1'); t.after(() => server.gracefullyShutdown(false))
@@ -85,11 +85,11 @@ test('real rooms use verified identities/loadouts, reject duplicate accounts, ho
   host.send('ready',{ ready:true }); guest.send('ready',{ ready:true }); await until(() => host.state.phase==='ready')
   host.send('start'); await until(() => host.state.matchPhase==='live')
   const player=host.state.players.get(host.sessionId)
-  assert.equal(player.weapon,'rifle'); assert.deepEqual([...player.allowedWeapons],['rifle'])
+  assert.equal(player.weapon,'rifle'); assert.deepEqual([...player.allowedWeapons],['pistol','blade','rifle'])
   host.send('combat',{ action:'switch',weapon:'shotgun',sequence:0,epoch:host.state.arenaEpoch,round:host.state.roundId })
   host.send('combat',{ action:'ability',ability:'emp',sequence:1,epoch:host.state.arenaEpoch,round:host.state.roundId })
   host.send('map',{ mapId:'orbital' }); await delay(100)
-  assert.equal(player.weapon,'rifle'); assert.equal(player.abilities.get('emp').uses,0); assert.equal(host.state.mapId,'neon')
+  assert.equal(player.weapon,'rifle'); assert.equal(player.abilities.get('scanner').uses,0); assert.equal(host.state.mapId,'neon')
   host.send('forfeit'); await until(() => host.state.saveStatus==='saved')
   assert.equal(saved.length,1)
   assert.equal(saved[0].name_one,'Verified Nova'); assert.equal(saved[0].player_one,userId)

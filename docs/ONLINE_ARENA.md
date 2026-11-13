@@ -9,13 +9,13 @@ From the project root, run `npm.cmd run dev:server` and `npm.cmd run dev:client`
 1. Choose **Multiplayer**, create a room, and share its code. Join from another browser/computer.
 2. The host selects Best of Three (default) or Free Play. Changing format resets both ready flags. Both select **Ready Up**. The host selects **Start Shared Arena**. A three-second countdown precedes opposite spawns.
 3. Select **Enter Arena** in each browser to capture the mouse. WASD moves, mouse aims, Shift sprints, Space jumps, and left click attacks.
-4. Select pistol/blade/rifle/shotgun with **1–4**, cycle with **Q**, and reload with **R**. Hold left click for the rifle. Empty magazines automatically reload. The first-person weapon animates firing, switching, melee, and reloads from server state.
+4. Select primary/pistol/melee with **1 / 2 / 3**, cycle with **Q**, and reload with **R**. Hold left click for the rifle. Empty magazines automatically reload. The first-person weapon animates firing, switching, melee, and reloads from server state.
 5. Head hits deal 2× damage, torso 1×, arms/legs 0.75×, feet 0.5×. The pistol deals 40/20/15/10. Each shotgun pellet uses its hit region after distance falloff. Cover blocks hits. HUD markers and damage numbers confirm actual server-removed health (shield-only impacts show absorbed damage); headshots and eliminations have distinct labels.
 6. Health starts at 100. In Free Play, killed players disappear, cannot move/fire, and respawn at their original spawn after three seconds with a fresh pistol/loadout. Best of Three ends the round on elimination, with no respawn until the next round. Kills/deaths persist until a new arena starts.
 7. Escape releases your mouse and clears your controls. The other player can keep playing, and you remain vulnerable. Switching tabs also releases controls. Only the focused tab accepts mouse capture/input when testing on one computer.
 8. In Free Play, **Return to Lobby** ends practice for both. In Best of Three, **Forfeit Match** concedes to the opponent; after results, **Return to Lobby** allows a rematch. Ready again to reset positions, health, loadouts, timers, and scores. **Leave Room** returns to the main menu.
 
-The host chooses Best of Three or Free Play. Training targets and hazard pads are absent online. Use E Dash, F Shield, C Scanner, V EMP. All four are validated by the server.
+The host chooses Best of Three or Free Play. Training targets and hazard pads are absent online. Use E Dash, F Shield, C your unique skill and X your character ultimate. All four equipped abilities are validated by the server.
 
 ## Connection behavior
 
@@ -48,13 +48,11 @@ The backend cases cover room lifecycle, capacity, ready/countdown/re-entry, move
 
 ## Online abilities
 
-E/F/C/V activate Dash, Shield, Scanner and EMP with the same tuning as training, now from `shared/abilities.js`. The server derives origin and dash direction from its authoritative player/current validated controls, so payloads cannot choose distance, damage, charge, effect time or affected players. Cooldown spam, replayed sequences, wrong arena generations and dead/disconnected senders are rejected.
+E/F/C/X activate Dash, Shield, the equipped unique skill and character ultimate. See [characters and loadouts](CHARACTERS_AND_LOADOUT.md) for full rules. The server derives grenade origin, collision, fuse, targets and effect deadlines. Cooldown spam, extra equipment, unavailable weapons, replayed sequences, old rounds and dead/disconnected senders are rejected.
 
-Dash travels at 20 units/second for 0.18 seconds with normalized direction, fractional final movement, gravity and existing Rapier/capsule collision. Steering later does not change that dash. Release/focus loss/disconnect cancels remaining dash movement. Shield absorbs 50 weapon damage before HP for 3.5 seconds, including regional hit multipliers. Shield-only hits display the absorbed amount with SHIELD HIT; mixed hits show actual HP removed and a separate shield amount.
+Every ultimate lasts five seconds. Flashbang can blind the thrower and enemies but never teammates; stun roots only enemies and leaves aiming/firing available. Smoke reveals enemy silhouettes to its thrower through the cloud, with solid cover respected. Global Scan reveals enemies anywhere in the arena through cover. AEGIS bonus shield and general Shield have separate capacities and expirations.
 
-Scanner reveals the living opponent within 40 units for five seconds through cover. The marker tracks the interpolated robot with name, HP and distance; normal shots remain blocked by cover. EMP deals 40 health damage in an 8-unit sphere through cover, strips Shield, cancels active effects and jams ability activation for four seconds. Normal movement and weapons remain available. Empty casts spend cooldown too.
-
-Active effects stop on death; cooldown deadlines persist across respawns. Re-entry resets them. During reconnect interruption, the room clock freezes remaining active/recovery time. The HUD shows cooldowns, shield charge and EMP disruption; world effects include shield barriers, dash trails and scanner/EMP pulses. All are driven by server state.
+Active effects stop on death; cooldown deadlines persist across Free Play respawns. New rounds and re-entry reset them. Connection interruptions freeze the shared clock. The HUD displays active effect countdowns, shield charge, flash and root feedback. Visible grenades, clouds, barriers, character auras and enemy silhouettes follow server snapshots.
 
 ## Best of Three
 

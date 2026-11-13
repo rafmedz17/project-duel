@@ -100,7 +100,8 @@ export class ArenaSimulation {
       if (input && now-input.receivedAt > ONLINE.inputTimeoutMs) { this.stop(id); input = null }
       const active = Boolean(input?.active && player.connected)
       const yaw = input?.yaw ?? player.yaw
-      proposals.push(stepCharacter(entry,input ? { ...input,active } : null,entry.jumpPending))
+      if (player.rooted) { entry.vx = 0; entry.vz = 0; entry.dash = null; entry.jumpPending = false }
+      proposals.push(stepCharacter(entry,input ? { ...input,active,x:player.rooted ? 0 : input.x,z:player.rooted ? 0 : input.z } : null,entry.jumpPending))
       entry.jumpPending = false
       player.yaw = yaw; player.pitch = input?.pitch ?? player.pitch; player.active = active
       player.grounded = entry.grounded

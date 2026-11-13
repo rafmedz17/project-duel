@@ -25,7 +25,7 @@ async function mockCloud(context,shared=initial()) {
       if (method==='PATCH' || method==='POST') shared.profile={ callsign:body.callsign }
       response=shared.profile
     } else if (url.pathname==='/rest/v1/loadouts') {
-      if (method==='POST') shared.loadout={ starting_weapon:body.starting_weapon,weapons:body.weapons,abilities:body.abilities }
+      if (method==='POST') shared.loadout={ ...body }
       response=method==='POST' ? null : shared.loadout
     } else if (url.pathname==='/rest/v1/profile_stats') response=url.searchParams.has('ranked_games') ? [{ user_id:userId,rating:1064,wins:6,losses:4,ranked_games:4,profiles:shared.profile }] : { games:10,wins:6,losses:4,kills:18,deaths:12,ranked_games:4,rating:1064 }
     else if (url.pathname==='/rest/v1/duel_matches') response=[{ id:'33333333-3333-4333-8333-333333333333',player_one:userId,player_two:otherId,name_one:shared.profile.callsign,name_two:'Echo',score_one:2,score_two:1,winner_slot:0,map_id:'neon',reason:'elimination',ended_at:'2026-11-13T00:02:00Z',ranked:true,rating_delta_one:16,rating_delta_two:-16 }]
@@ -45,22 +45,26 @@ async function signIn(page) {
 }
 test('guest loadout saves across reloads and controls training weapons and abilities',async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button',{ name:/^LOADOUT/ }).click()
-  const dialog=page.getByRole('dialog',{ name:'LOADOUT' })
-  await expect(dialog.getByText(/Guest loadouts save on this device/)).toBeVisible()
-  await dialog.getByLabel('STARTING WEAPON').selectOption('shotgun')
-  for (const name of ['ENERGY PISTOL','ENERGY BLADE','PULSE RIFLE','DASH','SHIELD','SCANNER','EMP']) await dialog.getByRole('checkbox',{ name:new RegExp(name) }).uncheck()
-  await dialog.getByRole('button',{ name:'SAVE LOADOUT' }).click()
+  await page.getByRole('button',{ name:/^CHARACTER & LOADOUT/ }).click()
+  const dialog=page.getByRole('dialog',{ name:'CHARACTER & LOADOUT' })
+  await expect(dialog.getByText(/Saves on this device/)).toBeVisible()
+  await dialog.getByRole('button',{ name:'Select AEGIS' }).click()
+  await dialog.getByRole('button',{ name:'Equip SHOTGUN',exact:true }).click()
+  await dialog.getByRole('button',{ name:'Equip SPECTRAL SMOKE',exact:true }).click()
+  await dialog.getByLabel('Starting weapon').selectOption('shotgun')
+  await dialog.getByRole('button',{ name:/SAVE & EQUIP/ }).click()
   await expect(dialog.getByRole('status')).toContainText('saved on this device')
   await dialog.screenshot({ path:'loadout-preview.png' })
   await page.reload()
   await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
   await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
   await expect.poll(async () => (await state(page)).weapon).toBe('shotgun')
-  await page.keyboard.press('Digit1'); await page.keyboard.press('KeyE'); await page.keyboard.press('KeyQ')
-  expect((await state(page)).weapon).toBe('shotgun')
-  await expect(page.getByTestId('ability-dash')).toContainText('UNEQUIPPED')
-  expect((await state(page)).abilities.dash.uses).toBe(0)
+  await page.keyboard.press('Digit2'); await page.keyboard.press('KeyE')
+  expect((await state(page)).weapon).toBe('pistol')
+  expect((await state(page)).loadout).toMatchObject({ character:'aegis',primary:'shotgun',unique:'smoke' })
+  expect((await state(page)).abilities.dash.uses).toBe(1)
+  await expect(page.getByTestId('ability-smoke')).toBeVisible()
+
 })
 test('email sign-in, saved callsign/loadout, restored session, history and leaderboard use provider responses',async ({ page,context,browser }) => {
   const shared=await mockCloud(context),errors=[]
@@ -71,11 +75,11 @@ test('email sign-in, saved callsign/loadout, restored session, history and leade
   await dialog.getByRole('button',{ name:'SAVE CALLSIGN' }).click()
   await expect(dialog.getByRole('status')).toContainText('Callsign saved')
   await expect(dialog.getByText(/WIN RATE 60%/)).toBeVisible()
-  await dialog.getByRole('button',{ name:'LOADOUT',exact:true }).click()
-  await dialog.getByLabel('STARTING WEAPON').selectOption('rifle')
-  await dialog.getByRole('checkbox',{ name:/ENERGY PISTOL/ }).uncheck()
-  await dialog.getByRole('checkbox',{ name:/EMP/ }).uncheck()
-  await dialog.getByRole('button',{ name:'SAVE LOADOUT' }).click()
+  await dialog.getByRole('button',{ name:'CHARACTER & LOADOUT',exact:true }).click()
+  await dialog.getByLabel('Starting weapon').selectOption('rifle')
+  await dialog.getByRole('button',{ name:'Select ION' }).click()
+  await dialog.getByRole('button',{ name:'Equip SPECTRAL SMOKE',exact:true }).click()
+  await dialog.getByRole('button',{ name:/SAVE & EQUIP/ }).click()
   await expect(dialog.getByRole('status')).toContainText('saved to your account')
   await dialog.getByRole('button',{ name:'MATCH HISTORY',exact:true }).click()
   await expect(dialog.getByText('VICTORY',{ exact:true })).toBeVisible()
@@ -102,10 +106,10 @@ test('email sign-in, saved callsign/loadout, restored session, history and leade
     await second.getByLabel('PASSWORD',{ exact:true }).fill('correct-password')
     await second.getByRole('dialog').getByRole('button',{ name:'SIGN IN',exact:true }).last().click()
     await expect(second.getByLabel('CALLSIGN')).toHaveValue('Nova Saved')
-    await second.getByRole('dialog').getByRole('button',{ name:'LOADOUT',exact:true }).click()
-    await expect(second.getByLabel('STARTING WEAPON')).toHaveValue('rifle')
-    await expect(second.getByRole('checkbox',{ name:/ENERGY PISTOL/ })).not.toBeChecked()
-    await expect(second.getByRole('checkbox',{ name:/EMP/ })).not.toBeChecked()
+    await second.getByRole('dialog').getByRole('button',{ name:'CHARACTER & LOADOUT',exact:true }).click()
+    await expect(second.getByLabel('Starting weapon')).toHaveValue('rifle')
+    await expect(second.getByRole('button',{ name:'Select ION' })).toHaveAttribute('aria-pressed','true')
+    await expect(second.getByRole('button',{ name:'Equip SPECTRAL SMOKE',exact:true })).toHaveAttribute('aria-pressed','true')
     await second.getByRole('dialog').getByRole('button',{ name:'PLAYER PROFILE',exact:true }).click()
     await second.getByRole('button',{ name:'SIGN OUT',exact:true }).click()
     await expect(second.getByLabel('EMAIL',{ exact:true })).toBeVisible()

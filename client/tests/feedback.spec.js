@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test'
-import { state, aimAtTarget } from './helpers.js'
+import { state, aimAtTarget, presetLoadout } from './helpers.js'
 
 async function resume(page) {
   await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
   await expect.poll(async () => (await state(page)).mode).toBe('playing')
 }
-async function start(page) {
+async function start(page,primary='rifle') {
+  await presetLoadout(page,{ primary })
   await page.goto('/')
   await page.getByRole('button',{ name:/SETTINGS/ }).click()
   await page.getByLabel('Render quality').selectOption('Low')
@@ -40,8 +41,8 @@ const weaponPose = (page, waitForCell = false) => page.evaluate(async waitForCel
 test('every firearm animates its reload, shows progress, freezes on pause and returns to its ready pose', async ({ page }) => {
   const errors = []
   page.on('pageerror',error => errors.push(error.message))
-  await start(page)
-  for (const [id,key] of [['pistol','Digit1'],['rifle','Digit3'],['shotgun','Digit4']]) {
+  for (const [id,key] of [['pistol','Digit2'],['rifle','Digit1'],['shotgun','Digit1']]) {
+    await start(page,id==='shotgun' ? 'shotgun' : 'rifle')
     await page.keyboard.press(key)
     await page.waitForTimeout(350)
     const ready = await weaponPose(page)
@@ -75,13 +76,13 @@ test('every firearm animates its reload, shows progress, freezes on pause and re
 test('shotgun uses only a dotted ring; hit feedback shows damage, distinct eliminations and clears after misses', async ({ page }) => {
   const errors = []
   page.on('pageerror',error => errors.push(error.message))
-  await start(page)
+  await start(page,'shotgun')
   await expect(page.locator('.crosshair')).toHaveText('+')
-  await page.keyboard.press('Digit4')
+  await page.keyboard.press('Digit1')
   await expect(page.locator('.shotgun-crosshair')).toHaveText('')
   expect(await page.locator('.shotgun-crosshair').evaluate(el => getComputedStyle(el,'::before').borderTopStyle)).toBe('dotted')
   await page.screenshot({ path:'shotgun-crosshair-preview.png' })
-  await page.keyboard.press('Digit1'); await page.waitForTimeout(350)
+  await page.keyboard.press('Digit2'); await page.waitForTimeout(350)
   await expect(page.locator('.crosshair')).toHaveText('+')
   await aimAtTarget(page)
   // Capture each brief DOM flash when React mounts it, avoiding remote-polling latency.

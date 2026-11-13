@@ -1,11 +1,14 @@
 import { schema, t } from '@colyseus/schema'
 
 export const AbilityState = schema({
+  flying:t.boolean().default(false),projectileX:t.number(),projectileY:t.number(),projectileZ:t.number(),detonatedAt:t.number().default(-10),
   readyAt:t.number().default(0),activeUntil:t.number().default(0),startedAt:t.number().default(-10),uses:t.number().default(0),result:t.number().default(0),
   originX:t.number().default(0),originY:t.number().default(0),originZ:t.number().default(0),directionX:t.number().default(0),directionZ:t.number().default(-1),
 },'AbilityState')
 
 export const LobbyPlayer = schema({
+  characterId:t.string().default('vex'),uniqueSkill:t.string().default('flashbang'),teamId:t.string().default(''),
+  ultimateShield:t.number(),flashUntil:t.number(),flashStarted:t.number(),rootedUntil:t.number(),rooted:t.boolean().default(false),
   authenticated:t.boolean().default(false),startingWeapon:t.string().default(''),allowedWeapons:t.array('string'),allowedAbilities:t.array('string'),
   roundWins:t.number().default(0),
   abilities:t.map(AbilityState),disabledUntil:t.number(),shieldCharge:t.number(),shieldHit:t.number().default(-10),hitShieldDamage:t.number(),

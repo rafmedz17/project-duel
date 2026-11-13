@@ -71,6 +71,7 @@ export default function Player() {
     const dt = 1/60, m = motion.current, pressed = keys.current, c = controller.current
     let x = Number(pressed.has('KeyD')) - Number(pressed.has('KeyA'))
     let z = Number(pressed.has('KeyS')) - Number(pressed.has('KeyW'))
+    if (game.now()<game.get().rootedUntil) { x=0; z=0; m.x=0; m.z=0; m.jump=false; m.dashRemaining=0 }
     const length = Math.hypot(x,z) || 1
     x /= length; z /= length
     const speed = pressed.has('ShiftLeft') || pressed.has('ShiftRight') ? PLAYER.sprint : PLAYER.speed

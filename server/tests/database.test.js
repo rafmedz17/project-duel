@@ -16,6 +16,11 @@ before(async () => {
     grant execute on function auth.uid() to anon,authenticated,service_role;
     insert into auth.users values ('${one}'),('${two}'),('${other}');`)
   await db.exec(await readFile(new URL('../../supabase/migrations/20261112182313_accounts_loadouts_rankings.sql',import.meta.url),'utf8'))
+  await db.query("insert into public.loadouts(user_id,starting_weapon,weapons,abilities) values ($1,'shotgun',array['pistol','shotgun'],array['scanner','emp'])",[other])
+  await db.exec(await readFile(new URL('../../supabase/migrations/20261113064353_characters_and_slot_loadouts.sql',import.meta.url),'utf8'))
+  const migrated=(await db.query('select * from public.loadouts where user_id=$1',[other])).rows[0]
+  assert.equal(migrated.primary_weapon,'shotgun'); assert.equal(migrated.unique_skill,'scanner')
+  assert.deepEqual(migrated.weapons,['pistol','blade','shotgun']); assert.deepEqual(migrated.abilities,['dash','shield','scanner','ultimate'])
   await db.query('insert into public.profiles(user_id,callsign) values ($1,$2),($3,$4),($5,$6)',[one,'Nova',two,'Echo',other,'Other'])
 })
 after(async () => { await db.close() })
@@ -43,7 +48,7 @@ test('RLS allows safe public profile reads and only owner profile edits',async (
   await assert.rejects(as('authenticated',one,() => db.query('update public.profiles set user_id=$1 where user_id=$2',[other,one])))
 })
 test('saved loadouts are private and reject invalid or duplicate equipment',async () => {
-  await as('authenticated',one,() => db.query("insert into public.loadouts(user_id,starting_weapon,weapons,abilities) values ($1,'rifle',array['rifle'],array[]::text[])",[one]))
+  await as('authenticated',one,() => db.query("insert into public.loadouts(user_id,starting_weapon) values ($1,'rifle')",[one]))
   assert.equal((await as('authenticated',two,() => db.query('select * from public.loadouts'))).rows.length,0)
   assert.equal((await as('authenticated',one,() => db.query('select * from public.loadouts'))).rows[0].starting_weapon,'rifle')
   await assert.rejects(as('anon',null,() => db.query('select * from public.loadouts')))

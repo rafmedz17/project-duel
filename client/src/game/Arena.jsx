@@ -2,7 +2,10 @@ import { memo, useRef } from 'react'
 import { MathUtils, Quaternion } from 'three'
 import { RigidBody, CuboidCollider, useBeforePhysicsStep } from '@react-three/rapier'
 import { TARGETS, HAZARD } from './config.js'
-import { useGame } from './store.js'
+import { game,useGame } from './store.js'
+import { runtime } from './runtime.js'
+import { CHARACTER_IDS } from '../../../shared/characters.js'
+import { throughSmoke,blocked } from '../../../shared/tactical.js'
 import RobotModel from './characters/RobotModel.jsx'
 import { ROBOT_PARTS } from '../../../shared/robot.js'
 import { getMap } from '../../../shared/maps.js'
@@ -67,7 +70,11 @@ function TrainingTargets() {
       const disabled = time<target.disabledUntil
       return <group key={`${generation}-${id}`} position={[x,0,z]}>
         <TargetBody down={down} height={y}>
-          <group rotation={[0,Math.PI,0]}><RobotModel targetId={id} down={down} flash={flash} color={disabled ? '#af8dff' : '#58dcff'} /></group>
+          <group rotation={[0,Math.PI,0]}><RobotModel targetId={id} characterId={CHARACTER_IDS[id%4]} down={down} flash={flash || time<target.flashUntil} color={disabled ? '#af8dff' : undefined} reveal={() => {
+            const s = game.get(), now = game.now(), origin = runtime.position.map((v,i) => v+(i===1 ? 0.65 : 0)), smoke = s.abilities.smoke
+            return now<s.abilities.scanner.activeUntil || (now<smoke.activeUntil && throughSmoke(origin,[x,y,z],[{ origin:smoke.origin.map((v,i)=>v+(i===1 ? 1 : 0)),radius:4 }]) && !blocked(origin,[x,y,z],getMap('facility').solids))
+          }} /></group>
+          {time<target.rootedUntil && <mesh position={[0,-y+0.12,0]} rotation={[-Math.PI/2,0,0]}><ringGeometry args={[0.48,0.65,6]}/><meshBasicMaterial color="#b39aff"/></mesh>}
           <Box position={[0,1.06,0]} size={[1.2,0.08,0.1]} color="#283748" />
           {target.hp > 0 && <Box position={[-0.6+(target.hp/100)*0.6,1.06,0.06]} size={[1.2*target.hp/100,0.06,0.04]} color="#00d9ff" glow />}
         </TargetBody>

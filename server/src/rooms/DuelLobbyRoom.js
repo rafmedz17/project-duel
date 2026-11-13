@@ -138,7 +138,7 @@ export class DuelLobbyRoom extends Room {
     const name = validateName(options?.name)
     if (!name) throw new ServerError(4400,'Use 2–18 letters, numbers, spaces, hyphens or underscores for your callsign.')
     const loadout = options?.loadout ? validateLoadout(options.loadout) : DEFAULT_LOADOUT
-    if (!loadout) throw new ServerError(4400,'Invalid loadout. Select at least one weapon and a matching starting weapon.')
+    if (!loadout) throw new ServerError(4400,'Invalid loadout. Choose a character, one available primary and one unique skill.')
     return { name,loadout,userId:null }
   }
 
@@ -149,6 +149,8 @@ export class DuelLobbyRoom extends Room {
     player.name = client.auth.name
     player.authenticated = Boolean(client.auth.userId)
     player.startingWeapon = client.auth.loadout.startingWeapon
+    player.characterId = client.auth.loadout.character
+    player.uniqueSkill = client.auth.loadout.unique
     player.allowedWeapons = [...client.auth.loadout.weapons]
     player.allowedAbilities = [...client.auth.loadout.abilities]
     this.identities.set(client.sessionId,client.auth)

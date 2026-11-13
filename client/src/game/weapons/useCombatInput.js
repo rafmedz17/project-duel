@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Euler } from 'three'
 import { createWeaponTracer } from './traceWeapon.js'
-import { WEAPONS, WEAPON_IDS } from '../config.js'
+import { WEAPONS } from '../config.js'
+import { weaponForBinding,weaponSlots } from '../../../../shared/loadout.js'
 import { game } from '../store.js'
 
 export function useCombatInput(camera, canvas, scene, look) {
@@ -22,12 +23,12 @@ export function useCombatInput(camera, canvas, scene, look) {
     const active = () => game.get().mode === 'playing' && document.pointerLockElement === canvas
     const key = event => {
       if (!active() || event.repeat) return
-      const selection = WEAPON_IDS.find(id => WEAPONS[id].binding === event.code)
+      const selection = weaponForBinding(game.get().loadout,event.code)
       if (event.code !== 'KeyR' && event.code !== 'KeyQ' && !selection) return
       event.preventDefault()
       heldWeapon.current = null
       if (event.code === 'KeyR') game.reload()
-      else game.switchWeapon(selection || game.get().loadout.weapons[(game.get().loadout.weapons.indexOf(game.get().weapon)+1)%game.get().loadout.weapons.length])
+      else { const slots = weaponSlots(game.get().loadout); game.switchWeapon(selection || slots[(slots.indexOf(game.get().weapon)+1)%slots.length]) }
     }
     const shoot = () => {
       if (!active() || !game.canAttack()) return

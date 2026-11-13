@@ -35,9 +35,14 @@ try {
     const auth=checked(await entry.client.auth.signInWithPassword({ email,password }))
     entry.token=auth.session.access_token
     checked(await entry.client.from('profiles').insert({ user_id:user.id,callsign:name }))
-    checked(await entry.client.from('loadouts').upsert({ user_id:user.id,starting_weapon:'rifle',weapons:['rifle'],abilities:['shield'] }))
+    checked(await entry.client.from('loadouts').upsert({ user_id:user.id,character_id:'vex',primary_weapon:'rifle',unique_skill:'scanner',starting_weapon:'rifle',weapons:['pistol','blade','rifle'],abilities:['dash','shield','scanner','ultimate'] }))
   }
   const [one,two]=created
+  const savedGear=checked(await one.client.from('loadouts').select('character_id,primary_weapon,unique_skill,weapons,abilities').eq('user_id',one.user.id).single())
+  assert.equal(savedGear.character_id,'vex'); assert.equal(savedGear.unique_skill,'scanner')
+  assert.deepEqual(savedGear.weapons,['pistol','blade','rifle'])
+  const invalidGear=await one.client.from('loadouts').update({ primary_weapon:'sniper' }).eq('user_id',one.user.id)
+  assert.ok(invalidGear.error,'Coming Soon primaries must be rejected by the database.')
   if (process.argv.includes('--browser')) {
     const { chromium,expect }=await import('../../client/node_modules/@playwright/test/index.mjs')
     browser=await chromium.launch({ executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined,args:['--enable-unsafe-swiftshader'] })
@@ -50,9 +55,9 @@ try {
     await expect(browserPage.getByLabel('CALLSIGN')).toHaveValue('Smoke Nova',{ timeout:20000 })
     await browserPage.getByRole('button',{ name:'SAVE CALLSIGN',exact:true }).click()
     await expect(browserPage.getByText('Callsign saved.',{ exact:true })).toBeVisible()
-    await browserPage.getByRole('dialog').getByRole('button',{ name:'LOADOUT',exact:true }).click()
-    await expect(browserPage.getByLabel('STARTING WEAPON')).toHaveValue('rifle')
-    await browserPage.getByRole('button',{ name:'SAVE LOADOUT',exact:true }).click()
+    await browserPage.getByRole('dialog').getByRole('button',{ name:'CHARACTER & LOADOUT',exact:true }).click()
+    await expect(browserPage.getByLabel('Starting weapon')).toHaveValue('rifle')
+    await browserPage.getByRole('button',{ name:/SAVE & EQUIP/ }).click()
     await expect(browserPage.getByText('Loadout saved to your account.',{ exact:true })).toBeVisible()
   }
   const privateRows=checked(await two.client.from('loadouts').select('*').eq('user_id',one.user.id))

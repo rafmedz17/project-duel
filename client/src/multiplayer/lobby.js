@@ -45,7 +45,9 @@ function sync(room) {
   next.players.forEach(player => {
     const source = state.players.get(player.id)
     player.authenticated = source.authenticated
-    player.combat.loadout = { startingWeapon:source.startingWeapon,weapons:[...source.allowedWeapons],abilities:[...source.allowedAbilities] }
+    Object.assign(player.combat,{ characterId:source.characterId,ultimateShield:source.ultimateShield,flashUntil:source.flashUntil,flashStarted:source.flashStarted,rootedUntil:source.rootedUntil,rooted:source.rooted })
+    source.abilities.forEach((ability,id) => Object.assign(player.combat.abilities[id],{ flying:ability.flying,projectile:[ability.projectileX,ability.projectileY,ability.projectileZ],detonatedAt:ability.detonatedAt }))
+    player.combat.loadout = { character:source.characterId,primary:[...source.allowedWeapons].find(id => ['rifle','shotgun'].includes(id)) || 'rifle',unique:source.uniqueSkill,startingWeapon:source.startingWeapon,weapons:[...source.allowedWeapons],abilities:[...source.allowedAbilities] }
   })
   // Positions stay outside React; combat HUD receives authoritative 20 Hz snapshots.
   if (JSON.stringify(next) !== JSON.stringify(snapshot.room)) update({ room:next })

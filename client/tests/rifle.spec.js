@@ -17,8 +17,8 @@ async function startRifle(page) {
   await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
   await expect(page.getByRole('button',{ name:'RESUME / ENTER ARENA' })).toBeEnabled({ timeout:30000 })
   await resume(page)
-  await page.keyboard.press('Digit3')
-  await expect(page.getByText('03 / PULSE RIFLE',{ exact:true })).toBeVisible()
+  await page.keyboard.press('Digit1')
+  await expect(page.getByText('1 / PULSE RIFLE',{ exact:true })).toBeVisible()
   await expect(page.getByText('FULL AUTO · HOLD LEFT CLICK',{ exact:true })).toBeVisible()
 }
 
@@ -39,11 +39,11 @@ test('automatic rifle hits, release stops fire, pistol stays semi-auto and magaz
   expect(killed.magazines.pistol).toBe(12)
   await page.waitForTimeout(400)
   expect((await state(page)).weaponStats.rifle.shots).toBe(killed.weaponStats.rifle.shots)
-  await page.keyboard.press('Digit1'); await page.waitForTimeout(300)
+  await page.keyboard.press('Digit2'); await page.waitForTimeout(300)
   await page.mouse.down(); await page.waitForTimeout(700); await page.mouse.up()
   expect((await state(page)).weaponStats.pistol.shots).toBe(1)
   expect((await state(page)).magazines.pistol).toBe(11)
-  await page.keyboard.press('Digit3'); await page.waitForTimeout(300)
+  await page.keyboard.press('Digit1'); await page.waitForTimeout(300)
   expect((await state(page)).magazines.rifle).toBe(killed.magazines.rifle)
   await page.keyboard.press('KeyR')
   expect((await state(page)).reloadWeapon).toBe('rifle')
@@ -64,7 +64,7 @@ test('held rifle input clears on switching, pause, focus loss and reload; empty 
   await startRifle(page)
   await page.mouse.down()
   await expect.poll(async () => (await state(page)).weaponStats.rifle.shots).toBeGreaterThanOrEqual(3)
-  await page.keyboard.press('Digit2')
+  await page.keyboard.press('Digit3')
   const switched = await state(page)
   expect(switched.weapon).toBe('blade')
   await page.waitForTimeout(400)
@@ -91,7 +91,7 @@ test('held rifle input clears on switching, pause, focus loss and reload; empty 
   expect((await state(page)).weaponStats.rifle.shots).toBe(blurred.weaponStats.rifle.shots)
   await page.mouse.up()
   await page.getByRole('button',{ name:'RESTART TRAINING',exact:true }).click()
-  await resume(page); await page.keyboard.press('Digit3'); await page.waitForTimeout(300)
+  await resume(page); await page.keyboard.press('Digit1'); await page.waitForTimeout(300)
   await page.mouse.down()
   try { await expect.poll(async () => (await state(page)).magazines.rifle,{ timeout:8000,intervals:[30] }).toBe(0) }
   finally { await page.mouse.up() }

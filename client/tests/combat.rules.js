@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { validateLoadout } from '../../shared/loadout.js'
 import { game } from '../src/game/store.js'
 import { BLADE, PISTOL, RIFLE, SHOTGUN, ABILITIES, WEAPON_SWITCH, WEAPONS, TARGET, TARGETS, OPPONENT, PLAYER } from '../src/game/config.js'
 import { pelletDamage } from '../src/game/combatRules.js'
@@ -13,7 +14,7 @@ import { castTrainingPulse, isPlayerHit } from '../src/game/opponents/physics.js
 import RAPIER from '@dimforge/rapier3d-compat'
 
 function start() { game.reset(); game.set({ mode:'playing' }) }
-function equip(weapon) { assert.equal(game.switchWeapon(weapon),true); game.tick(WEAPON_SWITCH+0.001) }
+function equip(weapon) { if (['rifle','shotgun'].includes(weapon)) game.set({ loadout:validateLoadout({ character:'vex',primary:weapon,unique:'flashbang' }) }); assert.equal(game.switchWeapon(weapon),true); game.tick(WEAPON_SWITCH+0.001) }
 
 test('training weapons apply head, torso, limb and foot damage and report headshots only on actual hits', () => {
   start()
@@ -157,9 +158,9 @@ test('hit feedback distinguishes actual damage and defeats, restarts on hits and
   game.tick(PISTOL.cooldown+0.001); game.attack(1)
   assert.equal(game.get().hitId,6)
   assert.equal(game.get().hitDefeated,0)
-  game.activateAbility('emp',{ position:[-4,1.6,-16] })
+  game.tick(PISTOL.cooldown+0.001); game.attack(1)
   assert.equal(game.get().hitId,7)
-  assert.equal(game.get().hitDamage,80)
+  assert.equal(game.get().hitDamage,20)
   game.reset()
   assert.equal(game.get().hitId,0)
 })
@@ -367,7 +368,7 @@ test('shotgun falloff, pellet bounds and independent reloads are enforced', () =
 
 test('all four abilities reject spam, pause/death input and invalid positions, then reset', () => {
   start()
-  for (const id of Object.keys(ABILITIES)) {
+  for (const id of game.get().loadout.abilities) {
     assert.equal(game.activateAbility(id),true)
     assert.equal(game.activateAbility(id),false)
     assert.equal(game.get().abilities[id].uses,1)
@@ -409,26 +410,11 @@ test('shield absorbs damage, spills excess into health and stops protecting when
   assert.equal(game.get().hp,85)
 })
 
-test('EMP affects nearby electronics, delays defeated target reset and leaves distant hazards active', () => {
+test('unequipped unique skills and removed EMP cannot affect targets or hazards', () => {
   start()
-  game.activateAbility('emp',{ position:[0,1,-12] })
-  assert.deepEqual(game.get().targets.map(t => t.hp),[100,60,60,100])
-  assert.equal(game.get().empHits,2)
-  assert.equal(game.get().shots,0)
-  assert.equal(game.get().score,0)
-  assert.deepEqual(game.get().hazards.map(h => h.disabledUntil),[0,0])
-  game.attack(1); game.tick(PISTOL.cooldown+0.001)
-  game.attack(1); game.tick(PISTOL.cooldown+0.001); game.attack(1)
-  assert.equal(game.get().targets[1].hp,0)
-  game.tick(TARGET.reset+0.001)
-  assert.equal(game.get().targets[1].hp,0)
-  game.tick(1)
-  assert.equal(game.get().targets[1].hp,100)
-  game.reset(); game.set({ mode:'playing' })
-  game.activateAbility('emp',{ position:[15,1,3] })
-  assert.equal(game.get().hazards[0].disabledUntil,0)
-  assert.equal(game.get().hazards[1].disabledUntil,ABILITIES.emp.duration)
-  assert.equal(game.get().abilities.emp.result,1)
+  for (const id of ['emp','scanner','smoke','stun']) assert.equal(game.activateAbility(id),false)
+  assert.deepEqual(game.get().targets.map(t => t.hp),[100,100,100,100])
+  assert.equal(game.get().abilities.flashbang.uses,0)
 })
 
 test('actual shotgun rays spread with distance and every pellet respects cover', t => {
@@ -486,18 +472,13 @@ test('every weapon damages the opponent, with one defeat score even for many sho
   }
 })
 
-test('EMP uses the live opponent position, deals damage, and prevents shots and hits while jammed', () => {
-  game.reset({ opponentEnabled:true }); game.set({ mode:'playing' })
-  game.reportOpponentPosition([2,1.15,-2])
-  assert.equal(game.opponentShot(),true)
-  game.activateAbility('emp',{ position:[0,1,0] })
-  assert.equal(game.get().opponent.hp,60)
-  assert.equal(game.get().opponent.phase,'jammed')
-  assert.equal(game.get().empHits,1)
-  assert.equal(game.opponentShot(),false)
-  assert.equal(game.opponentHit(),false)
-  game.tick(ABILITIES.emp.duration+0.001)
-  assert.equal(game.opponentShot(),true)
+test('five-second ION ultimate cancels a reload, refills magazines and stops ammunition consumption', () => {
+  game.reset({ loadout:validateLoadout({ character:'ion',primary:'rifle',unique:'smoke' }) }); game.set({ mode:'playing' })
+  game.attack(); game.reload(); assert.equal(game.get().reloading,true)
+  assert.equal(game.activateAbility('ultimate'),true)
+  assert.equal(game.get().reloading,false); assert.equal(game.get().magazines.pistol,12)
+  game.tick(0.23); game.attack(); assert.equal(game.get().magazines.pistol,12)
+  game.tick(4.77); game.attack(); assert.equal(game.get().magazines.pistol,11)
 })
 
 test('shield absorbs actual opponent damage before health', () => {
