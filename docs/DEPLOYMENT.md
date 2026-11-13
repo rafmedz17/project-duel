@@ -28,6 +28,8 @@ After assigning the public domain, set Supabase Auth's Site URL and allowed redi
 
 Verify `/health`, training, two-browser room creation/join, movement and firing, page-refresh recovery within 15 seconds, and a completed signed-in match saving to history. Verify confirmation/reset delivery through a real mailbox after SMTP setup.
 
+If creating or joining a room reports **Account verification is temporarily unavailable**, the game server could not complete its request to Supabase Auth. Check the server's outbound HTTPS access to the project in `SUPABASE_URL`; a working browser connection or local `/health` response does not verify this. For local development, run `npm.cmd run dev:server` from the repository root in a terminal with network access. Restart a server started inside a network-restricted environment, then retry creating the room. Keep account verification enabled.
+
 Hosting/storage may incur charges; select a plan and budget before launch. Restarts/deployments discard active rooms, so deploy between matches. Persistent storage preserves queued results; Supabase preserves uploaded history.
 
 ## Local production build

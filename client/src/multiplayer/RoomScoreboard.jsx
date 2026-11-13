@@ -8,23 +8,24 @@ import './scoreboard.css'
 
 export default function RoomScoreboard() {
   const s=useLobby(),binding=useGame(s=>s.settings.bindings.scoreboard)
-  const [held,setHeld]=useState(null)
+  const [opened,setOpened]=useState(null)
   const scope=`${s.room?.code}:${s.room?.arenaEpoch}`
   useEffect(()=> {
     let pressed=null
-    const clear=()=> { pressed=null;setHeld(null) }
+    const clear=()=> { pressed=null;setOpened(null) }
     const down=event=> {
       if(event.code==='Escape') { clear();return }
-      if(event.repeat || event.ctrlKey || event.metaKey || event.altKey || !lobby.get().room?.arenaActive || lobby.get().status!=='connected') return
+      if(event.ctrlKey || event.metaKey || event.altKey || !lobby.get().room?.arenaActive || lobby.get().status!=='connected') return
       if(document.querySelector('.settings-dialog,.account-dialog') || (!lobby.get().captured && event.target.closest?.('button,a,input,textarea,select,[contenteditable="true"]'))) return
       if(canonicalCode(event,game.get().settings)!=='Tab') return
       event.preventDefault();event.stopImmediatePropagation()
+      if(event.repeat) return
       pressed=event.type==='mousedown' ? `Mouse${event.button}` : event.code
-      setHeld({ scope,binding })
+      setOpened(current=>current?.scope===scope && current.binding===binding ? null : { scope,binding })
     }
     const up=event=> {
       const code=event.type==='mouseup' ? `Mouse${event.button}` : event.code
-      if(code===pressed) { event.preventDefault();clear() }
+      if(code===pressed) { event.preventDefault();pressed=null }
     }
     const visibility=()=> { if(document.hidden) clear() }
     document.addEventListener('keydown',down,true);document.addEventListener('keyup',up,true)
@@ -37,7 +38,7 @@ export default function RoomScoreboard() {
     }
   },[scope,binding])
   const room=s.room
-  if(held?.scope!==scope || held.binding!==binding || !room?.arenaActive || s.status!=='connected') return null
+  if(opened?.scope!==scope || opened.binding!==binding || !room?.arenaActive || s.status!=='connected') return null
   const duel=room.format==='duel'
   const players=[...room.players].sort((a,b)=>(duel ? b.roundWins-a.roundWins : 0) || b.combat.kills-a.combat.kills || a.combat.deaths-b.combat.deaths || a.slot-b.slot)
   return <div className="room-scoreboard" data-testid="room-scoreboard"><section className="roster-panel" role="region" aria-label="Room scoreboard">
@@ -51,6 +52,6 @@ export default function RoomScoreboard() {
         <td className={`roster-ping ${ping==null ? 'unknown' : ping<80 ? 'good' : ping<160 ? 'fair' : 'slow'}`} data-stat="ping" aria-label={ping==null ? 'Ping unavailable' : `${ping} milliseconds ping`}>{ping==null ? '—' : <>{ping}<small> ms</small></>}</td><td><span className={`roster-status ${!player.connected ? 'offline' : c.hp<=0 ? 'eliminated' : ''}`}>{status}</span></td>
       </tr>
     })}</tbody></table>
-    <footer><span><kbd>{bindingLabel(binding)}</kbd> HOLD TO VIEW</span><small>LIVE STATS · ROUND-TRIP PING · MATCH CONTINUES</small></footer>
+    <footer><span><kbd>{bindingLabel(binding)}</kbd> TAP TO CLOSE</span><small>LIVE STATS · ROUND-TRIP PING · MATCH CONTINUES</small></footer>
   </section></div>
 }

@@ -6,7 +6,7 @@ export const ACTIONS = [
   ['reload','Reload','KeyR'],['primary','Primary weapon','Digit1'],['secondary','Secondary pistol','Digit2'],['melee','Melee weapon','Digit3'],
   ['cycle','Cycle weapons','KeyQ'],['inspect','Inspect weapon','KeyT'],['dash','Dash','KeyE'],['shield','Shield','KeyF'],
   ['unique','Unique skill','KeyC'],['ultimate','Ultimate','KeyX'],['armory','Training armory','KeyB'],['course','Start / stop training course','KeyG'],
-  ['scoreboard','Hold scoreboard','Tab'],
+  ['scoreboard','Scoreboard (tap)','Tab'],
 ]
 export const DEFAULT_BINDINGS=Object.freeze(Object.fromEntries(ACTIONS.map(([id,,code])=>[id,code])))
 export const DEFAULT_PREFERENCES=Object.freeze({ sensitivity:1,fps:false,fov:70,scopeMode:'hold',damageNumbers:true,damageOpacity:1,damageStyle:'classic',quality:'Medium',flashColor:'white',enemyAura:true,enemyColor:'#ff5876',crosshair:{ style:'cross',color:'#d6faff',size:10,gap:4,thickness:2,opacity:1,dot:true },bindings:DEFAULT_BINDINGS,...DEFAULT_AUDIO })

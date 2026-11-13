@@ -19,6 +19,7 @@ These are the default bindings. Open **Settings → Controls** to edit them and 
 | Space | Jump while grounded |
 | B | Open/close the training field armory; edit character, guns, melee and unique skill |
 | G | Reset the range, pause/restart moving robots, or start/stop the current challenge |
+| Tap Tab | Open the multiplayer room scoreboard: players, kills, deaths, K/D, ping, status and round wins in Best of Three. Tap again to close |
 | Escape | Release mouse; pause offline training |
 | E | Dash |
 | F | Energy Shield |
