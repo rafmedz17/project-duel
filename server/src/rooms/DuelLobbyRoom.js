@@ -10,6 +10,7 @@ import { DuelMatch } from '../arena/DuelMatch.js'
 import { MAPS } from '../../../shared/maps.js'
 import { DEFAULT_LOADOUT, validateLoadout } from '../../../shared/loadout.js'
 import { makeLoadoutBank,validateLoadoutBank,validSlot } from '../../../shared/loadoutBank.js'
+import { LatencyTracker } from './LatencyTracker.js'
 
 // Synchronous allocation prevents code collisions within this single Node process.
 const activeCodes = new Set()
@@ -32,12 +33,26 @@ export class DuelLobbyRoom extends Room {
   identities = new Map()
   loadoutBanks = new Map()
   accounts = null
+  latency = new LatencyTracker()
+  latencyTimer = null
 
   async onCreate() {
     this.roomId = reserveCode()
     this.state.code = this.roomId
     await this.setPrivate(true)
     this.patchRate = ONLINE.patchRate
+    // Opt-in keeps older clients compatible. Only the server times RTT; clients
+    // echo an unpredictable nonce and cannot submit a displayed ping value.
+    this.onMessage('latency-ready',client=> {
+      if(this.state.players.get(client.sessionId)?.connected && this.latency.enable(client.sessionId)) this.probeLatency(client)
+    })
+    this.onMessage('latency-pong',(client,payload)=> {
+      const player=this.state.players.get(client.sessionId)
+      if(player?.connected && this.latency.acknowledge(client.sessionId,payload)) player.arsenal.pingMs=this.latency.value(client.sessionId)
+    })
+    this.latencyTimer=this.clock.setInterval(()=> {
+      for(const client of this.clients) this.probeLatency(client)
+    },2000)
     this.onMessage('map',(client,payload) => {
       if (client.sessionId!==this.state.hostId || this.state.arenaActive || this.state.phase==='countdown') return
       if (!payload || Object.keys(payload).length!==1 || typeof payload.mapId!=='string' || !Object.hasOwn(MAPS,payload.mapId)) return
@@ -184,7 +199,8 @@ export class DuelLobbyRoom extends Room {
 
   async onDrop(client) {
     const player = this.state.players.get(client.sessionId)
-    if (player) player.connected = false
+    if (player) { player.connected = false;player.arsenal.pingMs=-1 }
+    this.latency.drop(client.sessionId)
     this.simulation?.stopAll()
     this.resetReady()
     try { await this.allowReconnection(client,LOBBY.reconnectSeconds) }
@@ -198,6 +214,7 @@ export class DuelLobbyRoom extends Room {
   }
 
   onLeave(client) {
+    this.latency.drop(client.sessionId)
     if (this.state.arenaActive) {
       if (this.match) this.match.forfeit(client.sessionId)
       else this.endArena('Your opponent left the arena. Invite a challenger to start again.')
@@ -280,8 +297,16 @@ export class DuelLobbyRoom extends Room {
   }
 
   onDispose() {
+    this.latencyTimer?.clear();this.latency.clear()
     this.cancelCountdown()
     this.simulation?.free()
     activeCodes.delete(this.roomId)
+  }
+
+  probeLatency(client) {
+    const player=this.state.players.get(client.sessionId)
+    if(!player?.connected) return
+    player.arsenal.pingMs=this.latency.value(client.sessionId)
+    this.latency.probe(client.sessionId,payload=>client.send('latency-probe',payload))
   }
 }

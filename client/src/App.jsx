@@ -10,6 +10,7 @@ import { useGameAudio } from './audio/useGameAudio.js'
 import Settings from './settings/Settings.jsx'
 import { canonicalCode } from './settings/preferences.js'
 import TrainingArmory from './game/training/TrainingArmory.jsx'
+import RoomScoreboard from './multiplayer/RoomScoreboard.jsx'
 import './App.css'
 
 const World = lazy(() => import('./game/World.jsx'))
@@ -47,6 +48,7 @@ export default function App() {
   },[online,panel,closeArmory])
   const menu = () => { document.exitPointerLock(); game.set({ mode:'menu', ready:false }); setPanel(null) }
   return <main>
+    <RoomScoreboard/>
     <Suspense fallback={<div className="engine-loading" role="status">LOADING COMBAT SYSTEMS…</div>}><World online={online} arenaEpoch={arenaEpoch} /></Suspense>
     {online ? <OnlineOverlay onSettings={() => setPanel('settings')} onLeave={() => { void lobby.leave(); setPanel(null) }} /> : <>
     {s.mode !== 'menu' && <Hud />}

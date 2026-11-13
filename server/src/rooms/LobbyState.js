@@ -8,6 +8,7 @@ export const AbilityState = schema({
 },'AbilityState')
 
 export const ArsenalState=schema({
+  pingMs:t.number().default(-1),
   activeSlot:t.number().default(0),
   secondaryWeapon:t.string().default('pistol'),meleeWeapon:t.string().default('blade'),spinStarted:t.number().default(-10),spinning:t.boolean().default(false),windupStart:t.number().default(-10),windupEnd:t.number(),knockX:t.number(),knockZ:t.number(),
   swings:t.number(),

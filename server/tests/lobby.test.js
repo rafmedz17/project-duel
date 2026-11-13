@@ -40,6 +40,21 @@ test('health endpoint identifies the running lobby service',async () => {
   assert.deepEqual(await response.json(),{ status:'ok',service:'project-duel-lobby' })
 })
 
+test('two clients receive independent measured ping values; forged responses cannot overwrite them',async t=> {
+  const host=await create(t,'Ping Host'),guest=await join(t,host.roomId,'Ping Guest')
+  let captured
+  host.onMessage('latency-probe',payload=> { captured=payload;setTimeout(()=>host.send('latency-pong',payload),35) })
+  guest.onMessage('latency-probe',payload=>guest.send('latency-pong',payload))
+  host.send('latency-ready');guest.send('latency-ready')
+  await until(()=>host.state.players.get(host.sessionId).arsenal.pingMs>=30 && host.state.players.get(guest.sessionId).arsenal.pingMs>=1)
+  assert.equal(guest.state.players.get(host.sessionId).arsenal.pingMs,host.state.players.get(host.sessionId).arsenal.pingMs)
+  const original=host.state.players.get(host.sessionId).arsenal.pingMs
+  host.send('latency-pong',{ ...captured,ping:0 });host.send('latency-pong',captured)
+  await delay(100);assert.equal(host.state.players.get(host.sessionId).arsenal.pingMs,original)
+  await guest.leave();await until(()=>host.state.players.size===1)
+  assert.ok(host.state.players.get(host.sessionId).arsenal.pingMs>=1)
+})
+
 test('rooms have unique readable codes, stay private, and synchronize exactly two players',async t => {
   const host = await create(t,'  Nova  Prime  ')
   assert.match(host.roomId,/^[A-HJ-NP-Z2-9]{6}$/)

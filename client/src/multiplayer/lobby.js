@@ -48,6 +48,7 @@ function sync(room) {
   next.players.forEach(player => {
     const source = state.players.get(player.id)
     player.authenticated = source.authenticated
+    player.ping=player.connected && source.arsenal.pingMs>=0 ? source.arsenal.pingMs : null
     Object.assign(player.combat,{ characterId:source.characterId,spinning:source.arsenal.spinning,spinStarted:source.arsenal.spinStarted,windupStart:source.arsenal.windupStart,windupEnd:source.arsenal.windupEnd,swings:source.arsenal.swings,ultimateShield:source.ultimateShield,flashUntil:source.flashUntil,flashStarted:source.flashStarted,rootedUntil:source.rootedUntil,rooted:source.rooted })
     Object.assign(player.combat,{ killCombo:source.arsenal.killCombo,killAt:source.arsenal.killAt,killBadgeId:source.arsenal.killBadgeId,killHeadshot:source.arsenal.killHeadshot })
     player.combat.activeSlot=source.arsenal.activeSlot
@@ -64,6 +65,9 @@ function attach(room,notice = '') {
   Object.assign(room.reconnection,{ minUptime:0,maxRetries:10,minDelay:250,maxDelay:2000,maxEnqueuedMessages:0 })
   saveRecovery(endpoint(),room.reconnectionToken)
   room.onStateChange(() => sync(room))
+  room.onMessage('latency-probe',payload=> {
+    if(activeRoom===room && snapshot.status==='connected' && typeof payload?.nonce==='string') room.send('latency-pong',{ nonce:payload.nonce })
+  })
   room.onMessage('loadout-bank',value=> {
     const bank=validateLoadoutBank(value)
     if(activeRoom===room && bank) update({ bank })
@@ -80,6 +84,7 @@ function attach(room,notice = '') {
     update({ status:'connected',notice:'Connection restored. Select Enter Arena to resume.' })
     sync(room)
     room.send('loadout-bank')
+    room.send('latency-ready')
   })
   room.onError(() => { if (activeRoom===room) update({ notice:'The connection encountered a problem. Reconnecting if needed.' }) })
   room.onLeave(() => {
@@ -90,6 +95,7 @@ function attach(room,notice = '') {
   })
   update({ status:'connected',sessionId:room.sessionId,error:'',notice })
   room.send('loadout-bank')
+  room.send('latency-ready')
   sync(room)
 }
 

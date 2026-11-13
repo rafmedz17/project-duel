@@ -11,6 +11,15 @@ test('preferences migrate old settings and clamp invalid UI or account data',()=
   assert.equal(s.crosshair.gap,0);assert.equal(s.crosshair.size,24);assert.equal(s.crosshair.color,'#00aaff');assert.equal(s.enemyColor,'#ff5876')
   assert.equal(s.bindings.forward,'KeyZ');assert.equal(s.bindings.fire,'Mouse0');assert.deepEqual(cleanPreferences(null),cleanPreferences())
 })
+
+test('scoreboard defaults to Tab, preserves existing Tab bindings and supports rebinding without conflicts',()=> {
+  assert.equal(cleanPreferences().bindings.scoreboard,'Tab')
+  const migrated=cleanPreferences({ bindings:{ reload:'Tab' } })
+  assert.equal(migrated.bindings.reload,'Tab');assert.equal(migrated.bindings.scoreboard,'KeyR')
+  const rebound=rebind(DEFAULT_BINDINGS,'scoreboard','KeyP')
+  assert.equal(canonicalCode({ type:'keydown',code:'KeyP' },{ bindings:rebound }),'Tab')
+  assert.equal(canonicalCode({ type:'keyup',code:'Tab' },{ bindings:rebound }),null)
+})
 test('rebinding swaps collisions, round-trips all actions and translates physical input for both game modes',()=> {
   let bindings=rebind(DEFAULT_BINDINGS,'forward','KeyS');bindings=rebind(bindings,'fire','KeyP');bindings=rebind(bindings,'dash','Mouse4')
   assert.equal(bindings.backward,'KeyW');assert.equal(new Set(Object.values(bindings)).size,ACTIONS.length)
