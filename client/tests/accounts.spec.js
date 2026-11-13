@@ -55,21 +55,26 @@ async function signIn(page) {
 }
 test('account settings sync through Auth metadata, restore on another device, retry errors and preserve guest preferences',async ({ page,context,browser })=> {
   const shared=await mockCloud(context)
-  await page.goto(cloudOrigin);await page.getByRole('button',{ name:/SETTINGS/ }).click();await page.getByLabel('Mouse sensitivity').fill('1.8');await page.getByRole('button',{ name:'BACK' }).click()
+  await page.goto(cloudOrigin);await page.getByRole('button',{ name:/SETTINGS/ }).click();await page.getByRole('tab',{name:'Sensitivity',exact:true}).click();await page.getByLabel('Mouse sensitivity').fill('1.8');await page.getByRole('button',{ name:'BACK' }).click()
   await signIn(page);await page.getByRole('dialog').getByRole('button',{ name:'BACK',exact:true }).click();await page.getByRole('button',{ name:/SETTINGS/ }).click()
-  await page.getByLabel('Field of view').fill('99');await page.getByLabel('Scope input').selectOption('tap');await page.getByRole('tab',{ name:'Controls',exact:true }).click();await page.getByRole('button',{ name:'Rebind Reload',exact:true }).click();await page.keyboard.press('KeyL')
+  await page.getByLabel('Field of view').fill('99');await page.getByLabel('Scope input').selectOption('tap')
+  await page.getByRole('tab',{name:'Sensitivity',exact:true}).click();await page.getByLabel('Mouse sensitivity').fill('1.2');await page.getByLabel('Sniper ADS sensitivity',{exact:true}).fill('0.55');await page.getByLabel('Rifle firing sensitivity',{exact:true}).fill('0.8')
+  await page.getByRole('tab',{ name:'Controls',exact:true }).click();await page.getByRole('button',{ name:'Rebind Reload',exact:true }).click();await page.keyboard.press('KeyL')
   shared.failPreferences=true;await page.getByRole('button',{ name:'SAVE TO ACCOUNT',exact:true }).click();await expect(page.getByRole('status')).toContainText('Could not sync')
   expect((await state(page)).settings.bindings.reload).toBe('KeyL');shared.failPreferences=false
   await page.getByRole('button',{ name:'SAVE TO ACCOUNT',exact:true }).click();await expect(page.getByRole('status')).toHaveText('Settings saved to your account.')
-  expect(shared.metadata.duel_settings).toMatchObject({ fov:99,scopeMode:'tap',bindings:{ reload:'KeyL' } })
+  expect(shared.metadata.duel_settings).toMatchObject({ fov:99,sensitivity:1.2,weaponSensitivity:{SNIPER:{ads:.55},RIFLE:{firing:.8}},scopeMode:'tap',bindings:{ reload:'KeyL' } })
   await page.reload();await page.getByRole('button',{ name:/SETTINGS/ }).click();await expect(page.getByLabel('Field of view')).toHaveValue('99')
   await page.getByLabel('Field of view').fill('101');await page.reload();await page.getByRole('button',{ name:/SETTINGS/ }).click();await expect(page.getByLabel('Field of view')).toHaveValue('101')
   await page.getByLabel('Field of view').fill('99');await page.getByRole('button',{ name:'SAVE TO ACCOUNT',exact:true }).click();await expect(page.getByRole('status')).toHaveText('Settings saved to your account.')
   const secondContext=await browser.newContext()
   try {
-    await mockCloud(secondContext,shared);const second=await secondContext.newPage();await signIn(second);await second.getByRole('dialog').getByRole('button',{ name:'BACK',exact:true }).click();await second.getByRole('button',{ name:/SETTINGS/ }).click();await expect(second.getByLabel('Field of view')).toHaveValue('99');await second.getByRole('tab',{ name:'Controls',exact:true }).click();await expect(second.getByRole('button',{ name:'Rebind Reload',exact:true })).toHaveText('L')
+    await mockCloud(secondContext,shared);const second=await secondContext.newPage();await signIn(second);await second.getByRole('dialog').getByRole('button',{ name:'BACK',exact:true }).click();await second.getByRole('button',{ name:/SETTINGS/ }).click();await expect(second.getByLabel('Field of view')).toHaveValue('99')
+    await second.getByRole('tab',{name:'Sensitivity',exact:true}).click();await expect(second.getByLabel('Mouse sensitivity')).toHaveValue('1.2');await expect(second.getByLabel('Sniper ADS sensitivity',{exact:true})).toHaveValue('0.55');await expect(second.getByLabel('Rifle firing sensitivity',{exact:true})).toHaveValue('0.8')
+    await second.getByRole('tab',{ name:'Controls',exact:true }).click();await expect(second.getByRole('button',{ name:'Rebind Reload',exact:true })).toHaveText('L')
   } finally { await secondContext.close() }
-  await page.getByRole('button',{ name:'BACK' }).click();await page.getByRole('button',{ name:/^PLAYER PROFILE/ }).click();await page.getByRole('button',{ name:'SIGN OUT',exact:true }).click();await expect(page.getByLabel('EMAIL',{ exact:true })).toBeVisible();await page.getByRole('dialog').getByRole('button',{ name:'BACK',exact:true }).click();await page.getByRole('button',{ name:/SETTINGS/ }).click();await expect(page.getByLabel('Mouse sensitivity')).toHaveValue('1.8');await expect(page.getByLabel('Field of view')).toHaveValue('70')
+  await page.getByRole('button',{ name:'BACK' }).click();await page.getByRole('button',{ name:/^PLAYER PROFILE/ }).click();await page.getByRole('button',{ name:'SIGN OUT',exact:true }).click();await expect(page.getByLabel('EMAIL',{ exact:true })).toBeVisible();await page.getByRole('dialog').getByRole('button',{ name:'BACK',exact:true }).click();await page.getByRole('button',{ name:/SETTINGS/ }).click();await expect(page.getByLabel('Field of view')).toHaveValue('70')
+  await page.getByRole('tab',{name:'Sensitivity',exact:true}).click();await expect(page.getByLabel('Mouse sensitivity')).toHaveValue('1.8');await expect(page.getByLabel('Sniper ADS sensitivity',{exact:true})).toHaveValue('1')
 })
 
 test('guest loadout saves across reloads and controls training weapons and abilities',async ({ page }) => {

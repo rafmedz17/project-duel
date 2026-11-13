@@ -16,11 +16,11 @@ import './App.css'
 const World = lazy(() => import('./game/World.jsx'))
 
 export default function App() {
-  useGameAudio()
   const mode = useGame(s => s.mode), ready = useGame(s => s.ready), error = useGame(s => s.error)
   const s = { mode, ready, error, time:game.get().time }
   const [panel,setPanel] = useState(() => lobby.hasRecovery() ? 'multiplayer' : null)
   const recovery = useAccount(s => s.recovery)
+  useGameAudio(panel!=='multiplayer' && !recovery)
   const accountLoading = useAccount(s => s.loading)
   useEffect(() => { void accounts.init() },[])
   useEffect(() => { void lobby.restore() },[])

@@ -30,17 +30,27 @@ export function matchCues(previous,current,selfId) {
 export class Footsteps {
   samples = new Map()
   clear() { this.samples.clear() }
-  step(id,position,grounded,now) {
+  update(id,position,grounded,now,{speed=0,verticalSpeed=0,enabled=true}={}) {
     const previous=this.samples.get(id)
-    const sample={ position:[...position],distance:0,last:previous?.last ?? now }
+    const sample={ position:[...position],grounded,time:now,enabled,distance:0,last:previous?.last ?? now,side:previous?.side ?? -1,airTime:0,peak:position[1] }
     this.samples.set(id,sample)
-    if (!previous || !grounded) return false
+    if (!previous || !enabled || !previous.enabled) return []
+    const dt=now-previous.time
     const distance=Math.hypot(position[0]-previous.position[0],position[2]-previous.position[2])
-    // Spawn/round teleports never become a rush of footsteps.
-    if (distance>2.5) return false
+    // Spawn/round teleports, dash, and stale frames never become a rush of steps.
+    if(dt<=0 || dt>.5 || distance>2.5 || Math.abs(position[1]-previous.position[1])>2.5) return []
+    if(!grounded) {
+      sample.airTime=previous.airTime+dt;sample.peak=Math.max(previous.peak,position[1])
+      return previous.grounded && verticalSpeed>1 ? [{name:'jump'}] : []
+    }
+    if(!previous.grounded) {
+      const drop=previous.peak-position[1]
+      return previous.airTime>.1 && drop>.15 ? [{name:'land',impact:Math.min(1.8,.8+drop*.3)}] : []
+    }
+    const pace=speed>6.3 ? 'sprint' : 'walk',stride=pace==='sprint' ? 2.05 : 1.65
     sample.distance=previous.distance+distance
-    if (sample.distance<1.8 || now-sample.last<0.18) return false
-    sample.distance%=1.8; sample.last=now
-    return true
+    if(sample.distance<stride || now-sample.last<.17) return []
+    sample.distance%=stride;sample.last=now;sample.side=-previous.side
+    return [{name:'step',pace,pan:sample.side*.12}]
   }
 }

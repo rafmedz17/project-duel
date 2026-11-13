@@ -8,7 +8,7 @@ import { audio } from './synth.js'
 import { combatCues,matchCues,Footsteps } from './cues.js'
 import { targetPosition } from '../game/training/config.js'
 
-export function useGameAudio() {
+export function useGameAudio(menuVisible=true) {
   useEffect(() => {
     let previousGame=game.get(),previousLobby=lobby.get(),scope='',wasActive=false,focused=document.hasFocus(),frameId
     const steps=new Footsteps()
@@ -18,7 +18,7 @@ export function useGameAudio() {
       const nextScope=inArena ? `${room.code}:${room.arenaEpoch}` : `training:${local.generation}`
       const active=focused && !document.hidden && (inArena ? online.status==='connected' && room.phase==='arena' : ['playing','dead'].includes(local.mode))
       audio.configure(local.settings)
-      audio.setMusicActive(focused && !document.hidden)
+      audio.setMusicActive(menuVisible && local.mode==='menu' && !room && focused && !document.hidden)
       audio.setActive(active)
       if (!active || !wasActive || scope!==nextScope) steps.clear()
       if (active && wasActive && scope===nextScope) {
@@ -27,11 +27,11 @@ export function useGameAudio() {
             const previous=previousLobby.room?.players.find(p => p.id===player.id)
             const self=player.id===online.sessionId,pose=latestPose(player.id)
             if (!self && !pose) continue
-            if (room.roundId===previousLobby.room?.roundId) for (const cue of combatCues(previous?.combat,player.combat,self)) audio.play(cue,self ? {} : { position:[pose.x,pose.y,pose.z],gain:0.85 })
+            if (room.roundId===previousLobby.room?.roundId) for (const cue of combatCues(previous?.combat,player.combat,self)) audio.play(cue,{weapon:player.combat.weapon,...(self ? {} : { position:[pose.x,pose.y,pose.z],gain:0.85 })})
           }
           for (const cue of matchCues(previousLobby.room,room,online.sessionId)) audio.play(cue)
         } else {
-          for (const cue of combatCues(previousGame,local)) audio.play(cue)
+          for (const cue of combatCues(previousGame,local)) audio.play(cue,{weapon:local.weapon})
           local.targets.forEach((target,index)=> { if(target.shots>(previousGame.targets[index]?.shots || 0)) audio.play('rifle',{ position:targetPosition(index,target),gain:0.35 }) })
         }
       }
@@ -49,10 +49,13 @@ export function useGameAudio() {
             const pose=latestPose(player.id)
             if (!pose) continue
             const self=player.id===online.sessionId,p=[pose.x,pose.y,pose.z]
-            const grounded=live && pose.grounded && player.combat.hp>0 && online.room.time>=player.combat.abilities.dash.activeUntil
-            if (steps.step(player.id,p,grounded,now)) audio.play('step',self ? { gain:0.4 } : { position:p,gain:0.7 })
+            const enabled=live && player.combat.hp>0 && online.room.time>=player.combat.abilities.dash.activeUntil
+            for(const {name,...options} of steps.update(player.id,p,pose.grounded,now,{enabled,speed:Math.hypot(pose.vx,pose.vz),verticalSpeed:pose.vy})) audio.play(name,{...options,surface:online.room.mapId==='neon' ? 'concrete' : 'metal',...(self ? {gain:.55} : {position:p,gain:.8})})
           }
-        } else if (steps.step('self',position,runtime.grounded && local.hp>0 && local.time>=local.abilities.dash.activeUntil,now)) audio.play('step',{ gain:0.4 })
+        } else {
+          const enabled=local.hp>0 && local.time>=local.abilities.dash.activeUntil
+          for(const {name,...options} of steps.update('self',position,runtime.grounded,now,{enabled,speed:Math.hypot(runtime.velocity[0],runtime.velocity[2]),verticalSpeed:runtime.velocity[1]})) audio.play(name,{...options,surface:'metal',gain:.55})
+        }
         audio.diagnostics()
       }
       frameId=requestAnimationFrame(frame)
@@ -76,5 +79,5 @@ export function useGameAudio() {
       window.removeEventListener('focus',focus); window.removeEventListener('blur',blur); document.removeEventListener('visibilitychange',visibility)
       audio.setMusicActive(false);audio.setActive(false); audio.pause()
     }
-  },[])
+  },[menuVisible])
 }

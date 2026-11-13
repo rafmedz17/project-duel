@@ -16,6 +16,7 @@ import { getMap } from '../../../shared/maps.js'
 import OnlineEffects from './OnlineEffects.jsx'
 import { WEAPONS } from '../../../shared/weapons.js'
 import { canonicalCode } from '../settings/preferences.js'
+import { lookMultiplier } from '../settings/sensitivity.js'
 import { onlineWeapon } from './onlineWeapon.js'
 import { game } from '../game/store.js'
 import { lobby, useLobby } from './lobby.js'
@@ -31,7 +32,7 @@ function LocalCamera({ id }) {
   const matchPhase = useLobby(s => s.room?.matchPhase)
   const roundId = useLobby(s => s.room?.roundId)
   const seenRound = useRef(-1), seenShot=useRef(0),fpsFrames=useRef({ count:0,time:0 })
-  const clearInput = useRef(null), held = useRef(false), nextFire = useRef(0), wasDead = useRef(false)
+  const clearInput = useRef(null), held = useRef(false),fireInput=useRef(false),nextFire = useRef(0), wasDead = useRef(false)
   useEffect(() => {
     const engine = new Prediction(rapier,mapId)
     prediction.current = engine
@@ -48,7 +49,7 @@ function LocalCamera({ id }) {
       prediction.current?.command(packet)
       jump.current = false
     }
-    const clear = () => { lobby.combat('release'); game.set({ aiming:false }); held.current = false; keys.current.clear(); jump.current = false; send() }
+    const clear = () => { fireInput.current=false;lobby.combat('release'); game.set({ aiming:false }); held.current = false; keys.current.clear(); jump.current = false; send() }
     clearInput.current = clear
     const down = event => {
       if(event.code==='Escape') {
@@ -69,7 +70,7 @@ function LocalCamera({ id }) {
       if (weapon || code==='KeyQ' || code==='KeyR') {
         event.preventDefault()
         if (event.repeat) return
-        held.current = false;game.set({ aiming:false }); lobby.combat('release')
+        held.current = false;fireInput.current=false;game.set({ aiming:false }); lobby.combat('release')
         if (code==='KeyR') lobby.combat('reload')
         else {
           const equipped = weaponSlots(lobby.self().loadout)
@@ -86,7 +87,7 @@ function LocalCamera({ id }) {
     const up = event => { const code=canonicalCode(event,game.get().settings);keys.current.delete(code);release(event,code);if (active()) send() }
     const move = event => {
       if (!active() || !look.current) return
-      const sensitivity = PLAYER.sensitivity*game.get().settings.sensitivity
+      const settings=game.get().settings,sensitivity=PLAYER.sensitivity*lookMultiplier(settings,lobby.self(),lobby.get().room.time,{aiming:game.get().aiming,firing:fireInput.current})
       look.current.yaw = Math.atan2(Math.sin(look.current.yaw-event.movementX*sensitivity),Math.cos(look.current.yaw-event.movementX*sensitivity))
       look.current.pitch = Math.max(-ONLINE.maxPitch,Math.min(ONLINE.maxPitch,look.current.pitch-event.movementY*sensitivity))
     }
@@ -95,12 +96,14 @@ function LocalCamera({ id }) {
       event.preventDefault()
       if (code==='Mouse2') { if(!event.repeat) game.set({ aiming:game.get().settings.scopeMode==='tap' ? !game.get().aiming : true });return }
       if (code!=='Mouse0' || event.repeat || !look.current) return
+      fireInput.current=true
       const automatic=WEAPONS[lobby.self().weapon].fireMode==='auto'
       held.current=automatic; nextFire.current=performance.now()+100
       lobby.combat(automatic ? 'hold' : 'fire',look.current)
     }
     const release = (event,code) => {
       if (code==='Mouse2' && game.get().settings.scopeMode==='hold') game.set({ aiming:false })
+      if(code==='Mouse0') fireInput.current=false
       if (code==='Mouse0' && held.current) { held.current=false; lobby.combat('release') }
     }
     const context=event=> { if (active()) event.preventDefault() }
@@ -160,8 +163,8 @@ function LocalCamera({ id }) {
       initialized.current = true
       seenRound.current = roundId
     }
-    if (dead) { held.current = false; keys.current.clear(); jump.current = false }
-    if (lobby.self()?.reloading) held.current = false
+    if (dead) { held.current = false;fireInput.current=false;keys.current.clear(); jump.current = false }
+    if (lobby.self()?.reloading) {held.current=false;fireInput.current=false}
     wasDead.current = dead
     if (held.current && document.pointerLockElement===gl.domElement && lobby.get().status==='connected' && canPlayArena(lobby.get().room) && !dead) {
       const self = lobby.self()

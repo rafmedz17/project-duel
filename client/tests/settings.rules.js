@@ -4,12 +4,36 @@ import { ACTIONS,DEFAULT_BINDINGS,cleanPreferences,cleanBindings,rebind,canonica
 import { advanceDamageFeed,emptyDamageFeed } from '../src/settings/damageFeed.js'
 import { aimFov } from '../src/game/weapons/optics.js'
 import { game } from '../src/game/store.js'
+import { cleanWeaponSensitivity,lookMultiplier,SENSITIVITY_CATEGORIES } from '../src/settings/sensitivity.js'
+import { WEAPONS } from '../../shared/weapons.js'
 
 test('preferences migrate old settings and clamp invalid UI or account data',()=> {
   const s=cleanPreferences({ sensitivity:3.5,fov:150,volume:0,sfxVolume:-1,musicVolume:NaN,enemyColor:'red',crosshair:{ gap:-3,size:999,color:'#00aaff' },bindings:{ fire:'Escape',forward:'KeyZ' } })
   assert.equal(s.sensitivity,3);assert.equal(s.fov,110);assert.equal(s.volume,0);assert.equal(s.sfxVolume,0);assert.equal(s.musicVolume,.25)
   assert.equal(s.crosshair.gap,0);assert.equal(s.crosshair.size,24);assert.equal(s.crosshair.color,'#00aaff');assert.equal(s.enemyColor,'#ff5876')
   assert.equal(s.bindings.forward,'KeyZ');assert.equal(s.bindings.fire,'Mouse0');assert.deepEqual(cleanPreferences(null),cleanPreferences())
+})
+
+test('sensitivity migration preserves legacy aim, isolates categories and bounds malformed saved profiles',()=> {
+  const legacy=cleanPreferences({sensitivity:1.7})
+  for(const [weapon] of Object.entries(WEAPONS)) for(const mode of [{},{aiming:true},{firing:true}]) assert.equal(lookMultiplier(legacy,{weapon,hp:100,lastSwitch:-10},1,mode),1.7)
+  const clean=cleanWeaponSensitivity({RIFLE:{look:Infinity,ads:-2,firing:99},SNIPER:{ads:.45},SMG:null,LMG:[]})
+  assert.deepEqual(clean.RIFLE,{look:1,ads:.1,firing:3});assert.deepEqual(clean.SNIPER,{look:1,ads:.45,firing:1})
+  assert.equal(Object.keys(clean).length,SENSITIVITY_CATEGORIES.length)
+  clean.RIFLE.ads=2;assert.equal(clean.SMG.ads,1);assert.equal(cleanWeaponSensitivity().RIFLE.ads,1)
+  assert.deepEqual(cleanWeaponSensitivity(null),cleanWeaponSensitivity([]))
+})
+
+test('per-category look, ADS and firing use one shared precedence and fall back during reload or equip',()=> {
+  const settings=cleanPreferences({sensitivity:1.5,weaponSensitivity:{RIFLE:{look:1.2,ads:.6,firing:.25},SNIPER:{look:.8,ads:.3,firing:.4},PISTOL:{look:.9,firing:1.6}}})
+  const rifle={weapon:'astral',hp:100,lastSwitch:-10}
+  assert.ok(Math.abs(lookMultiplier(settings,rifle,1)-1.8)<1e-9)
+  assert.ok(Math.abs(lookMultiplier(settings,rifle,1,{aiming:true})-.9)<1e-9)
+  assert.equal(lookMultiplier(settings,rifle,1,{aiming:true,firing:true}),.375)
+  assert.ok(Math.abs(lookMultiplier(settings,{...rifle,weapon:'hyperion'},1,{aiming:true})-.45)<1e-9)
+  assert.ok(Math.abs(lookMultiplier(settings,{...rifle,weapon:'pistol'},1,{firing:true})-2.4)<1e-9)
+  for(const patch of [{reloading:true},{lastSwitch:.9},{hp:0}]) assert.ok(Math.abs(lookMultiplier(settings,{...rifle,...patch},1,{aiming:true,firing:true})-1.8)<1e-9)
+  assert.equal(lookMultiplier(settings,{...rifle,weapon:'blade'},1,{aiming:true}),1.5)
 })
 
 test('scoreboard defaults to Tab, preserves existing Tab bindings and supports rebinding without conflicts',()=> {
@@ -37,10 +61,10 @@ test('device and account preferences stay isolated across resets, account switch
   const saved=game.get().settings,storage=new Map()
   globalThis.localStorage={ getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value) }
   game.loadPreferences(null);game.settings({ sensitivity:1.6 })
-  game.loadPreferences('pilot-one',{ fov:95,bindings:rebind(DEFAULT_BINDINGS,'reload','KeyL') })
+  game.loadPreferences('pilot-one',{ fov:95,weaponSensitivity:{SNIPER:{ads:.45}},bindings:rebind(DEFAULT_BINDINGS,'reload','KeyL') })
   game.reset();assert.equal(game.get().settings.fov,95);assert.equal(game.get().settings.bindings.reload,'KeyL')
-  game.loadPreferences('pilot-two');assert.equal(game.get().settings.fov,70)
-  game.loadPreferences('pilot-one');assert.equal(game.get().settings.fov,95)
+  game.loadPreferences('pilot-two');assert.equal(game.get().settings.fov,70);assert.equal(game.get().settings.weaponSensitivity.SNIPER.ads,1)
+  game.loadPreferences('pilot-one');assert.equal(game.get().settings.fov,95);assert.equal(game.get().settings.weaponSensitivity.SNIPER.ads,.45)
   game.settings({ fov:101 });game.loadPreferences(null)
   game.loadPreferences('pilot-one',{ fov:95 });assert.equal(game.get().settings.fov,101)
   game.preferencesSaved('pilot-one');game.loadPreferences('pilot-one',{ fov:96 });assert.equal(game.get().settings.fov,96)

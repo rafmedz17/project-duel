@@ -14,15 +14,16 @@ import { useCombatInput } from './weapons/useCombatInput.js'
 import { useAbilityInput } from './abilities/useAbilityInput.js'
 import TacticalEffects from './abilities/TacticalEffects.jsx'
 import { canonicalCode } from '../settings/preferences.js'
+import { lookMultiplier } from '../settings/sensitivity.js'
 
 export default function Player() {
-  const body = useRef(), collider = useRef(), seenShot=useRef(0)
+  const body = useRef(), collider = useRef(), seenShot=useRef(0),fireInput=useRef(false)
   const keys = useRef(new Set()), look = useRef({ yaw: 0, pitch: 0 }), motion = useRef({ x: 0, z: 0, y: 0, jump: false, dashUses:0, dashRemaining:0 })
   const { camera, gl, scene } = useThree()
   const { world } = useRapier()
   const controller = useRef()
   const accumulated = useRef(0), frames = useRef({ count: 0, time: 0 })
-  useCombatInput(camera,gl.domElement,scene,look)
+  useCombatInput(camera,gl.domElement,scene,look,fireInput)
   useAbilityInput(body,keys,look,gl.domElement)
 
   useEffect(() => {
@@ -33,6 +34,7 @@ export default function Player() {
     controller.current = character
     runtime.peakHeight = TRAINING_SPAWN[1]
     runtime.position=[...TRAINING_SPAWN]
+    runtime.velocity=[0,0,0]
     game.set({ ready: true })
     return () => { world.removeCharacterController(character); controller.current = null; game.set({ ready: false }) }
   }, [world])
@@ -49,7 +51,7 @@ export default function Player() {
     const up = event => keys.current.delete(canonicalCode(event,game.get().settings))
     const move = event => {
       if (game.get().mode !== 'playing' || document.pointerLockElement !== gl.domElement) return
-      const sensitivity = PLAYER.sensitivity * game.get().settings.sensitivity
+      const s=game.get(),sensitivity=PLAYER.sensitivity*lookMultiplier(s.settings,s,game.now(),{aiming:s.aiming,firing:fireInput.current})
       look.current.yaw -= event.movementX * sensitivity
       look.current.pitch = Math.max(-1.48, Math.min(1.48, look.current.pitch - event.movementY * sensitivity))
     }
@@ -104,6 +106,7 @@ export default function Player() {
     c.computeColliderMovement(collider.current, { x:dx,y:m.y*dt,z:dz })
     const delta = c.computedMovement(), p = body.current.translation()
     runtime.position = [p.x,p.y,p.z]
+    runtime.velocity = [delta.x/dt,delta.y/dt,delta.z/dt]
     runtime.peakHeight = Math.max(runtime.peakHeight,p.y)
     runtime.grounded = c.computedGrounded()
     if (Math.abs(delta.y) < Math.abs(m.y*dt)*0.5 && m.y > 0) m.y = 0
@@ -114,6 +117,7 @@ export default function Player() {
   useFrame((_, delta) => {
     if (!body.current) return
     const state = game.get(), p = body.current.translation()
+    if(state.hp<=0 || state.reloading) fireInput.current=false
     if (state.shot>seenShot.current && state.lastShot>=0 && state.mode==='playing') {
       const weapon=WEAPONS[state.weapon],count=Math.min(3,state.shot-seenShot.current)
       look.current.pitch=Math.min(1.48,look.current.pitch+weapon.recoil*count)

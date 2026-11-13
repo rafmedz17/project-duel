@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import { combatCues,matchCues,Footsteps } from '../src/audio/cues.js'
 import { audioSettings } from '../src/audio/settings.js'
 import { game } from '../src/game/store.js'
+import { WEAPON_IDS } from '../../shared/weapons.js'
+import { FIREARM_VOICES,soundLayers } from '../src/audio/profiles.js'
 
 const copy=() => structuredClone(game.get())
 function start() { game.reset(); game.set({ mode:'playing' }); return copy() }
@@ -53,15 +55,50 @@ test('round cues use authoritative outcomes, skip repeated snapshots and ignore 
   assert.deepEqual(matchCues(room,{ ...won,arenaEpoch:2 },'self'),[])
   assert.deepEqual(matchCues({ ...room,matchPhase:'countdown',phaseRemaining:2.1 },{ ...room,matchPhase:'countdown',phaseRemaining:1.9 },'self'),['countdown'])
 })
-test('footsteps require grounded movement, suppress spawn teleports, and clear between sessions',() => {
+test('footsteps follow grounded travel, alternate boots and distinguish sprinting without replaying teleports',() => {
   const steps=new Footsteps()
-  assert.equal(steps.step('self',[0,1,0],true,0),false)
-  assert.equal(steps.step('self',[0,1,1.9],true,0.4),true)
-  assert.equal(steps.step('self',[0,1,1.9],true,1),false)
-  assert.equal(steps.step('self',[0,2,3.9],false,1.4),false)
-  assert.equal(steps.step('self',[0,1,15],true,1.8),false)
+  assert.deepEqual(steps.update('self',[0,1,0],true,0),[])
+  assert.deepEqual(steps.update('self',[0,1,1.9],true,.4,{speed:5}),[{name:'step',pace:'walk',pan:.12}])
+  assert.deepEqual(steps.update('self',[0,1,4.1],true,.7,{speed:8.5}),[{name:'step',pace:'sprint',pan:-.12}])
+  assert.deepEqual(steps.update('self',[0,1,4.1],true,1),[])
+  assert.deepEqual(steps.update('self',[0,2,6.1],false,1.4),[])
+  assert.deepEqual(steps.update('self',[0,1,15],true,1.8),[])
   steps.clear()
-  assert.equal(steps.step('self',[0,1,-15],true,2),false)
+  assert.deepEqual(steps.update('self',[0,1,-15],true,2),[])
+})
+
+test('movement audio detects real jump/landing edges and suppresses dashes, stale frames and spawn drops',()=> {
+  const steps=new Footsteps(),at=(y,grounded,time,extra={})=>steps.update('self',[0,y,0],grounded,time,extra)
+  assert.deepEqual(at(1,false,0),[])
+  assert.deepEqual(at(.85,true,.02),[]) // Initial capsule settling is not a landing.
+  assert.deepEqual(at(1,false,.04,{verticalSpeed:6}),[{name:'jump'}])
+  at(1.9,false,.2);at(1.3,false,.4)
+  const landed=at(.85,true,.5)
+  assert.equal(landed[0].name,'land');assert.ok(landed[0].impact>1)
+  assert.deepEqual(at(.85,true,.52),[])
+  assert.deepEqual(at(1.2,false,.6,{enabled:false,verticalSpeed:6}),[])
+  assert.deepEqual(at(.85,true,.8),[])
+  assert.deepEqual(at(1.6,false,2,{verticalSpeed:6}),[])
+})
+
+test('the full arsenal has unique layered voices with bounded audio parameters and distinct reloads',()=> {
+  assert.equal(Object.keys(FIREARM_VOICES).length,14)
+  const signatures=new Set()
+  for(const id of WEAPON_IDS) {
+    const layers=soundLayers(id)
+    assert.ok(layers.length>=3,id)
+    signatures.add(JSON.stringify(layers))
+    for(const part of layers) {
+      assert.ok(Number.isFinite(part.frequency) && part.frequency>0 && part.frequency<20000,id)
+      assert.ok(part.duration>0 && part.duration<1 && part.gain>0 && part.gain<.5,id)
+      assert.ok(part.delay>=0 && part.delay<1,id)
+    }
+  }
+  assert.equal(signatures.size,17)
+  assert.notDeepEqual(soundLayers('reload-end',{weapon:'pistol'}),soundLayers('reload-end',{weapon:'omega'}))
+  assert.notDeepEqual(soundLayers('step',{pace:'walk'}),soundLayers('step',{pace:'sprint'}))
+  assert.notDeepEqual(soundLayers('step',{surface:'metal'}),soundLayers('step',{surface:'concrete'}))
+  assert.equal(soundLayers('missing-cue'),null)
 })
 test('sound settings clamp unsafe values, preserve silence at zero and survive training reset',() => {
   assert.deepEqual(audioSettings({ volume:NaN,muted:'yes' }),{ volume:0.55,muted:false,sfxVolume:1,musicVolume:.25 })

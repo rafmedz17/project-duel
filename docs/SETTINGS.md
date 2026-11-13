@@ -4,12 +4,15 @@ Controls are part of **Settings**, available from the main menu, training pause 
 
 | Tab | Options |
 | --- | --- |
-| General | Mouse sensitivity, FPS, 60–110 degree vertical FOV, hold/tap scope input, damage numbers, opacity, Classic/Stacked damage, crosshair editor, training ammo |
+| General | FPS, 60–110 degree vertical FOV, hold/tap scope input, damage numbers, opacity, Classic/Stacked damage, crosshair editor, training ammo |
+| Sensitivity | General mouse sensitivity, plus separate Look, ADS and Firing multipliers for rifles, snipers, SMGs, LMGs, shotguns and pistols; melee has Look and Firing |
 | Controls | Rebind movement, sprint/jump, fire/aim, weapon slots, reload, inspect, cycle, abilities, armory and course controls |
 | Graphics | Low/Medium/High quality, white/black flashbang, visible enemy body aura and color |
 | Audio | Master volume, sound effects, generated ambient music, mute and audio test |
 
 Click a binding, then press a key or mouse button. A conflict swaps the other action into the vacated binding, keeping every action available. Escape cancels rebinding and remains the fixed pause/release key. Default controls can be restored independently of other preferences. Right Shift also sprints while sprint uses its default Left Shift binding. Controls work identically in training and multiplayer.
+
+Sensitivity has its own tab. The existing general mouse sensitivity remains the base multiplier (0.2–3×). Category multipliers range from 0.1–3× and default to 1×, preserving your previous aim. Look applies during normal camera movement; ADS applies while aiming with right click or your remapped aim input. Firing takes priority while holding the fire input, whether aiming or firing from the hip. These three category values replace one another rather than multiplying together: general 1.5× with rifle ADS 0.5× gives 0.75×. Releasing fire restores ADS or Look. Reloading, switching weapons, death and loss of capture clear firing input. Recoil and weapon statistics are unaffected. Reset Sensitivity restores only these values. Sensitivity preferences save with the rest of your device/account settings and apply in training and multiplayer.
 
 Hold scope is the default. Tap scope toggles with a press, including a remapped keyboard aim key. Reloading, weapon switching, death or loss of mouse capture removes the optic. Your FOV returns after aiming; dash adds seven degrees up to 117. Sniper and energy iron sights retain their calibrated aim FOVs.
 
@@ -19,7 +22,7 @@ Classic damage shows separate recent confirmed hit amounts. Stacked damage adds 
 
 The enemy aura adds a subtle emissive color and armor outline across the whole body. It respects depth and walls. Scanner and spectral-smoke reveals retain their existing ability rules. Black flashbang uses the same timing and opacity as white, with a black background.
 
-Audio is generated locally using one lazily unlocked Web Audio context. Master volume affects both buses; SFX and background music mix independently. Music is a quiet evolving sci-fi pad. Muting or setting a bus to zero silences that bus. Focus loss stops audio, while training pause stops combat sounds and can leave music playing. Returning does not replay missed combat cues.
+Audio is generated locally using one lazily unlocked Web Audio context. Master volume affects both buses; SFX and background music mix independently. Music is a quiet evolving sci-fi pad limited to the landing page and its menu panels. Training, training pause/settings and multiplayer have no background music. Muting or setting a bus to zero silences that bus. Focus loss stops audio. Returning does not replay missed combat cues.
 
 In multiplayer, alt-tabbing clears held movement, attack and aim, but does not open the Escape menu or pause the server. The live view remains visible when you return, with **Click to Aim** to recapture the mouse as required by the browser. Escape opens the multiplayer menu and Settings. Match timers, damage, deaths and respawns continue while away or editing settings. A real connection interruption still follows the existing reconnection rules. Browsers may throttle rendering in hidden tabs; the server keeps running independently.
 

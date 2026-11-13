@@ -4,6 +4,7 @@ import { state,position,lookAt,moveUntil } from './helpers.js'
 import { PLAYER,TARGETS } from '../src/game/config.js'
 import { ROBOT_HEAD_Y } from '../../shared/robot.js'
 import { ONLINE } from '../../shared/arena.js'
+import { WEAPON_IDS } from '../../shared/weapons.js'
 
 const sound=page => page.evaluate(async () => {
   const path='/src/audio/synth.js'
@@ -31,6 +32,66 @@ async function pause(page) {
   await expect.poll(async () => (await state(page)).mode).toBe('paused')
   await expect.poll(async () => (await sound(page)).active).toBe(false);await expect.poll(async () => (await sound(page)).voices).toBe(0)
 }
+
+test('music is limited to the landing page and its settings, never training, pause or multiplayer',async ({page})=> {
+  await page.goto('/')
+  await page.getByRole('button',{name:/SETTINGS/}).click()
+  await expect.poll(async ()=>(await sound(page)).musicPlaying).toBe(true)
+  await page.getByRole('button',{name:'BACK →',exact:true}).click()
+  await expect.poll(async ()=>(await sound(page)).musicPlaying).toBe(true)
+  await page.getByRole('button',{name:/ENTER TRAINING/}).click()
+  await expect.poll(async ()=>(await sound(page)).musicPlaying).toBe(false)
+  await page.getByRole('button',{name:'RESUME / ENTER ARENA'}).click()
+  await expect.poll(async ()=>(await state(page)).mode).toBe('playing')
+  expect((await sound(page)).musicPlaying).toBe(false)
+  await pause(page)
+  await page.getByRole('button',{name:'SETTINGS',exact:true}).click()
+  expect((await sound(page)).musicPlaying).toBe(false)
+  await page.getByRole('button',{name:'BACK →',exact:true}).click()
+  await page.getByRole('button',{name:'RETURN TO MAIN MENU'}).click()
+  await expect.poll(async ()=>(await sound(page)).musicPlaying).toBe(true)
+  await page.getByRole('button',{name:/^MULTIPLAYER/}).click()
+  await expect.poll(async ()=>(await sound(page)).musicPlaying).toBe(false)
+  await page.getByRole('button',{name:'BACK',exact:true}).click()
+  await expect.poll(async ()=>(await sound(page)).musicPlaying).toBe(true)
+})
+
+test('all 17 weapon voices render audio and rapid fire respects the voice limit and mute',async ({page})=> {
+  await page.goto('/');await page.getByRole('button',{name:/SETTINGS/}).click()
+  await page.getByRole('tab',{name:'Audio',exact:true}).click()
+  await page.getByLabel('Background music').fill('0')
+  await page.getByRole('button',{name:'TEST AUDIO'}).click()
+  await page.evaluate(async ids=> {
+    const path='/src/audio/synth.js',url=performance.getEntriesByType('resource').find(e=>new URL(e.name).pathname===path)?.name || path
+    const {audio}=await import(url)
+    for(const id of ids) { await audio.unlock();if(!audio.play(id,{preview:true})) throw new Error(`No audio for ${id}`) }
+    for(let i=0;i<80;i++) audio.play('striker',{preview:true})
+  },WEAPON_IDS)
+  await expect.poll(async ()=>(await sound(page)).peakRms).toBeGreaterThan(.0001)
+  const played=await sound(page)
+  for(const id of WEAPON_IDS) expect(played.counts[id]).toBeGreaterThan(0)
+  expect(played.voices).toBeLessThanOrEqual(32)
+  await page.getByLabel('Mute all audio').check()
+  await expect.poll(async ()=>(await sound(page)).voices).toBe(0)
+  await expect.poll(async ()=>(await sound(page)).rms).toBeLessThan(.00001)
+})
+
+test('walking, sprinting and jumping play layered movement cues and stop at rest',async ({page})=> {
+  await start(page)
+  await page.keyboard.down('KeyW')
+  await expect.poll(async ()=>(await sound(page)).counts.step || 0).toBeGreaterThan(1)
+  await page.keyboard.up('KeyW')
+  await page.keyboard.down('ShiftLeft');await page.keyboard.down('KeyS')
+  await expect.poll(async ()=>(await sound(page)).events.some(e=>e.name==='step' && e.pace==='sprint')).toBe(true)
+  await page.keyboard.up('KeyS');await page.keyboard.up('ShiftLeft')
+  await page.keyboard.press('Space')
+  await expect.poll(async ()=>(await sound(page)).counts.jump || 0).toBe(1)
+  await expect.poll(async ()=>(await sound(page)).counts.land || 0).toBe(1)
+  await expect.poll(async ()=>(await state(page)).mode).toBe('playing')
+  const stopped=(await sound(page)).counts.step
+  await page.waitForTimeout(500)
+  expect((await sound(page)).counts.step).toBe(stopped)
+})
 test('audio waits for interaction, generates a real waveform, and saves volume and mute',async ({ page }) => {
   await page.goto('/')
   expect((await sound(page)).state).toBe('locked')
@@ -66,6 +127,7 @@ test('training plays equipped weapon, reload, hit, ability and footstep cues; pa
     await expect.poll(async () => (await sound(page)).counts[cue] || 0).toBeGreaterThan(0)
     await page.waitForTimeout(850)
   }
+  await moveUntil(page,'KeyW',2,-23,-1)
   const p=await position(page),[x,y,z]=TARGETS[1]
   for (let i=0;i<3;i++) {
     await lookAt(page,Math.atan2(p[0]-x,p[2]-z),Math.atan2(y+ROBOT_HEAD_Y-p[1]-PLAYER.eye,Math.hypot(p[0]-x,p[2]-z)))
@@ -74,7 +136,7 @@ test('training plays equipped weapon, reload, hit, ability and footstep cues; pa
   await expect.poll(async () => (await sound(page)).counts.headshot || 0).toBeGreaterThan(0)
   await expect.poll(async () => (await sound(page)).counts.elimination || 0).toBe(1)
   await lookAt(page,0,0)
-  await moveUntil(page,'KeyW',2,9,-1)
+  await moveUntil(page,'KeyS',2,-19,1)
   await expect.poll(async () => (await sound(page)).counts.step || 0).toBeGreaterThan(0)
   for (const [key,cue] of [['KeyE','dash'],['KeyF','shield'],['KeyC','flashbang'],['KeyX','ultimate']]) {
     await page.keyboard.press(key)
@@ -85,16 +147,17 @@ test('training plays equipped weapon, reload, hit, ability and footstep cues; pa
   expect(paused.voices).toBe(0)
   await fire(page,false); await page.keyboard.press('KeyE'); await page.waitForTimeout(400)
   expect((await sound(page)).played).toBe(paused.played)
-  expect((await sound(page)).musicPlaying).toBe(true)
+  expect((await sound(page)).musicPlaying).toBe(false)
   expect(errors).toEqual([])
 })
 test('muting silences real shots, and unmuting does not replay missed sounds',async ({ page }) => {
-  await start(page); await pause(page)
+  await start(page);await page.keyboard.press('Digit2');await pause(page)
   await page.getByRole('button',{ name:'SETTINGS',exact:true }).click()
   await page.getByRole('tab',{ name:'Audio',exact:true }).click();await page.getByLabel('Mute all audio').check()
   await page.getByRole('button',{ name:'BACK' }).click()
   await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
   const before=await sound(page)
+  const weapon=(await state(page)).weapon
   await fire(page)
   expect((await state(page)).shot).toBe(1)
   expect((await sound(page)).played).toBe(before.played)
@@ -105,7 +168,7 @@ test('muting silences real shots, and unmuting does not replay missed sounds',as
   await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
   expect((await sound(page)).played).toBe(before.played)
   await fire(page)
-  await expect.poll(async () => (await sound(page)).counts.pistol || 0).toBe(1)
+  await expect.poll(async () => (await sound(page)).counts[weapon] || 0).toBe(1)
 })
 test('browsers without Web Audio can still play and show an actionable audio notice',async ({ page }) => {
   await page.addInitScript(() => { window.AudioContext=undefined; window.webkitAudioContext=undefined })
@@ -138,6 +201,7 @@ test('online opponent sounds use authoritative positions; replays, focus loss an
     await page.getByRole('button',{ name:'START SHARED ARENA' }).click()
     await page.getByRole('button',{ name:'ENTER ARENA',exact:true }).click()
     await expect.poll(async () => (await sound(page)).state).toBe('running')
+    expect((await sound(page)).musicPlaying).toBe(false)
     const me=() => peer.state.players.get(peer.sessionId)
     const target=() => [...peer.state.players.entries()].find(([id]) => id!==peer.sessionId)[1]
     await expect.poll(() => me().grounded && target().grounded).toBe(true)
@@ -177,6 +241,7 @@ test('online opponent sounds use authoritative positions; replays, focus loss an
     await page.keyboard.press('Escape');await page.evaluate(() => document.exitPointerLock())
     await page.getByRole('button',{ name:'RETURN TO LOBBY',exact:true }).click()
     await expect.poll(async () => (await sound(page)).active).toBe(false)
+    expect((await sound(page)).musicPlaying).toBe(false)
     expect((await sound(page)).voices).toBe(0)
     expect(errors).toEqual([])
   } finally { await peer.leave().catch(() => {}) }
