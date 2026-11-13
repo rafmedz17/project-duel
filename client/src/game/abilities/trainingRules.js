@@ -1,8 +1,7 @@
 import { ABILITIES } from '../../../../shared/abilities.js'
-import { ARENA_SOLIDS } from '../../../../shared/arena.js'
+import { TRAINING_SOLIDS,TRAINING_TARGETS,targetPosition,targetYaw } from '../training/config.js'
 import { ultimateModifiers } from '../../../../shared/characters.js'
 import { launchGrenade,stepGrenade,flashDuration,blocked } from '../../../../shared/tactical.js'
-import { TARGETS } from '../config.js'
 import { WEAPONS } from '../../../../shared/weapons.js'
 
 let grenades = []
@@ -33,24 +32,26 @@ export function stepTrainingAbilities(s,time,dt,pose,publish) {
   const abilities = { ...s.abilities }, patch = { abilities }, targets = s.targets.map(target => ({ ...target }))
   let detonated = false
   for (const grenade of grenades) {
-    stepGrenade(grenade,dt,ARENA_SOLIDS)
+    stepGrenade(grenade,dt,TRAINING_SOLIDS)
     const tuning = ABILITIES[grenade.id], ability = { ...abilities[grenade.id],projectile:[...grenade.position] }
     abilities[grenade.id] = ability
     if (grenade.age+1e-8<tuning.fuse) continue
     detonated = true; grenade.finished = true
     Object.assign(ability,{ flying:false,origin:[...grenade.position],activeUntil:time+tuning.duration,detonatedAt:time,result:0 })
     if (grenade.id==='flashbang') {
-      const duration = flashDuration(grenade.position,pose,ARENA_SOLIDS)
+      const duration = flashDuration(grenade.position,pose,TRAINING_SOLIDS)
       if (duration>0) { patch.flashStarted = time; patch.flashUntil = Math.max(s.flashUntil,time+duration); ability.result++ }
     }
     if (grenade.id==='smoke') continue
-    TARGETS.forEach(([x,y,z],index) => {
+    targets.forEach((target,index) => {
+      if(TRAINING_TARGETS[index].kind!=='robot') return
+      const [x,y,z]=targetPosition(index,target)
       if (targets[index].hp<=0) return
       if (grenade.id==='flashbang') {
-        const duration = flashDuration(grenade.position,{ x,y,z,yaw:Math.PI,pitch:0 },ARENA_SOLIDS)
+        const duration = flashDuration(grenade.position,{ x,y,z,yaw:targetYaw(index,target,s.training,[pose.x,pose.y,pose.z]),pitch:0 },TRAINING_SOLIDS)
         if (duration>0) { targets[index].flashUntil = time+duration; ability.result++ }
       }
-      if (grenade.id==='stun' && Math.hypot(x-grenade.position[0],y-grenade.position[1],z-grenade.position[2])<=tuning.radius && !blocked(grenade.position,[x,y,z],ARENA_SOLIDS)) {
+      if (grenade.id==='stun' && Math.hypot(x-grenade.position[0],y-grenade.position[1],z-grenade.position[2])<=tuning.radius && !blocked(grenade.position,[x,y,z],TRAINING_SOLIDS)) {
         targets[index].rootedUntil = time+tuning.duration; ability.result++
       }
     })

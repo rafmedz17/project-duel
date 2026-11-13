@@ -7,6 +7,8 @@ import { weaponSlots } from '../../../../shared/loadout.js'
 import ScannerMarkers from './ScannerMarkers.jsx'
 import CombatFeedback from './CombatFeedback.jsx'
 import KillBadge from './KillBadge.jsx'
+import { trainingNoReload } from '../training/options.js'
+import CourseHud from '../training/CourseHud.jsx'
 
 export default function Hud() {
   const s = useGame()
@@ -20,6 +22,7 @@ export default function Hud() {
     <div className="hud-top"><span className="eyebrow">● SIMULATION ACTIVE</span><div className="location">TRAINING FACILITY<small>SECTOR 01</small></div><span className="telemetry">{s.settings.fps && `${s.fps} FPS · `}{Math.floor(s.time/60).toString().padStart(2,'0')}:{Math.floor(s.time%60).toString().padStart(2,'0')}</span></div>
     <div className="score"><span className="eyebrow">TRAINING SCORE</span><strong>{String(s.score).padStart(4,'0')}</strong><small>{s.hits} RANGED HITS · {s.shots ? Math.round(s.hits/s.shots*100) : 0}% ACCURACY<br />PISTOL {s.weaponStats.pistol.hits}/{s.weaponStats.pistol.shots} · RIFLE {s.weaponStats.rifle.hits}/{s.weaponStats.rifle.shots}<br />SHOTGUN {s.weaponStats.shotgun.hits}/{s.weaponStats.shotgun.shots} · CHARACTER TRAINING<br />{s.meleeHits} BLADE HITS / {s.swings} SWINGS</small></div>
     <ScannerMarkers />
+    <CourseHud />
     <AbilityHud />
     {s.time<s.abilities.scanner.activeUntil && <div className="scan-status">SCANNER ONLINE · TARGET REVEAL</div>}
      <TacticalStatus state={s} />
@@ -35,7 +38,7 @@ export default function Hud() {
           {weaponSlots(s.loadout).map((id,index) => <span key={id} className={s.weapon === id ? 'selected' : ''}>{index+1} {WEAPONS[id].shortName}</span>)}
         </div>
         <span className="eyebrow">{weaponSlots(s.loadout).indexOf(s.weapon)+1} / {weapon.name}</span>
-        {melee ? <><strong>{status}</strong><div className="blade-cooldown"><i style={{ width:`${Math.max(0,1-remaining/weapon.cooldown)*100}%` }} /></div><span>{weapon.range} M REACH · {weapon.damage} DAMAGE · NO AMMO</span></> : <><strong>{String(ammo).padStart(2,'0')}<small> / {weapon.magazine}</small></strong><span>{equipping ? 'EQUIPPING…' : s.reloading ? 'RELOADING ENERGY CELL…' : ammo === 0 ? 'AUTO RELOAD PENDING…' : weapon.fireMode === 'auto' ? 'FULL AUTO · HOLD LEFT CLICK' : 'SEMI AUTO · UNLIMITED RESERVE'}</span></>}
+        {melee ? <><strong>{status}</strong><div className="blade-cooldown"><i style={{ width:`${Math.max(0,1-remaining/weapon.cooldown)*100}%` }} /></div><span>{weapon.range} M REACH · {weapon.damage} DAMAGE · NO AMMO</span></> : <><strong>{trainingNoReload(s,s.time) ? '?' : String(ammo).padStart(2,'0')}<small> / {weapon.magazine}</small></strong><span>{equipping ? 'EQUIPPING…' : trainingNoReload(s,s.time) ? 'UNLIMITED AMMO / NO RELOAD' : s.reloading ? 'RELOADING ENERGY CELL…' : ammo === 0 ? 'AUTO RELOAD PENDING…' : weapon.fireMode === 'auto' ? 'FULL AUTO · HOLD LEFT CLICK' : 'SEMI AUTO · UNLIMITED RESERVE'}</span></>}
       </div>
     </div>
   </div>

@@ -22,7 +22,7 @@ export default function RobotModel({ targetId, characterId = 'vex', color, flash
   })
   return <group ref={root}>
     {ROBOT_PARTS.map(part => <group key={part.id} position={part.position} ref={part.id==='head' ? headRef : undefined}>
-      <mesh name={`robot-${part.id}`} renderOrder={revealed ? 100 : 0} userData={{ blocksShot:true,targetId,hitRegion:part.region,characterArmor:true }}>
+      <mesh name={`robot-${part.id}`} renderOrder={revealed ? 100 : 0} userData={{ blocksShot:!down,targetId,hitRegion:part.region,characterArmor:true }}>
         <boxGeometry args={part.size} />
         <meshStandardMaterial depthTest={!revealed} color={down ? '#243044' : flash ? '#ffffff' : revealed ? accent : part.id==='head' ? character.secondary : character.armor} emissive={revealed ? accent : '#000000'} emissiveIntensity={revealed ? 0.8 : 0} metalness={0.65} roughness={0.4} />
       </mesh>

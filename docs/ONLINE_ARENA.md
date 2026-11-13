@@ -55,7 +55,7 @@ The backend cases cover room lifecycle, capacity, ready/countdown/re-entry, move
 
 E/F/C/X activate Dash, Shield, the equipped unique skill and character ultimate. See [characters and loadouts](CHARACTERS_AND_LOADOUT.md) for full rules. The server derives grenade origin, collision, fuse, targets and effect deadlines. Cooldown spam, extra equipment, unavailable weapons, replayed sequences, old rounds and dead/disconnected senders are rejected.
 
-Every ultimate lasts five seconds. Flashbang can blind the thrower and enemies but never teammates; stun roots only enemies and leaves aiming/firing available. Smoke reveals enemy silhouettes to its thrower through the cloud, with solid cover respected. Global Scan reveals enemies anywhere in the arena through cover. AEGIS bonus shield and general Shield have separate capacities and expirations.
+Every ultimate lasts ten seconds. Flashbang can blind the thrower and enemies but never teammates; stun roots only enemies and leaves aiming/firing available. Smoke reveals enemy silhouettes to its thrower through the cloud, with solid cover respected. Global Scan reveals enemies anywhere in the arena through cover. AEGIS bonus shield and general Shield have separate capacities and expirations.
 
 Active effects stop on death; cooldown deadlines persist across Free Play respawns. New rounds and re-entry reset them. Connection interruptions freeze the shared clock. The HUD displays active effect countdowns, shield charge, flash and root feedback. Visible grenades, clouds, barriers, character auras and enemy silhouettes follow server snapshots.
 

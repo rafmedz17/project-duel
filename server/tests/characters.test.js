@@ -36,25 +36,45 @@ test('all character/unique combinations produce exactly three weapons and four a
   assert.equal(validateLoadout(legacy),null)
   assert.deepEqual(migrateLoadout(legacy),validateLoadout({ character:'vex',primary:'shotgun',unique:'scanner',startingWeapon:'shotgun' }))
 })
-for(const character of Object.keys(CHARACTERS)) test(`${character} ultimate lasts five seconds, has a server cooldown and cannot be client extended`,t => {
+for(const character of Object.keys(CHARACTERS)) test(`${character} ultimate lasts ten seconds, has a server cooldown and cannot be client extended`,t => {
   const { a,ability,combat,send }=setup(t,character)
   assert.equal(send('a','ability',{ ability:'ultimate',duration:999 }),false)
   assert.equal(ability('ultimate'),true)
-  assert.equal(a.abilities.get('ultimate').activeUntil-a.abilities.get('ultimate').startedAt,5)
+  assert.equal(a.abilities.get('ultimate').activeUntil-a.abilities.get('ultimate').startedAt,10)
   assert.equal(ability('ultimate'),false)
-  assert.equal(ultimateModifiers(a,4.999).active,true)
-  assert.equal(ultimateModifiers(a,5).active,false)
+  assert.equal(ultimateModifiers(a,9.999).active,true)
+  assert.equal(ultimateModifiers(a,10).active,false)
   combat.time=45; assert.equal(ability('ultimate'),true)
 })
 test('VEX can dash repeatedly during overdrive but stuns and normal cooldowns still limit movement',t => {
   const { a,ability,advance,combat }=setup(t)
-  ability('dash'); advance(0.2)
+  ability('dash'); advance(0.4)
   assert.equal(ability('dash'),false)
   ability('ultimate'); assert.equal(ability('dash'),true)
-  advance(0.2); assert.equal(ability('dash'),true)
+  advance(0.4); assert.equal(ability('dash'),true)
   a.rootedUntil=combat.time+2; assert.equal(ability('dash'),false)
-  a.rootedUntil=0; combat.time=5.21
+  a.rootedUntil=0; combat.time=10.41
   assert.equal(ultimateModifiers(a,combat.time).active,false)
+})
+
+test('VEX overdrive boosts actual walking and sprinting by 50 percent and expires on the combat clock',t=> {
+  const distance=(boost,sprint)=> {
+    const players=new Map([['a',{ slot:0,connected:true }]])
+    const sim=new ArenaSimulation(players),combat=new ArenaCombat(players,sim,1),player=players.get('a')
+    t.after(()=>sim.free())
+    for(let i=0;i<30;i++) { combat.step();sim.step() }
+    if(boost) assert.equal(combat.receive('a',{ action:'ability',ability:'ultimate',epoch:1,sequence:0 }),true)
+    const start=player.z
+    for(let i=0;i<60;i++) {
+      sim.receive('a',{ sequence:i,x:0,z:-1,yaw:0,pitch:0,sprint,jump:false,active:true })
+      combat.step();sim.step()
+    }
+    const travelled=start-player.z
+    combat.time=player.abilities.get('ultimate').activeUntil;sim.step()
+    assert.equal(sim.players.get('a').movement,1)
+    return travelled
+  }
+  for(const sprint of [false,true]) assert.ok(Math.abs(distance(true,sprint)/distance(false,sprint)-1.5)<0.01)
 })
 test('AEGIS absorbs bonus shield before general shield, spills damage and expires without healing',t => {
   const { a,ability,combat }=setup(t,'aegis')
@@ -63,16 +83,16 @@ test('AEGIS absorbs bonus shield before general shield, spills damage and expire
   combat.applyDamage('b','a',210)
   assert.equal(a.hp,100); assert.equal(a.ultimateShield,0); assert.equal(a.shieldCharge,40)
   combat.applyDamage('b','a',60); assert.equal(a.hp,80)
-  combat.time=45; ability('ultimate'); combat.time=50; combat.step()
+  combat.time=45; ability('ultimate'); combat.time=55; combat.step()
   assert.equal(a.ultimateShield,0); assert.equal(a.hp,80)
 })
-test('ION refills and cancels reloads, consumes no ammunition for five seconds and resumes normal fire afterward',t => {
+test('ION refills and cancels reloads, consumes no ammunition for ten seconds and resumes normal fire afterward',t => {
   const { a,ability,send,combat }=setup(t,'ion')
   a.pistolAmmo=0; assert.equal(send('a','reload'),true)
   ability('ultimate'); assert.equal(a.reloading,false); assert.equal(a.pistolAmmo,15)
   for(let i=0;i<12;i++) { combat.time=i*0.23; assert.equal(send('a','fire',{ yaw:Math.PI/2,pitch:0 }),true) }
   assert.equal(a.pistolAmmo,15); assert.equal(send('a','reload'),false)
-  combat.time=5; assert.equal(send('a','fire',{ yaw:Math.PI/2,pitch:0 }),true)
+  combat.time=10; assert.equal(send('a','fire',{ yaw:Math.PI/2,pitch:0 }),true)
   assert.equal(a.pistolAmmo,14)
 })
 test('RAZE boosts server damage and attack speed by 50 percent and restores both after expiry',t => {
@@ -83,8 +103,8 @@ test('RAZE boosts server damage and attack speed by 50 percent and restores both
   assert.equal(b.hp,58); assert.ok(Math.abs(a.attackReadyAt-0.2/1.5)<1e-9)
   combat.time=0.1; assert.equal(send('a','fire',{ yaw:0,pitch }),false)
   combat.time=0.15; assert.equal(send('a','fire',{ yaw:0,pitch }),true); assert.equal(b.hp,16)
-  combat.time=5; b.hp=100; send('a','fire',{ yaw:0,pitch }); assert.equal(b.hp,72)
-  assert.equal(a.attackReadyAt,5.2)
+  combat.time=10; b.hp=100; send('a','fire',{ yaw:0,pitch }); assert.equal(b.hp,72)
+  assert.equal(a.attackReadyAt,10.2)
 })
 test('flashbang blinds self and enemies, never a teammate, and cannot accept claimed targets',t => {
   const { a,b,c,ability,detonate,send }=setup(t)

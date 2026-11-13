@@ -1,3 +1,4 @@
+import { ultimateModifiers } from '../../../shared/characters.js'
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Euler } from 'three'
@@ -154,7 +155,7 @@ function LocalCamera({ id }) {
       seenShot.current=self.shot
     }
     const engine = prediction.current
-    if (engine) engine.entry.movement=movementMultiplier(self?.weapon)
+    if (engine) engine.entry.movement=movementMultiplier(self?.weapon)*ultimateModifiers(self || {},lobby.get().room?.time || 0).movement
     const predicting = !dead && performance.now()-pose.time<ONLINE.inputTimeoutMs+100 && document.pointerLockElement===gl.domElement && lobby.get().status==='connected' && canPlayArena(lobby.get().room)
     if (engine) {
       if (reset || !predicting) {

@@ -46,6 +46,7 @@ export class ArenaCombat {
   }
   constructor(players,simulation,epoch,{ respawn = true,round = 0 } = {}) {
     this.players = players; this.simulation = simulation; this.epoch = epoch; this.time = 0
+    simulation.combatTime=()=>this.time
     this.allowRespawn = respawn; this.round = round
     this.sequences = new Map()
     this.grenades = new Map()

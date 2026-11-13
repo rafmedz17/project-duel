@@ -4,7 +4,9 @@ import { CapsuleCollider, RigidBody, useBeforePhysicsStep, useRapier } from '@re
 import { Euler } from 'three'
 import { movementMultiplier,WEAPONS } from '../../../shared/weapons.js'
 import { ONLINE } from '../../../shared/arena.js'
-import { PLAYER, HAZARD, ABILITIES } from './config.js'
+import { PLAYER, ABILITIES } from './config.js'
+import { TRAINING_SPAWN } from './training/config.js'
+import { ultimateModifiers } from '../../../shared/characters.js'
 import { game } from './store.js'
 import { runtime } from './runtime.js'
 import WeaponView from './weapons/WeaponView.jsx'
@@ -18,7 +20,7 @@ export default function Player() {
   const { camera, gl, scene } = useThree()
   const { world } = useRapier()
   const controller = useRef()
-  const accumulated = useRef(0), hazard = useRef(0), frames = useRef({ count: 0, time: 0 })
+  const accumulated = useRef(0), frames = useRef({ count: 0, time: 0 })
   useCombatInput(camera,gl.domElement,scene,look)
   useAbilityInput(body,keys,look,gl.domElement)
 
@@ -28,7 +30,8 @@ export default function Player() {
     character.enableSnapToGround(0.15)
     character.setMaxSlopeClimbAngle(Math.PI/4)
     controller.current = character
-    runtime.peakHeight = PLAYER.spawn[1]
+    runtime.peakHeight = TRAINING_SPAWN[1]
+    runtime.position=[...TRAINING_SPAWN]
     game.set({ ready: true })
     return () => { world.removeCharacterController(character); controller.current = null; game.set({ ready: false }) }
   }, [world])
@@ -39,6 +42,7 @@ export default function Player() {
       if (['Space','KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight','KeyR'].includes(event.code)) event.preventDefault()
       keys.current.add(event.code)
       if (event.code === 'Space' && !event.repeat) motion.current.jump = true
+      if (event.code === 'KeyG' && !event.repeat) { event.preventDefault();game.toggleCourse() }
     }
     const up = event => keys.current.delete(event.code)
     const move = event => {
@@ -75,12 +79,15 @@ export default function Player() {
     if (game.now()<game.get().rootedUntil) { x=0; z=0; m.x=0; m.z=0; m.jump=false; m.dashRemaining=0 }
     const length = Math.hypot(x,z) || 1
     x /= length; z /= length
-    const speed = (pressed.has('ShiftLeft') || pressed.has('ShiftRight') ? PLAYER.sprint : PLAYER.speed)*movementMultiplier(game.get().weapon)
+    const speed = (pressed.has('ShiftLeft') || pressed.has('ShiftRight') ? PLAYER.sprint : PLAYER.speed)*movementMultiplier(game.get().weapon)*ultimateModifiers(game.get(),game.now()).movement
     const yaw = look.current.yaw, smooth = 1-Math.exp(-14*dt)
     m.x += ((x*Math.cos(yaw)+z*Math.sin(yaw))*speed-m.x)*smooth
     m.z += ((z*Math.cos(yaw)-x*Math.sin(yaw))*speed-m.z)*smooth
     const dash = game.get().abilities.dash
-    if (dash.uses !== m.dashUses) { m.dashUses = dash.uses; m.dashRemaining = ABILITIES.dash.duration }
+    if (dash.uses !== m.dashUses) {
+      m.dashRemaining=dash.uses>m.dashUses ? ABILITIES.dash.duration : 0
+      m.dashUses=dash.uses
+    }
     // Consume dash time in fixed physics steps, including a fractional final
     // step, so slow render frames cannot shorten or lengthen its distance.
     const dashDt = Math.min(dt,m.dashRemaining)
@@ -97,18 +104,13 @@ export default function Player() {
     runtime.grounded = c.computedGrounded()
     if (Math.abs(delta.y) < Math.abs(m.y*dt)*0.5 && m.y > 0) m.y = 0
     body.current.setNextKinematicTranslation({ x:p.x+delta.x,y:p.y+delta.y,z:p.z+delta.z })
-    if (p.y < -5) { game.reset({ opponentEnabled:game.get().opponent.enabled }); return }
-    hazard.current += dt
-    if (hazard.current >= HAZARD.interval) {
-      hazard.current = 0
-      if (HAZARD.centers.some((x,index) => Math.abs(p.x-x)<HAZARD.halfSize && game.now()>=game.get().hazards[index].disabledUntil) && Math.abs(p.z-HAZARD.z)<HAZARD.halfSize && p.y<1.4) game.damage(HAZARD.damage)
-    }
+    if (p.y < -5) { game.reset({ loadout:game.get().loadout,bank:game.get().trainingBank }); return }
   })
 
   useFrame((_, delta) => {
     if (!body.current) return
     const state = game.get(), p = body.current.translation()
-    if (state.shot>seenShot.current && state.mode==='playing') {
+    if (state.shot>seenShot.current && state.lastShot>=0 && state.mode==='playing') {
       const weapon=WEAPONS[state.weapon],count=Math.min(3,state.shot-seenShot.current)
       look.current.pitch=Math.min(1.48,look.current.pitch+weapon.recoil*count)
       look.current.yaw+=Math.sin(state.shot*2.4)*weapon.recoil*0.3
@@ -129,7 +131,7 @@ export default function Player() {
   },-2)
 
   return <>
-    <RigidBody ref={body} userData={{ entity:'player' }} type="kinematicPosition" colliders={false} position={PLAYER.spawn} enabledRotations={[false,false,false]}><CapsuleCollider ref={collider} args={[ONLINE.capsuleHalfHeight,ONLINE.capsuleRadius]} /></RigidBody>
+    <RigidBody ref={body} userData={{ entity:'player' }} type="kinematicPosition" colliders={false} position={TRAINING_SPAWN} enabledRotations={[false,false,false]}><CapsuleCollider ref={collider} args={[ONLINE.capsuleHalfHeight,ONLINE.capsuleRadius]} /></RigidBody>
     <WeaponView />
     <TacticalEffects />
   </>

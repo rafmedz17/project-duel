@@ -3,6 +3,7 @@ import { getMap } from '../../../shared/maps.js'
 import { ONLINE } from '../../../shared/arena.js'
 import { movementMultiplier } from '../../../shared/weapons.js'
 import { ABILITIES } from '../../../shared/abilities.js'
+import { ultimateModifiers } from '../../../shared/characters.js'
 import { createMovementWorld, createCharacter, stepCharacter } from '../../../shared/movement.js'
 
 await RAPIER.init()
@@ -106,7 +107,7 @@ export class ArenaSimulation {
       if (player.hp===0) continue
       let input = entry.input
       if (input && now-input.receivedAt > ONLINE.inputTimeoutMs) { this.stop(id); input = null }
-      entry.movement=movementMultiplier(player.weapon)
+      entry.movement=movementMultiplier(player.weapon)*ultimateModifiers(player,this.combatTime?.() ?? 0).movement
       const active = Boolean(input?.active && player.connected)
       const yaw = input?.yaw ?? player.yaw
       if (player.rooted) { entry.vx = 0; entry.vz = 0; entry.dash = null; entry.jumpPending = false }

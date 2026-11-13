@@ -20,7 +20,7 @@ test('character armory shows four distinct operatives, the full arsenal and fits
   for(const character of ['VEX','AEGIS','ION','RAZE']) {
     await dialog.getByRole('button',{ name:`Select ${character}` }).click()
     await expect(dialog.getByRole('button',{ name:`Select ${character}` })).toHaveAttribute('aria-pressed','true')
-    await expect(dialog.locator('.ultimate-dossier')).toContainText('5 SECONDS')
+    await expect(dialog.locator('.ultimate-dossier')).toContainText('10 SECONDS')
   }
   await dialog.evaluate(el=>{ el.scrollTop=0 })
   await dialog.screenshot({ path:'character-armory-preview.png' })
@@ -31,7 +31,7 @@ test('character armory shows four distinct operatives, the full arsenal and fits
   expect(button.x).toBeGreaterThanOrEqual(0); expect(button.x+button.width).toBeLessThanOrEqual(640)
   await dialog.screenshot({ path:'character-armory-small-preview.png' })
 })
-for(const character of ['vex','aegis','ion','raze']) test(`${character} has a visible five-second ultimate and exactly four equipped skills`,async ({ page }) => {
+for(const character of ['vex','aegis','ion','raze']) test(`${character} has a visible ten-second ultimate and exactly four equipped skills`,async ({ page }) => {
   const errors=[]; page.on('pageerror',e=>errors.push(e.message))
   await start(page,{ character,unique:'stun' })
   await expect(page.locator('.ability-bar .ability')).toHaveCount(4)
@@ -39,10 +39,10 @@ for(const character of ['vex','aegis','ion','raze']) test(`${character} has a vi
   await expect(page.getByTestId('ability-ultimate')).toContainText('ACTIVE')
   await expect(page.locator('.ultimate-notice')).toBeVisible()
   const s=await state(page)
-  expect(s.abilities.ultimate.activeUntil-s.abilities.ultimate.startedAt).toBe(5)
+  expect(s.abilities.ultimate.activeUntil-s.abilities.ultimate.startedAt).toBe(10)
   if(character==='aegis') await expect(page.getByTestId('ultimate-shield')).toContainText('+200')
   if(character==='vex') {
-    await page.keyboard.press('KeyE'); await page.waitForTimeout(250); await page.keyboard.press('KeyE')
+    await page.keyboard.press('KeyE'); await page.waitForTimeout(450); await page.keyboard.press('KeyE')
     expect((await state(page)).abilities.dash.uses).toBe(2)
   }
   if(character==='ion') {
@@ -50,7 +50,7 @@ for(const character of ['vex','aegis','ion','raze']) test(`${character} has a vi
     expect((await state(page)).magazines.rifle).toBe(30)
   }
   await page.screenshot({ path:`${character}-ultimate-preview.png` })
-  await expect(page.locator('.ultimate-notice')).toHaveCount(0,{ timeout:7000 })
+  await expect(page.locator('.ultimate-notice')).toHaveCount(0,{ timeout:12000 })
   await expect(page.getByTestId('ability-ultimate')).not.toContainText('READY')
   expect(errors).toEqual([])
 })

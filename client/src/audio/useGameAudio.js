@@ -6,6 +6,7 @@ import { arenaView,latestPose } from '../multiplayer/poses.js'
 import { PLAYER } from '../../../shared/arena.js'
 import { audio } from './synth.js'
 import { combatCues,matchCues,Footsteps } from './cues.js'
+import { targetPosition } from '../game/training/config.js'
 
 export function useGameAudio() {
   useEffect(() => {
@@ -28,7 +29,10 @@ export function useGameAudio() {
             if (room.roundId===previousLobby.room?.roundId) for (const cue of combatCues(previous?.combat,player.combat,self)) audio.play(cue,self ? {} : { position:[pose.x,pose.y,pose.z],gain:0.85 })
           }
           for (const cue of matchCues(previousLobby.room,room,online.sessionId)) audio.play(cue)
-        } else for (const cue of combatCues(previousGame,local)) audio.play(cue)
+        } else {
+          for (const cue of combatCues(previousGame,local)) audio.play(cue)
+          local.targets.forEach((target,index)=> { if(target.shots>(previousGame.targets[index]?.shots || 0)) audio.play('rifle',{ position:targetPosition(index,target),gain:0.35 }) })
+        }
       }
       scope=nextScope; wasActive=active; previousGame=local; previousLobby=online
     }

@@ -1,31 +1,9 @@
-import { memo, useRef } from 'react'
-import { MathUtils, Quaternion } from 'three'
-import { RigidBody, CuboidCollider, useBeforePhysicsStep } from '@react-three/rapier'
-import { TARGETS, HAZARD } from './config.js'
-import { game,useGame } from './store.js'
-import { runtime } from './runtime.js'
-import { CHARACTER_IDS } from '../../../shared/characters.js'
-import { throughSmoke,blocked } from '../../../shared/tactical.js'
-import RobotModel from './characters/RobotModel.jsx'
-import { ROBOT_PARTS } from '../../../shared/robot.js'
+import { memo } from 'react'
+import { useGame } from './store.js'
 import { getMap } from '../../../shared/maps.js'
+import Box from './WorldBox.jsx'
+import TrainingGrounds from './training/TrainingGrounds.jsx'
 
-function Box({ position, size, color = '#263849', glow = false, solid = false }) {
-  const mesh = <mesh position={position} userData={{ blocksShot: solid,coverSolid:solid ? { position,size } : undefined }}><boxGeometry args={size} /><meshStandardMaterial color={color} roughness={0.65} metalness={0.45} emissive={glow ? color : '#000000'} emissiveIntensity={glow ? 2 : 0} /></mesh>
-  return solid ? <RigidBody type="fixed" colliders={false}><CuboidCollider args={size.map(n => n / 2)} position={position} />{mesh}</RigidBody> : mesh
-}
-function TargetBody({ down, height, position, children }) {
-  const body = useRef(), angle = useRef(0), rotation = useRef(new Quaternion())
-  useBeforePhysicsStep(() => {
-    if (!body.current) return
-    const p = body.current.translation()
-    angle.current = MathUtils.damp(angle.current, down ? -1.25 : 0, 12, 1/60)
-    rotation.current.set(Math.sin(angle.current/2),0,0,Math.cos(angle.current/2))
-    body.current.setNextKinematicRotation(rotation.current)
-    body.current.setNextKinematicTranslation({ x:MathUtils.damp(p.x,position[0],18,1/60),y:MathUtils.damp(p.y,down ? 0.5 : height,12,1/60),z:MathUtils.damp(p.z,position[2],18,1/60) })
-  })
-  return <RigidBody ref={body} type="kinematicPosition" colliders={false} position={position}>{ROBOT_PARTS.map(part => <CuboidCollider key={part.id} args={part.size.map(n => n/2)} position={[-part.position[0],part.position[1],-part.position[2]]} />)}{children}</RigidBody>
-}
 const ArenaLayout = memo(function ArenaLayout({ training,mapId,quality }) {
   const map = getMap(mapId)
   return <>
@@ -56,35 +34,7 @@ const ArenaLayout = memo(function ArenaLayout({ training,mapId,quality }) {
   </>
 })
 
-function TrainingTargets() {
-  const { targets,time,hazards,generation } = useGame()
-  return <>
-    {HAZARD.centers.map((x,index) => {
-      const disabled = time<hazards[index].disabledUntil
-      return <group key={`${index}-${disabled}`}><Box position={[x,0.035,HAZARD.z]} size={[HAZARD.halfSize*2,0.04,HAZARD.halfSize*2]} color={disabled ? '#123d49' : '#8b4d12'} /><gridHelper position={[x,0.065,HAZARD.z]} args={[HAZARD.halfSize*2,6,disabled ? '#55dbe1' : '#ffb52b',disabled ? '#55dbe1' : '#ffb52b']} /></group>
-    })}
-    {TARGETS.map(([x,y,z], id) => {
-      const target = targets[id]
-      const down = target.hp === 0
-      const flash = time - target.hit < 0.13
-      const disabled = time<target.disabledUntil
-      return <group key={`${generation}-${id}`} position={[0,0,0]}>
-        <TargetBody down={down} height={y} position={[x+(target.offsetX || 0),y,z+(target.offsetZ || 0)]}>
-          <group rotation={[0,Math.PI,0]}><RobotModel targetId={id} characterId={CHARACTER_IDS[id%4]} down={down} flash={flash || time<target.flashUntil} color={disabled ? '#af8dff' : undefined} reveal={() => {
-            const s = game.get(), now = game.now(), origin = runtime.position.map((v,i) => v+(i===1 ? 0.65 : 0)), smoke = s.abilities.smoke
-            return now<s.abilities.scanner.activeUntil || (now<smoke.activeUntil && throughSmoke(origin,[x,y,z],[{ origin:smoke.origin.map((v,i)=>v+(i===1 ? 1 : 0)),radius:4 }]) && !blocked(origin,[x,y,z],getMap('facility').solids))
-          }} /></group>
-          {time<target.rootedUntil && <mesh position={[0,-y+0.12,0]} rotation={[-Math.PI/2,0,0]}><ringGeometry args={[0.48,0.65,6]}/><meshBasicMaterial color="#b39aff"/></mesh>}
-          <Box position={[0,1.06,0]} size={[1.2,0.08,0.1]} color="#283748" />
-          {target.hp > 0 && <Box position={[-0.6+(target.hp/100)*0.6,1.06,0.06]} size={[1.2*target.hp/100,0.06,0.04]} color="#00d9ff" glow />}
-        </TargetBody>
-      </group>
-    })}
-  </>
+export default function Arena({ training=true,mapId='facility' }) {
+  const quality=useGame(s=>s.settings.quality)
+  return training ? <TrainingGrounds quality={quality}/> : <ArenaLayout training={false} mapId={mapId} quality={quality}/>
 }
-
-export default function Arena({ training = true,mapId = 'facility' }) {
-  const quality = useGame(s => s.settings.quality)
-  return <><ArenaLayout training={training} mapId={mapId} quality={quality} />{training && <TrainingTargets />}</>
-}
-

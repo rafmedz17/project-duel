@@ -53,19 +53,22 @@ export class Prediction {
       ? pose.inputSequence<(this.commands.keys().next().value ?? -1) ? this.frames : []
       : this.frames.filter(frame => frame.index>=start+pose.inputSteps)
     this.frames = replay.slice(-60)
-    for (const frame of this.frames) this.simulate(frame.input,frame.jump)
+    for (const frame of this.frames) this.simulate(frame.input,frame.jump,frame.movement)
     this.pose = pose
     const after = this.entry.body.translation()
     return [before.x-after.x,before.y-after.y,before.z-after.z]
   }
-  simulate(input,jump) {
+  simulate(input,jump,movement=this.entry.movement) {
     if (this.rooted) { input = input ? { ...input,x:0,z:0 } : null; jump = false; this.entry.vx = 0; this.entry.vz = 0; this.entry.dash = null }
     if (!input?.active) { this.entry.vx = 0; this.entry.vz = 0; this.entry.dash = null }
+    const current=this.entry.movement
+    this.entry.movement=movement
     stepCharacter(this.entry,input,jump)
+    this.entry.movement=current
     this.world.step()
   }
   step() {
-    const frame = { index:this.index++,input:this.input,jump:this.pendingJump }
+    const frame = { index:this.index++,input:this.input,jump:this.pendingJump,movement:this.entry.movement }
     this.pendingJump = false
     this.frames.push(frame)
     if (this.frames.length>120) this.frames.shift()

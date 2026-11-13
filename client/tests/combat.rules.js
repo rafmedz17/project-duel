@@ -3,12 +3,13 @@ import assert from 'node:assert/strict'
 import { game } from '../src/game/store.js'
 import { WEAPONS,WEAPON_IDS,freshMagazines,equipTime } from '../../shared/weapons.js'
 import { validateLoadout } from '../../shared/loadout.js'
-import { PISTOL,PLAYER,TARGETS,TARGET } from '../src/game/config.js'
+import { PISTOL,PLAYER,TARGET } from '../src/game/config.js'
 import { BoxGeometry,Mesh,MeshBasicMaterial,PerspectiveCamera,Scene,Group } from 'three'
 import { ROBOT_PARTS,ROBOT_HEAD_Y } from '../../shared/robot.js'
 import { rayRobot,rayBox } from '../../shared/ballistics.js'
-import { ARENA_SOLIDS,ONLINE } from '../../shared/arena.js'
+import { ONLINE } from '../../shared/arena.js'
 import { createWeaponTracer } from '../src/game/weapons/traceWeapon.js'
+import { TRAINING_SOLIDS,TRAINING_TARGETS } from '../src/game/training/config.js'
 import { weaponAnimation } from '../src/game/weapons/animation.js'
 
 function start(id='pistol',character='vex',unique='flashbang') {
@@ -88,11 +89,11 @@ test('shotgun pellets apply falloff and all three shotgun profiles resolve one s
     start(id);game.attack([{ targetId:0,distance:w.range+1 }]);assert.equal(game.get().targets[0].hp,100)
   }
 })
-test('ION refills every selected magazine, cancels reload and expires after five seconds',()=> {
+test('ION refills every selected magazine, cancels reload and expires after ten seconds',()=> {
   start('volt','ion');game.attack();game.reload();assert.equal(game.get().reloading,true)
   game.activateAbility('ultimate');assert.equal(game.get().reloading,false);assert.equal(game.get().magazines.volt,24)
   game.tick(0.5);game.trigger(()=>[]);advance(0.15);assert.equal(game.get().magazines.volt,24)
-  game.tick(5);game.trigger(()=>[]);advance(0.15);assert.equal(game.get().magazines.volt,21)
+  game.tick(10);game.trigger(()=>[]);advance(0.15);assert.equal(game.get().magazines.volt,21)
 })
 test('RAZE boosts damage and cadence, AEGIS shields expire without healing, and universal abilities remain equipped',()=> {
   start('pistol','raze');game.activateAbility('ultimate');game.attack(0)
@@ -142,15 +143,15 @@ test('rendered robot boxes and authoritative hit volumes agree, including rotate
   }
 })
 
-test('robots match player capsule height and every practice hit region is exposed from the spawn floor',() => {
+test('robots match player capsule height and stationary range hit regions are exposed from its floor',() => {
   const bottom = Math.min(...ROBOT_PARTS.map(part => part.position[1]-part.size[1]/2))
   const top = Math.max(...ROBOT_PARTS.map(part => part.position[1]+part.size[1]/2))
   assert.ok(Math.abs(top-bottom-PLAYER.height)<1e-9)
   assert.ok(Math.abs(2*(ONLINE.capsuleHalfHeight+ONLINE.capsuleRadius)-PLAYER.height)<1e-9)
   const head = ROBOT_PARTS.find(part => part.id==='head')
   assert.ok(Math.abs(PLAYER.eye-head.position[1])<head.size[1]/2)
-  const origin = [PLAYER.spawn[0],PLAYER.height/2+0.02+PLAYER.eye,PLAYER.spawn[2]]
-  for (const [x,y,z] of TARGETS) {
+  const origin = [0,PLAYER.height/2+0.02+PLAYER.eye,-21]
+  for (const { position:[x,y,z] } of TRAINING_TARGETS.filter(target=>target.course==='static')) {
     assert.ok(Math.abs(y+bottom)<1e-9,'target feet rest on the floor')
     for (const id of ['head','torso','leg1','foot1']) {
       const part = ROBOT_PARTS.find(part => part.id===id)
@@ -159,7 +160,7 @@ test('robots match player capsule height and every practice hit region is expose
       const direction = offset.map(value => value/distance)
       const hit = rayRobot(origin,direction,{ x,y,z,yaw:Math.PI,pitch:0 })
       assert.equal(hit?.region,part.region,`${x}: ${id}`)
-      for (const solid of ARENA_SOLIDS) {
+      for (const solid of TRAINING_SOLIDS) {
         const blocked = rayBox(origin,direction,solid.position,solid.size)
         assert.ok(blocked===null || blocked>hit.distance,`${x}: cover blocks ${id}`)
       }

@@ -1,18 +1,21 @@
 import { DEFAULT_LOADOUT, validateLoadout } from '../../../shared/loadout.js'
 import { useSyncExternalStore } from 'react'
-import { WEAPONS, TARGET, TARGETS, HAZARD, ABILITIES, OPPONENT } from './config.js'
+import { WEAPONS, TARGETS, HAZARD, ABILITIES, OPPONENT } from './config.js'
 import { damageTargets, pelletDamage } from './combatRules.js'
 import { freshOpponent, damageOpponent } from './opponents/opponentRules.js'
 import { audioSettings,DEFAULT_AUDIO } from '../audio/settings.js'
 import { freshAbility } from '../../../shared/abilities.js'
 import { equipTime,isMelee,shotOffsets } from '../../../shared/weapons.js'
 import { rayBox } from '../../../shared/ballistics.js'
-import { ARENA_SOLIDS } from '../../../shared/arena.js'
+import { TRAINING_SOLIDS,TRAINING_TARGETS,targetPosition } from './training/config.js'
+import { freshTarget,freshTraining,targetEnabled,toggleCourse,recordCourseShot,stepCourses } from './training/rules.js'
+import { makeLoadoutBank,validateLoadoutBank } from '../../../shared/loadoutBank.js'
 import { ultimateModifiers } from '../../../shared/characters.js'
 import { resetTrainingAbilities,activateTraining,stepTrainingAbilities } from './abilities/trainingRules.js'
 import { runtime } from './runtime.js'
 import { awardKill } from '../../../shared/killCombo.js'
 import { queueShotTrail } from './effects/shotTrails.js'
+import { loadTrainingOptions,trainingNoReload } from './training/options.js'
 
 const defaults = { sensitivity: 1, fps: false, quality: 'Medium',...DEFAULT_AUDIO }
 function loadSettings() {
@@ -32,10 +35,10 @@ const fresh = () => ({
   shieldCharge: 0, ultimateShield:0,shieldHit: -10, empHits: 0,flashUntil:0,flashStarted:0,rootedUntil:0,
   abilities: Object.fromEntries(Object.keys(ABILITIES).map(id => [id,freshAbility()])),
   hazards: HAZARD.centers.map(() => ({ disabledUntil:0 })),
-  targets: TARGETS.map(() => ({ hp: TARGET.health, hit: -10, resetAt: 0, disabledUntil:0 })),
+  targets: TARGETS.map((_,index) => freshTarget(index)),training:freshTraining(),trainingBank:makeLoadoutBank(),
   opponent: freshOpponent(),
 })
-let state = { ...fresh(), mode: 'menu', ready: false, error: '', generation: 0, settings: loadSettings(), fps: 0 }
+let state = { ...fresh(),trainingOptions:loadTrainingOptions(),mode: 'menu', ready: false, error: '', generation: 0, settings: loadSettings(), fps: 0 }
 // Attack timing uses the frame clock; React receives time snapshots at 20 Hz.
 let clock = 0
 let pendingAttack=null
@@ -43,7 +46,7 @@ const opponentPosition = [...OPPONENT.spawn]
 const listeners = new Set()
 function canAttack() {
   return state.mode === 'playing' && !state.reloading && clock >= state.attackReadyAt &&
-    (WEAPONS[state.weapon].fireMode === 'melee' || ultimateModifiers(state,clock).noReload || state.magazines[state.weapon] > 0)
+    (WEAPONS[state.weapon].fireMode === 'melee' || trainingNoReload(state,clock) || state.magazines[state.weapon] > 0)
 }
 const clearReload = { reloading:false,reloadWeapon:null,reloadStart:0,reloadEnd:0,reloadReason:null }
 function beginReload(weapon, reason) {
@@ -57,8 +60,22 @@ export const game = {
   subscribe:fn => { listeners.add(fn); return () => listeners.delete(fn) },
   now: () => clock,
   set: (patch) => { state = { ...state, ...patch }; listeners.forEach(fn => fn()) },
-  reset: ({ opponentEnabled = false,loadout = DEFAULT_LOADOUT } = {}) => {
-    const equipped = validateLoadout(loadout) || DEFAULT_LOADOUT; clock = 0; pendingAttack=null; resetTrainingAbilities(); opponentPosition.splice(0,3,...OPPONENT.spawn); game.set({ ...fresh(),loadout:equipped,weapon:equipped.startingWeapon,opponent:freshOpponent(opponentEnabled),generation: state.generation + 1 }) },
+  reset: ({ opponentEnabled = false,loadout = DEFAULT_LOADOUT,bank } = {}) => {
+    const equipped = validateLoadout(loadout) || DEFAULT_LOADOUT; clock = 0; pendingAttack=null; resetTrainingAbilities(); opponentPosition.splice(0,3,...OPPONENT.spawn); game.set({ ...fresh(),loadout:equipped,trainingBank:validateLoadoutBank(bank) || makeLoadoutBank(equipped),weapon:equipped.startingWeapon,opponent:freshOpponent(opponentEnabled),generation: state.generation + 1 }) },
+  toggleCourse: () => {
+    if(state.mode!=='playing') return false
+    const patch=toggleCourse(state,clock,runtime.position)
+    if(!patch) return false
+    game.cancelAttack();game.set(patch);return true
+  },
+  applyTrainingBank: value => {
+    const bank=validateLoadoutBank(value)
+    if(!bank || state.mode!=='loadout' || state.hp<=0) return false
+    const loadout=bank.slots[bank.activeSlot],clean=fresh()
+    pendingAttack=null;resetTrainingAbilities()
+    game.set({ trainingBank:bank,loadout,weapon:loadout.primary,magazines:clean.magazines,abilities:clean.abilities,...clearReload,spinning:false,spinStarted:-10,windupEnd:0,aiming:false,shieldCharge:0,ultimateShield:0,flashUntil:0,rootedUntil:0,lastSwitch:clock,attackReadyAt:clock+equipTime(loadout.primary),lastShot:-10,lastSwing:-10 })
+    return true
+  },
   opponentPosition: () => [...opponentPosition],
   reportOpponentPosition: (position) => { opponentPosition.splice(0,3,...position) },
   setOpponentEnabled: (enabled) => {
@@ -85,6 +102,13 @@ export const game = {
     try { localStorage.setItem('duel-settings', JSON.stringify(settings)) } catch { /* Storage may be disabled. */ }
     game.set({ settings })
   },
+  setTrainingOptions: value => {
+    if(!value || typeof value.noReload!=='boolean') return false
+    const trainingOptions={ noReload:value.noReload }
+    try { localStorage.setItem('duel-training-options',JSON.stringify(trainingOptions)) } catch { /* Device storage may be disabled. */ }
+    game.set({ trainingOptions,...(value.noReload ? { ...clearReload,magazines:fresh().magazines } : {}) })
+    return true
+  },
   damage: (amount) => {
     if (state.mode !== 'playing' || !Number.isFinite(amount) || amount <= 0) return
     const bonus = ultimateModifiers(state,clock).effect==='shield' ? Math.min(state.ultimateShield,amount) : 0
@@ -105,7 +129,7 @@ export const game = {
   },
   reload: () => {
     const tuning = WEAPONS[state.weapon]
-    if (state.mode === 'playing' && !ultimateModifiers(state,clock).noReload && tuning.magazine && !state.reloading && state.magazines[state.weapon] < tuning.magazine && clock-state.lastSwitch >= equipTime(state.weapon)) {
+    if (state.mode === 'playing' && !trainingNoReload(state,clock) && tuning.magazine && !state.reloading && state.magazines[state.weapon] < tuning.magazine && clock-state.lastSwitch >= equipTime(state.weapon)) {
       game.cancelAttack()
       game.set({ ...beginReload(state.weapon,'manual'),time:clock })
     }
@@ -138,38 +162,42 @@ export const game = {
   releaseTrigger: () => { if (pendingAttack?.auto || state.spinning) game.cancelAttack() },
   canAttack,
   attack: (hitRecords,queued=false) => {
-    if (!queued ? !canAttack() : state.mode!=='playing' || state.reloading || (!isMelee(state.weapon) && !ultimateModifiers(state,clock).noReload && state.magazines[state.weapon]<=0)) return false
+    if (!queued ? !canAttack() : state.mode!=='playing' || state.reloading || (!isMelee(state.weapon) && !trainingNoReload(state,clock) && state.magazines[state.weapon]<=0)) return false
     const melee = WEAPONS[state.weapon].fireMode === 'melee', tuning = WEAPONS[state.weapon], modifiers = ultimateModifiers(state,clock)
     const patch = { attackReadyAt: queued && !tuning.spinUp ? state.attackReadyAt : clock + tuning.cooldown/modifiers.fireRate,windupEnd:0,time:clock,
       ...(melee ? { lastSwing:queued ? state.lastSwing : clock, swings: state.swings + 1 } : {
-        magazines: { ...state.magazines,[state.weapon]:state.magazines[state.weapon]-(modifiers.noReload ? 0 : 1) },
+        magazines: { ...state.magazines,[state.weapon]:state.magazines[state.weapon]-(trainingNoReload(state,clock) ? 0 : 1) },
         weaponStats: { ...state.weaponStats,[state.weapon]:{ ...state.weaponStats[state.weapon],shots:state.weaponStats[state.weapon].shots+1 } },
         lastShot: clock, shot: state.shot + 1, shots: state.shots + 1,
       }),
     }
     const records = Number.isInteger(hitRecords) ? [{ targetId:hitRecords,distance:0 }] : Array.isArray(hitRecords) ? hitRecords : hitRecords?.hits || []
     if(!melee && hitRecords?.trail) queueShotTrail({ ...hitRecords.trail,scope:`training:${state.generation}`,id:'self',shot:patch.shot,weapon:state.weapon })
-    if (!melee && patch.magazines[state.weapon] === 0) Object.assign(patch,beginReload(state.weapon,'auto'))
+    if (!melee && !trainingNoReload(state,clock) && patch.magazines[state.weapon] === 0) Object.assign(patch,beginReload(state.weapon,'auto'))
     const damage = new Map()
     let headshot = false
     records.slice(0,tuning.pellets || 1).forEach(({ targetId,distance,region = 'body',transmission = 1 }) => {
-      if ((Number.isInteger(targetId) && state.targets[targetId]) || targetId === OPPONENT.id) {
+      if ((Number.isInteger(targetId) && state.targets[targetId] && targetEnabled(targetId,state.training)) || targetId === OPPONENT.id) {
         const amount = Math.round(pelletDamage(tuning,distance,region)*modifiers.damage*Math.max(0,Math.min(1,transmission)))
         damage.set(targetId,(damage.get(targetId) || 0)+amount)
         if (amount>0 && region==='head' && (targetId===OPPONENT.id ? state.opponent.hp>0 : state.targets[targetId].hp>0)) headshot = true
       }
     })
     const result = damageTargets(state.targets,damage,clock)
+    const courseDefeats={ aim:0,combat:0 }
+    result.targets.forEach((target,index)=> { if(state.targets[index].hp>0 && target.hp===0 && Object.hasOwn(courseDefeats,TRAINING_TARGETS[index].course)) courseDefeats[TRAINING_TARGETS[index].course]++ })
+    result.defeated-=courseDefeats.aim
+    patch.training=recordCourseShot(state.training,tuning,courseDefeats,runtime.position)
     const enemy = damageOpponent(state.opponent,damage.get(OPPONENT.id) || 0,clock)
     Object.assign(patch,awardKill(state,clock,result.defeated+enemy.defeated,headshot))
     if (result.damage+enemy.damage > 0) {
       patch.targets = result.targets
       if (tuning.knockback) patch.targets=patch.targets.map((target,index)=> {
         if (!damage.has(index) || target.hp<=0) return target
-        const origin=[TARGETS[index][0]+(target.offsetX || 0),TARGETS[index][1],TARGETS[index][2]+(target.offsetZ || 0)]
+        const origin=targetPosition(index,target)
         const direction=[-Math.sin(runtime.yaw),0,-Math.cos(runtime.yaw)]
         let distance=tuning.knockback
-        for (const solid of ARENA_SOLIDS) { const hit=rayBox(origin,direction,solid.position,solid.size.map(n=>n+0.7)); if (hit!==null) distance=Math.min(distance,Math.max(0,hit-0.02)) }
+        for (const solid of TRAINING_SOLIDS) { const hit=rayBox(origin,direction,solid.position,solid.size.map(n=>n+0.7)); if (hit!==null) distance=Math.min(distance,Math.max(0,hit-0.02)) }
         return { ...target,offsetX:(target.offsetX || 0)+direction[0]*distance,offsetZ:(target.offsetZ || 0)+direction[2]*distance }
       })
       if (enemy.damage>0) patch.opponent = enemy.opponent
@@ -179,7 +207,8 @@ export const game = {
         patch.hits = state.hits + 1
         patch.weaponStats[state.weapon].hits += 1
       }
-      patch.score = state.score+result.defeated*100+enemy.defeated*OPPONENT.score
+      patch.score = state.score+(result.defeated+courseDefeats.aim)*100+enemy.defeated*OPPONENT.score
+      if(courseDefeats.aim) patch.targets=patch.targets.map((target,i)=>TRAINING_TARGETS[i].kind==='orb' && target.hp===0 ? { ...target,resetAt:clock+0.16 } : target)
     }
     game.set(patch)
     return true
@@ -198,18 +227,23 @@ export const game = {
     }
     const tactical = stepTrainingAbilities(state,clock,dt,{ x:runtime.position[0],y:runtime.position[1],z:runtime.position[2],yaw:runtime.yaw,pitch:runtime.pitch },publish)
     if (tactical) game.set(tactical)
+    const course=stepCourses(state,clock,dt,runtime.position)
+    state={ ...state,training:course.training,targets:course.targets }
+    for(const shot of course.shots) {
+      queueShotTrail({ ...shot,id:`bot-${state.training.combat.run}-${shot.index}`,scope:`training:${state.generation}`,weapon:'rifle' })
+      game.damage(shot.damage)
+    }
     if (!publish) return
     const time = clock
     const respawning = state.opponent.enabled && state.opponent.hp === 0 && time>=state.opponent.resetAt && time>=state.opponent.disabledUntil
     if (respawning) opponentPosition.splice(0,3,...OPPONENT.spawn)
     // An empty weapon whose reload was cancelled starts again after it is equipped.
-    const autoReload = !ultimateModifiers(state,time).noReload && !state.reloading && WEAPONS[state.weapon].magazine && state.magazines[state.weapon] === 0 && time-state.lastSwitch >= equipTime(state.weapon)
+    const autoReload = !trainingNoReload(state,time) && !state.reloading && WEAPONS[state.weapon].magazine && state.magazines[state.weapon] === 0 && time-state.lastSwitch >= equipTime(state.weapon)
     game.set({ time,ultimateShield:ultimateModifiers(state,time).effect==='shield' ? state.ultimateShield : 0,
       ...(state.reloading && time >= state.reloadEnd ? {
         magazines: { ...state.magazines,[state.reloadWeapon]:WEAPONS[state.reloadWeapon].magazine },
         ...clearReload,
       } : autoReload ? beginReload(state.weapon,'auto') : {}),
-      targets: state.targets.map(t => t.hp === 0 && time >= t.resetAt && time >= t.disabledUntil ? { hp: TARGET.health, hit: -10, resetAt: 0, disabledUntil:0 } : t),
       ...(respawning ? {
         opponent:{ ...freshOpponent(true),defeats:state.opponent.defeats,attacks:state.opponent.attacks,hits:state.opponent.hits,respawns:state.opponent.respawns+1 },
       } : {}),

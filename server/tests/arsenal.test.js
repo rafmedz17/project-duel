@@ -149,6 +149,6 @@ test('ION and RAZE work with the new magazines and burst fire without granting a
   a.voltAmmo=0;send('reload');send('ability',{ ability:'ultimate' })
   assert.equal(a.voltAmmo,24);assert.equal(a.reloading,false)
   shoot();advance(0.15);assert.equal(a.shot,3);assert.equal(a.voltAmmo,24)
-  advance(5);shoot();advance(0.15);assert.equal(a.voltAmmo,21)
+  advance(10);shoot();advance(0.15);assert.equal(a.voltAmmo,21)
   assert.equal(send('switch',{ weapon:'omega' }),false)
 })

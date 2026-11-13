@@ -337,7 +337,7 @@ test('online shields absorb actual hits and VEX overdrive allows repeated dash w
   try {
     await host.getByRole('button',{ name:'START SHARED ARENA' }).click()
     await expect(host.getByRole('dialog',{ name:'SHARED ARENA' })).toBeVisible({ timeout:10000 })
-    await enter(host); await observeHitFeedback(host); await aimAtPlayer(host)
+    await enter(host);await host.keyboard.press('Digit2');await host.waitForTimeout(350); await observeHitFeedback(host); await aimAtPlayer(host)
     await host.evaluate(() => document.exitPointerLock())
     await enter(guest); await guest.keyboard.press('KeyF')
     await expect(guest.getByTestId('online-shield-charge')).toContainText('50 / 50')
@@ -348,9 +348,9 @@ test('online shields absorb actual hits and VEX overdrive allows repeated dash w
     expect((await selfCombat(host)).hitShieldDamage).toBe(28)
     await host.keyboard.press('KeyX')
     await expect(host.getByTestId('ability-ultimate')).toContainText('ACTIVE')
-    await host.keyboard.press('KeyE'); await host.waitForTimeout(250); await host.keyboard.press('KeyE')
+    await host.keyboard.press('KeyE'); await host.waitForTimeout(450); await host.keyboard.press('KeyE')
     await expect.poll(async () => (await selfCombat(host)).abilities.dash.uses).toBe(2)
-    await expect(host.getByTestId('ability-ultimate')).not.toContainText('ACTIVE',{ timeout:7000 })
+    await expect(host.getByTestId('ability-ultimate')).not.toContainText('ACTIVE',{ timeout:12000 })
     expect(errors).toEqual([])
   } finally { await Promise.all(contexts.map(context=>context.close())) }
 })
