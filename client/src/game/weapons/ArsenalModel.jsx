@@ -1,4 +1,6 @@
 import { forwardRef } from 'react'
+import ReflexSight from './ReflexSight.jsx'
+import { reflexProfile } from './optics.js'
 
 function Plate({ p=[0,0,0],s=[0.1,0.1,0.1],r=[0,0,0],color='#34465d',glow=false }) {
   return <mesh position={p} rotation={r}><boxGeometry args={s}/>{glow ? <meshBasicMaterial color={color} toneMapped={false}/> : <meshStandardMaterial color={color} metalness={0.82} roughness={0.28}/>}</mesh>
@@ -94,7 +96,7 @@ export default function ArsenalModel({ weapon,parts,preview=false }) {
       <Plate p={[0,-0.055,0]} s={[0.08,0.11,0.1]}/><Tube radius={0.07} length={0.34} color="#19293d"/>
       <Ring p={[0,0,0.177]} radius={0.055} color={weapon.color}/><Tube p={[0,0,0.173]} radius={0.048} length={0.008} color="#194650" glow/>
       <Plate p={[0,0.09,0]} s={[0.055,0.035,0.08]} color="#5c7189"/>
-    </group> : !compact && <group position={[0,0.19,0.1]}><Plate p={[-0.044,0,0]} s={[0.018,0.09,0.035]}/><Plate p={[0.044,0,0]} s={[0.018,0.09,0.035]}/><Plate p={[0,0.05,0]} s={[0.1,0.02,0.035]} color={weapon.color} glow/></group>}
+    </group> : reflexProfile(weapon) ? <ReflexSight weapon={weapon} reticleRef={parts?.reticle}/> : !compact && <group position={[0,0.19,0.1]}><Plate p={[-0.044,0,0]} s={[0.018,0.09,0.035]}/><Plate p={[0.044,0,0]} s={[0.018,0.09,0.035]}/><Plate p={[0,0.05,0]} s={[0.1,0.02,0.035]} color={weapon.color} glow/></group>}
     <group ref={parts?.pump} position={[0,-0.06,-0.35]}>
       {!compact && <Plate s={[0.15,0.11,smg ? 0.15 : 0.28]} color="#182b3e"/>}
       {!compact && [-1,0,1].map(i=><Plate key={i} p={[0,-0.062,i*0.07]} s={[0.12,0.016,0.02]} color={weapon.color} glow/>)}

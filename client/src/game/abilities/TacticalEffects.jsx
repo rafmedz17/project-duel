@@ -2,9 +2,9 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Vector3, MathUtils } from 'three'
 import TacticalVisual from './TacticalVisual.jsx'
-import { WEAPONS } from '../../../../shared/weapons.js'
 import { targetPosition } from '../training/config.js'
 import { targetEnabled } from '../training/rules.js'
+import { aimFov } from '../weapons/optics.js'
 import { game } from '../store.js'
 import { runtime } from '../runtime.js'
 
@@ -25,7 +25,7 @@ export default function TacticalEffects() {
       marker.distance = Math.round(distance)
     })
     const dashing = time<s.abilities.dash.activeUntil
-    const fov = MathUtils.damp(camera.fov,game.get().aiming && WEAPONS[s.weapon].scope ? 32 : dashing ? 77 : 70,12,Math.min(delta,0.1))
+    const fov = MathUtils.damp(camera.fov,aimFov(s,time,s.aiming,dashing),12,Math.min(delta,0.1))
     if (Math.abs(camera.fov-fov)>0.001) { camera.fov = fov; camera.updateProjectionMatrix() }
   },-0.5)
   return <TacticalVisual read={() => ({ state:game.get(),time:game.now(),position:runtime.position,local:true })} />

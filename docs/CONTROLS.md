@@ -8,7 +8,7 @@ Choose **Enter Training** for four courses around a safe hub: stationary robots 
 | Mouse | Aim; sensitivity is adjustable |
 | Left click | Fire / melee attack; burst weapons commit three shots |
 | Hold left click | Automatic weapon fire; OMEGA spins up before firing |
-| Hold right click | Sniper scope; release to return to normal view |
+| Hold right click | Red-dot aim on assault rifles, SMGs and LMGs; precision scope on snipers. Release to return to hip view |
 | T | Inspect equipped weapon |
 | 1 / 2 / 3 | Primary / Pistol / Melee |
 | Q | Cycle the three equipped weapons |
@@ -25,7 +25,7 @@ Choose **Enter Training** for four courses around a safe hub: stationary robots 
 
 Robot damage is 2× at the head (RAILBREAKER: 1.5×), 1× at the torso, 0.75× at arms/legs, and 0.5× at feet. ECHO-9 deals 56/28/21/14 respectively. Headshots display HEADSHOT and actual HP removed; defeats display ELIMINATED. Cover blocks shots; RAILBREAKER can penetrate thin cover. Stationary and moving robots reset after three seconds. Live-fire robots stay defeated until you restart their course. Reflex spheres reappear at another height after a hit during the 45-second challenge. Robots match the player's 1.7-meter capsule height and stand on the floor in their course firing lanes. Head, body, limb and foot shots are available from the course floor without stepping onto a platform.
 
-Choose from 11 primaries, three pistols and three melee weapons. Each has its own model, animation, handling and statistics; see the [weapon arsenal](WEAPONS.md). Shotguns use only a dotted ring. Both snipers zoom with a clear circular optic; the first-person model is hidden while scoped and returns on release.
+Choose from 11 primaries, three pistols and three melee weapons. Each has its own model, animation, handling and statistics; see the [weapon arsenal](WEAPONS.md). Shotguns use only a dotted ring. Assault rifles, SMGs and LMGs carry mounted sci-fi red-dot sights. Hold right click for a centered reticle and light zoom: rifles 1.5?, SMGs 1.3? and LMGs 1.4?. The gun stays visible below the clear sight window, and the hip crosshair hides while aiming. Reloading and weapon switching lower the sight; releasing right click or losing mouse capture restores hip view. Both snipers retain their clear 2.2? circular optics; their first-person models hide while scoped.
 
 Confirmed eliminations display an animated kill badge. Another kill within six simulation seconds advances the combo: **Double Kill → Triple Kill → Overdrive → Rampage**, with a different sound at each tier. Higher combos keep their exact count on the Rampage badge. Nonlethal hits do not advance it. Death, restarting and a fresh multiplayer round clear the combo; training pause freezes its timer. The badge stays hidden while paused, dead, or behind multiplayer menus. Badges last 2.4 seconds. Sound volume and Mute sound also control combo sounds.
 

@@ -14,7 +14,7 @@ import './App.css'
 
 const World = lazy(() => import('./game/World.jsx'))
 
-const controls = [['W A S D','Move'],['MOUSE','Look around'],['LEFT CLICK','Fire / swing equipped weapon'],['HOLD LEFT CLICK','Automatic weapon fire'],['HOLD RIGHT CLICK','Sniper scope'],['T','Inspect weapon'],['1 / 2 / 3','Primary / Pistol / Melee'],['Q','Cycle weapons'],['E','Dash toward movement / aim'],['F','Energy Shield'],['C','Equipped unique skill'],['X','Character ultimate / 10 seconds'],['SPACE','Jump'],['SHIFT','Sprint'],['R','Reload equipped firearm'],['B','Training field armory'],['G','Start / stop current training course'],['ESC','Pause / release mouse']]
+const controls = [['W A S D','Move'],['MOUSE','Look around'],['LEFT CLICK','Fire / swing equipped weapon'],['HOLD LEFT CLICK','Automatic weapon fire'],['HOLD RIGHT CLICK','Red-dot aim / sniper scope'],['T','Inspect weapon'],['1 / 2 / 3','Primary / Pistol / Melee'],['Q','Cycle weapons'],['E','Dash toward movement / aim'],['F','Energy Shield'],['C','Equipped unique skill'],['X','Character ultimate / 10 seconds'],['SPACE','Jump'],['SHIFT','Sprint'],['R','Reload equipped firearm'],['B','Training field armory'],['G','Start / stop current training course'],['ESC','Pause / release mouse']]
 function Settings() {
   const settings = useGame(s => s.settings)
   const trainingOptions=useGame(s=>s.trainingOptions)

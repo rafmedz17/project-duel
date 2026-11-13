@@ -1,33 +1,38 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { MathUtils } from 'three'
 import { useGame,game } from '../store.js'
 import { useLobby } from '../../multiplayer/lobby.js'
 import { WEAPONS } from '../../../../shared/weapons.js'
 import { weaponAnimation } from './animation.js'
 import ArsenalModel from './ArsenalModel.jsx'
+import { activeOptic,REFLEX_AIM_POSITION } from './optics.js'
 
 export default function WeaponView({ source=game }) {
   const local=useGame(s=>s.weapon),online=useLobby(s=>s.room?.players.find(p=>p.id===s.sessionId)?.combat.weapon)
   const selected=source===game ? local : online || 'pistol', weapon=WEAPONS[selected]
-  const root=useRef(),rotation=useRef(0)
+  const root=useRef(),rotation=useRef(0),ads=useRef(0),reticle=useRef()
   const action=useRef(),rotor=useRef(),offhand=useRef(),trail=useRef(),cell=useRef(),bolt=useRef(),pump=useRef(),hinge=useRef(),core=useRef(),flash=useRef(),eject=useRef()
-  const parts={action,rotor,offhand,trail,cell,bolt,pump,hinge,core,flash,eject}
+  const parts={action,rotor,offhand,trail,cell,bolt,pump,hinge,core,flash,eject,reticle}
   useFrame(({ camera },delta)=> {
     const s=source.get()
     if (!s || s.weapon!==selected || !root.current) return
     const time=source.now(), a=weaponAnimation(s,time,weapon),melee=weapon.fireMode==='melee',compact=weapon.slot==='2'
     const inspect=Math.sin(Math.PI*Math.max(0,Math.min(1,(time-(game.get().inspectAt ?? -10))/2)))
-    const scoped=game.get().aiming && weapon.scope
+    const optic=activeOptic(s,time,game.get().aiming),scoped=optic==='precision'
+    ads.current=MathUtils.damp(ads.current,optic==='reflex' ? 1 : 0,18,Math.min(delta,0.1))
+    const blend=ads.current,steady=1-blend*0.8
     const group=root.current
     // The screen-space optic supplies the ADS sight; the physical lens must not
     // sit between the camera and targets during magnification.
     group.visible=s.hp>0 && !scoped; group.position.copy(camera.position); group.quaternion.copy(camera.quaternion)
-    group.translateX(melee ? 0.36-a.hit*0.38 : scoped ? 0 : 0.31-a.reloadPose*0.08)
-    group.translateY((melee ? -0.43+a.hit*0.12 : scoped ? -0.19 : -0.3)+a.reloadPose*0.22-a.equip*0.3+Math.sin(time*1.8)*0.002)
-    group.translateZ((melee ? -0.63 : compact ? -0.52 : -0.63)+a.kick*(weapon.recoil*2+0.035)-a.reloadPose*0.2+a.equip*0.2)
-    group.rotateX(melee ? a.windup*-0.75+a.hit*0.15 : a.kick*weapon.recoil*3+a.reloadPose*0.18)
-    group.rotateZ(melee ? -0.28+a.hit*(weapon.model==='fangs' && (s.swings || 0)%2 ? -1.25 : 1.25) : -a.reloadPose*0.65-inspect*0.8)
-    group.rotateY(-a.reloadPose*0.35+inspect*0.9)
+    group.translateX(melee ? 0.36-a.hit*0.38 : MathUtils.lerp(0.31-a.reloadPose*0.08,REFLEX_AIM_POSITION[0],blend))
+    group.translateY((melee ? -0.43+a.hit*0.12 : MathUtils.lerp(-0.3,REFLEX_AIM_POSITION[1],blend))+a.reloadPose*0.22-a.equip*0.3+Math.sin(time*1.8)*0.002*(1-blend))
+    group.translateZ((melee ? -0.63 : MathUtils.lerp(compact ? -0.52 : -0.63,REFLEX_AIM_POSITION[2],blend))+a.kick*(weapon.recoil*2+0.035)*steady-a.reloadPose*0.2+a.equip*0.2)
+    group.rotateX(melee ? a.windup*-0.75+a.hit*0.15 : a.kick*weapon.recoil*3*steady+a.reloadPose*0.18)
+    group.rotateZ(melee ? -0.28+a.hit*(weapon.model==='fangs' && (s.swings || 0)%2 ? -1.25 : 1.25) : -a.reloadPose*0.65-inspect*0.8*(1-blend))
+    group.rotateY(-a.reloadPose*0.35+inspect*0.9*(1-blend))
+    if(reticle.current) reticle.current.visible=optic!=='reflex'
     if (action.current) action.current.rotation.x=melee ? -a.windup*0.5+a.hit*0.2 : a.kick*0.04
     if (cell.current) { cell.current.position.set(-a.drop*0.13,-a.drop*0.32,a.drop*0.09); cell.current.rotation.z=-a.drop*0.35 }
     if (bolt.current) bolt.current.position.z=-0.02+a.bolt*(weapon.scope ? 0.17 : 0.055)

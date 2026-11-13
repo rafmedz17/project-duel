@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { MathUtils, Vector3 } from 'three'
-import { WEAPONS } from '../../../shared/weapons.js'
+import { aimFov } from '../game/weapons/optics.js'
 import { game } from '../game/store.js'
 import TacticalVisual from '../game/abilities/TacticalVisual.jsx'
 import { lobby, useLobby } from './lobby.js'
@@ -24,7 +24,7 @@ export default function OnlineEffects() {
     }
     arenaView.scanMarker = marker
     const dashing = time<s.abilities.dash.activeUntil && time>=s.disabledUntil && s.hp>0
-    const fov = MathUtils.damp(camera.fov,game.get().aiming && WEAPONS[s.weapon].scope ? 32 : dashing ? 77 : 70,12,Math.min(delta,0.1))
+    const fov = MathUtils.damp(camera.fov,aimFov(s,time,game.get().aiming,dashing),12,Math.min(delta,0.1))
     if (Math.abs(camera.fov-fov)>0.001) { camera.fov = fov; camera.updateProjectionMatrix() }
   },-0.5)
   return players.map(player => <TacticalVisual key={player.id} read={() => {

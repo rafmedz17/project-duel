@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Object3D,Vector3,Color,AdditiveBlending,DynamicDrawUsage } from 'three'
 import { WEAPONS } from '../../../../shared/weapons.js'
+import { reflexProfile } from '../weapons/optics.js'
 import { game } from '../store.js'
 import { lobby } from '../../multiplayer/lobby.js'
 import { takeShotTrails,trailScope } from './shotTrails.js'
@@ -18,7 +19,7 @@ export default function BulletTrails({ online=false }) {
     if(active) for(const event of incoming) {
       const weapon=WEAPONS[event.weapon]
       if(!weapon || weapon.fireMode==='melee') continue
-      const self=!online || event.id===network.sessionId,scoped=self && local.aiming && weapon.scope
+      const self=online ? event.id===network.sessionId : event.id==='self',scoped=self && local.aiming && (weapon.scope || reflexProfile(weapon))
       for(const end of event.ends) {
         const start=new Vector3(...event.origin),destination=new Vector3(...end),direction=destination.clone().sub(start),distance=direction.length()
         if(distance<0.02) continue
