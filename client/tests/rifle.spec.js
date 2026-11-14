@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test'
-import {state, aimAtTarget, openGame} from './helpers.js'
+import {state, aimAtTarget, openGame,enterTraining} from './helpers.js'
 
 async function resume(page) {
-  await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
+  await page.getByRole('button',{ name:'RESUME' }).click()
   await expect.poll(async () => (await state(page)).mode).toBe('playing')
 }
 async function pause(page) {
@@ -14,9 +14,7 @@ async function startRifle(page) {
   await page.getByRole('button',{ name:/SETTINGS/ }).click()
   await page.getByRole('tab',{ name:'Graphics',exact:true }).click();await page.getByLabel('Render quality').selectOption('Low')
   await page.getByRole('button',{ name:'BACK' }).click()
-  await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
-  await expect(page.getByRole('button',{ name:'RESUME / ENTER ARENA' })).toBeEnabled({ timeout:30000 })
-  await resume(page)
+  await enterTraining(page)
   await page.keyboard.press('Digit1')
   await expect(page.getByText('1 / VXR-9 PHANTOM',{ exact:true })).toBeVisible()
   await expect(page.getByText('FULL AUTO · HOLD LEFT CLICK',{ exact:true })).toBeVisible()

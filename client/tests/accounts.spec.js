@@ -1,5 +1,5 @@
 import { test,expect } from '@playwright/test'
-import {state,editLoadout, openGame,reloadGame,openMultiplayer} from './helpers.js'
+import {state,editLoadout, openGame,reloadGame,openMultiplayer,enterTraining} from './helpers.js'
 
 const cloudOrigin='http://127.0.0.1:5174'
 const userId='11111111-1111-4111-8111-111111111111'
@@ -61,8 +61,7 @@ test('training auto-saves to the account, retries failures, queues rapid edits a
   page.on('pageerror',error=>errors.push(error.message))
   await signIn(page)
   await page.getByRole('dialog').getByRole('button',{name:'BACK',exact:true}).click()
-  await page.getByRole('button',{name:/ENTER TRAINING/}).click()
-  await page.getByRole('button',{name:'RESUME / ENTER ARENA'}).click()
+  await enterTraining(page)
   const before=await state(page)
   await page.keyboard.press('KeyB')
   const dialog=page.getByRole('dialog',{name:'FIELD ARMORY',exact:true})
@@ -138,8 +137,7 @@ test('guest loadout saves across reloads and controls training weapons and abili
   await expect(dialog.getByRole('status')).toContainText('AUTO-SAVED ON DEVICE')
   await dialog.screenshot({ path:'loadout-preview.png' })
   await reloadGame(page)
-  await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
-  await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
+  await enterTraining(page)
   await expect.poll(async () => (await state(page)).weapon).toBe('shotgun')
   await page.keyboard.press('Digit2'); await page.keyboard.press('KeyE')
   expect((await state(page)).weapon).toBe('pistol')

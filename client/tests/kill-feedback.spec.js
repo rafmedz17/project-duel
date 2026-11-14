@@ -2,14 +2,13 @@ import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
 import { writeFile } from 'node:fs/promises'
 import { Buffer } from 'node:buffer'
-import {state,presetLoadout,position,lookAt, openGame,openMultiplayer} from './helpers.js'
+import {state,presetLoadout,position,lookAt, openGame,openMultiplayer,enterTraining} from './helpers.js'
 import { TARGETS,PLAYER } from '../src/game/config.js'
 import { ROBOT_HEAD_Y } from '../../shared/robot.js'
 
 async function start(page,gear) {
   await presetLoadout(page,gear);await openGame(page,'/')
-  await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
-  await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
+  await enterTraining(page)
   await expect.poll(async ()=>(await state(page)).mode).toBe('playing')
 }
 const fire=async page=>{ await page.mouse.down();await page.mouse.up() }

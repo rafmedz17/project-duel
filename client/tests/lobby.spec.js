@@ -1,4 +1,4 @@
-import {openGame,openMultiplayer} from './helpers.js'
+import {openGame,openMultiplayer,enterTraining} from './helpers.js'
 import { test, expect } from '@playwright/test'
 
 async function open(page, name) {
@@ -57,8 +57,7 @@ test('two independent browsers create and join by code, synchronize ready state,
     await guest.getByRole('button',{ name:'LEAVE ROOM',exact:true }).click()
     await contexts[1].close()
     await host.bringToFront()
-    await host.getByRole('button',{ name:/ENTER TRAINING/ }).click()
-    await expect(host.getByRole('button',{ name:'RESUME / ENTER ARENA' })).toBeEnabled({ timeout:30000 })
+    await enterTraining(host)
     expect(errors).toEqual([])
   } finally { await Promise.all(contexts.map(context => context.close())) }
 })

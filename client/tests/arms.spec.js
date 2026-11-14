@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test'
 import {Client} from '@colyseus/sdk'
 import {ONLINE} from '../../shared/arena.js'
-import {openGame,presetLoadout,state,openMultiplayer} from './helpers.js'
+import {openGame,presetLoadout,state,openMultiplayer,enterTraining} from './helpers.js'
 
 async function inspect(page,id) {
   return page.evaluate(async id=>{
@@ -44,8 +44,7 @@ test('first-person armored hands grip the gun, animate firing and reloads, and f
   const errors=[];page.on('pageerror',error=>errors.push(error.message))
   await presetLoadout(page,{primary:'rifle',secondary:'pistol',melee:'fangs',character:'ion'})
   await openGame(page)
-  await page.getByRole('button',{name:/ENTER TRAINING/}).click()
-  await page.getByRole('button',{name:'RESUME / ENTER ARENA'}).click()
+  await enterTraining(page)
   await expect.poll(async()=>(await state(page)).time).toBeGreaterThan(.7)
   await expect.poll(()=>inspect(page)).not.toBeNull()
   const initial=await inspect(page)

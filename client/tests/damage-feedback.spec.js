@@ -1,4 +1,4 @@
-import {openGame,openMultiplayer} from './helpers.js'
+import {openGame,openMultiplayer,enterTraining} from './helpers.js'
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
 
@@ -6,8 +6,7 @@ for(const style of ['classic','stacked']) test(`${style} damage numbers survive 
   const errors=[]
   page.on('pageerror',error=>errors.push(error.message))
   await openGame(page,'/')
-  await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
-  await expect(page.getByRole('button',{ name:'RESUME / ENTER ARENA' })).toBeEnabled()
+  await enterTraining(page)
   // Feed the actual HUD the same clock relationship produced by multiplayer:
   // a float combat timestamp just ahead of tick / tickRate.
   await page.evaluate(async style=>{
@@ -25,7 +24,7 @@ for(const style of ['classic','stacked']) test(`${style} damage numbers survive 
   const numbers=page.getByTestId('damage-numbers')
   if(style==='stacked') await expect(numbers.locator('.hit-damage')).toHaveText(/72/)
   else { await expect(numbers.locator('.hit-damage')).toHaveCount(2);await expect(numbers).toContainText('48');await expect(numbers).toContainText('24') }
-  await expect(page.getByRole('button',{ name:'RESUME / ENTER ARENA' })).toBeVisible()
+  await expect(page.getByRole('button',{ name:'RESUME' })).toBeVisible()
   expect(errors).toEqual([])
 })
 

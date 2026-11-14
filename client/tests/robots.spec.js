@@ -1,15 +1,13 @@
 import { test, expect } from '@playwright/test'
-import {equipWeapon, state, position, lookAt, moveUntil, observeHitFeedback, observedFeedback, openGame} from './helpers.js'
+import {equipWeapon, state, position, lookAt, moveUntil, observeHitFeedback, observedFeedback, openGame,enterTraining} from './helpers.js'
 import { PLAYER, TARGETS } from '../src/game/config.js'
 import { ROBOT_HEAD_Y } from '../../shared/robot.js'
 
 async function start(page) {
   await openGame(page,'/')
   await expect(page.getByRole('button',{ name:'ENTER SPARRING',exact:true })).toHaveCount(0)
-  await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
-  await expect(page.getByRole('button',{ name:'RESUME / ENTER ARENA' })).toBeEnabled({ timeout:30000 })
+  await enterTraining(page)
   await expect(page.getByRole('button',{ name:/TRAINING OPPONENT/ })).toHaveCount(0)
-  await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
   await expect.poll(async () => (await state(page)).mode).toBe('playing')
   await equipWeapon(page,'pistol')
 }

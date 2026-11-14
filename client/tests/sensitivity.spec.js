@@ -1,7 +1,7 @@
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
 import { PLAYER } from '../../shared/arena.js'
-import {state,presetLoadout,equipWeapon, openGame,openMultiplayer} from './helpers.js'
+import {state,presetLoadout,equipWeapon, openGame,openMultiplayer,enterTraining} from './helpers.js'
 
 async function configure(page) {
   await presetLoadout(page,{primary:'astral',startingWeapon:'astral'})
@@ -37,8 +37,7 @@ test('training applies look, ADS and remapped firing sensitivity, restores aim a
   test.setTimeout(90000)
   const errors=[];page.on('pageerror',e=>errors.push(e.message))
   await configure(page)
-  await page.getByRole('button',{name:/ENTER TRAINING/}).click()
-  await page.getByRole('button',{name:'RESUME / ENTER ARENA'}).click()
+  await enterTraining(page)
   await expect.poll(async ()=>(await state(page)).mode).toBe('playing')
   await assertLook(page,1.5*1.2)
   await page.mouse.down({button:'right'})

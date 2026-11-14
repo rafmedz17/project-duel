@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import {equipWeapon, state, lookAt, aimAtTarget, moveUntil, openGame} from './helpers.js'
+import {equipWeapon, state, lookAt, aimAtTarget, moveUntil, openGame,enterTraining} from './helpers.js'
 import { TARGETS } from '../src/game/config.js'
 
 const attack = async page => { await page.mouse.down(); await page.mouse.up() }
@@ -14,9 +14,7 @@ test('blade switching, range, melee damage, ammo preservation, pause and restart
   await page.getByRole('button',{ name:/SETTINGS/ }).click()
   await page.getByRole('tab',{ name:'Graphics',exact:true }).click();await page.getByLabel('Render quality').selectOption('Low')
   await page.getByRole('button',{ name:/^BACK/ }).click()
-  await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
-  await expect(page.getByRole('button',{ name:'RESUME / ENTER ARENA' })).toBeEnabled({ timeout:30000 })
-  await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
+  await enterTraining(page)
   await expect.poll(async () => (await state(page)).mode).toBe('playing')
   await equipWeapon(page,'pistol')
   await attack(page)
@@ -71,7 +69,7 @@ test('blade switching, range, melee damage, ammo preservation, pause and restart
   expect((await state(page)).weapon).toBe('blade')
   expect((await state(page)).swings).toBe(paused.swings)
   expect((await state(page)).time).toBe(paused.time)
-  await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
+  await page.getByRole('button',{ name:'RESUME' }).click()
   await page.waitForTimeout(400)
   await page.keyboard.press('Digit2')
   expect((await state(page)).magazines.pistol).toBe(14)

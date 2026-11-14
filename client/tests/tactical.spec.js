@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import {state, position, lookAt, aimAtTarget, moveUntil, presetLoadout, openGame} from './helpers.js'
+import {state, position, lookAt, aimAtTarget, moveUntil, presetLoadout, openGame,enterTraining} from './helpers.js'
 import { TARGETS } from '../src/game/config.js'
 
 async function start(page,primary='rifle') {
@@ -8,12 +8,10 @@ async function start(page,primary='rifle') {
   await page.getByRole('button',{ name:/SETTINGS/ }).click()
   await page.getByRole('tab',{ name:'Graphics',exact:true }).click();await page.getByLabel('Render quality').selectOption('Low')
   await page.getByRole('button',{ name:'BACK' }).click()
-  await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
-  await expect(page.getByRole('button',{ name:'RESUME / ENTER ARENA' })).toBeEnabled({ timeout:30000 })
-  await resume(page)
+  await enterTraining(page)
 }
 async function resume(page) {
-  await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
+  await page.getByRole('button',{ name:'RESUME' }).click()
   await expect.poll(async () => (await state(page)).mode).toBe('playing')
 }
 async function pause(page) {

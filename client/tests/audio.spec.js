@@ -1,6 +1,6 @@
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
-import {state,position,lookAt,moveUntil, openGame,reloadGame,dismissFullscreenNotice,openMultiplayer} from './helpers.js'
+import {state,position,lookAt,moveUntil, openGame,reloadGame,dismissFullscreenNotice,openMultiplayer,enterTraining} from './helpers.js'
 import { PLAYER,TARGETS } from '../src/game/config.js'
 import { ROBOT_HEAD_Y } from '../../shared/robot.js'
 import { ONLINE } from '../../shared/arena.js'
@@ -23,8 +23,7 @@ async function start(page) {
   await page.getByRole('button',{ name:/SETTINGS/ }).click()
   await page.getByRole('tab',{ name:'Graphics',exact:true }).click();await page.getByLabel('Render quality').selectOption('Low')
   await page.getByRole('button',{ name:'BACK' }).click()
-  await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
-  await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
+  await enterTraining(page)
   await expect.poll(async () => (await state(page)).mode).toBe('playing')
 }
 async function pause(page) {
@@ -42,9 +41,8 @@ test('music is limited to the landing page and its settings, never training, pau
   await expect.poll(async ()=>(await sound(page)).rms).toBeGreaterThan(.00005)
   await page.getByRole('button',{name:'BACK →',exact:true}).click()
   await expect.poll(async ()=>(await sound(page)).musicPlaying).toBe(true)
-  await page.getByRole('button',{name:/ENTER TRAINING/}).click()
+  await enterTraining(page)
   await expect.poll(async ()=>(await sound(page)).musicPlaying).toBe(false)
-  await page.getByRole('button',{name:'RESUME / ENTER ARENA'}).click()
   await expect.poll(async ()=>(await state(page)).mode).toBe('playing')
   expect((await sound(page)).musicPlaying).toBe(false)
   await pause(page)
@@ -159,7 +157,7 @@ test('muting silences real shots, and unmuting does not replay missed sounds',as
   await page.getByRole('button',{ name:'SETTINGS',exact:true }).click()
   await page.getByRole('tab',{ name:'Audio',exact:true }).click();await page.getByLabel('Mute all audio').check()
   await page.getByRole('button',{ name:'BACK' }).click()
-  await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
+  await page.getByRole('button',{ name:'RESUME' }).click()
   const before=await sound(page)
   const weapon=(await state(page)).weapon
   await fire(page)
@@ -169,7 +167,7 @@ test('muting silences real shots, and unmuting does not replay missed sounds',as
   await page.getByRole('button',{ name:'SETTINGS',exact:true }).click()
   await page.getByRole('tab',{ name:'Audio',exact:true }).click();await page.getByLabel('Mute all audio').uncheck()
   await page.getByRole('button',{ name:'BACK' }).click()
-  await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
+  await page.getByRole('button',{ name:'RESUME' }).click()
   expect((await sound(page)).played).toBe(before.played)
   await fire(page)
   await expect.poll(async () => (await sound(page)).counts[weapon] || 0).toBe(1)
@@ -181,8 +179,7 @@ test('browsers without Web Audio can still play and show an actionable audio not
   await page.getByRole('tab',{ name:'Audio',exact:true }).click();await page.getByRole('button',{ name:'TEST AUDIO' }).click()
   await expect(page.getByRole('status')).toContainText('unavailable or blocked')
   await page.getByRole('button',{ name:'BACK' }).click()
-  await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
-  await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
+  await enterTraining(page)
   await fire(page)
   expect((await state(page)).shot).toBeGreaterThan(0)
   expect((await sound(page)).state).toBe('unavailable')

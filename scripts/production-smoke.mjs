@@ -16,7 +16,7 @@ try {
   await page.goto(endpoint)
   await page.getByRole('button',{name:'NO, THANKS',exact:true}).click()
   await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
-  await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
+  await expect(page.getByText('LOADING TRAINING',{exact:true})).toHaveCount(0)
   await page.waitForFunction(() => Boolean(document.pointerLockElement))
   await page.keyboard.down('KeyW'); await page.waitForTimeout(300); await page.keyboard.up('KeyW')
   await page.evaluate(() => document.exitPointerLock())

@@ -1,6 +1,6 @@
 # Controls
 
-Choose **Enter Training** for four courses around a safe hub: stationary robots ahead, reflex targets right, moving robots behind and live-fire robots left. Select **Resume / Enter Arena** to capture the mouse.
+Choose **Enter Training** for four courses around a safe hub: stationary robots ahead, reflex targets right, moving robots behind and live-fire robots left. Training starts and captures the mouse directly from that click. Escape pauses training; select **Resume** to continue.
 
 These are the default bindings. Open **Settings → Controls** to edit them and **Save to Account** to sync a signed-in profile. Escape remains fixed.
 

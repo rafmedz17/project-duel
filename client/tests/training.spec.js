@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test'
-import {equipWeapon, state, diagnostics, position, moveUntil, aimAtTarget, openGame,reloadGame} from './helpers.js'
+import {equipWeapon, state, diagnostics, position, moveUntil, aimAtTarget, openGame,reloadGame,enterTraining} from './helpers.js'
 async function pause(page) {
   // Browser automation cannot synthesize the browser-owned Escape shortcut.
   await page.evaluate(() => document.exitPointerLock())
   await expect.poll(async () => (await state(page)).mode).toBe('paused')
 }
 async function resume(page) {
-  await page.getByRole('button', { name: 'RESUME / ENTER ARENA' }).click()
+  await page.getByRole('button', { name: 'RESUME' }).click()
   await expect.poll(async () => (await state(page)).mode).toBe('playing')
   await equipWeapon(page,'pistol')
 }
@@ -25,9 +25,7 @@ test('menus, persistent settings, movement, collisions, combat, pause and reset'
   await page.getByRole('button', { name: /^BACK/ }).click()
   await reloadGame(page)
   expect((await state(page)).settings).toMatchObject({ quality:'Low', fps:true })
-  await page.getByRole('button', { name: /ENTER TRAINING/ }).click()
-  await expect(page.getByRole('button', { name: 'RESUME / ENTER ARENA' })).toBeEnabled({ timeout:30000 })
-  await resume(page)
+  await enterTraining(page)
   await expect.poll(async () => (await position(page))[1]).toBeLessThan(0.92)
   const initial = await position(page)
   await page.keyboard.down('KeyW'); await page.waitForTimeout(700); await page.keyboard.up('KeyW')
@@ -83,9 +81,7 @@ test('cover blocks the capsule and marked hazards damage and defeat the player',
   await page.getByRole('button', { name:/SETTINGS/ }).click()
   await page.getByRole('tab',{ name:'Graphics',exact:true }).click();await page.getByLabel('Render quality').selectOption('Low')
   await page.getByRole('button', { name:/^BACK/ }).click()
-  await page.getByRole('button', { name:/ENTER TRAINING/ }).click()
-  await expect(page.getByRole('button', { name:'RESUME / ENTER ARENA' })).toBeEnabled({ timeout:30000 })
-  await resume(page)
+  await enterTraining(page)
   await moveUntil(page,'KeyD',0,7.7,1)
   await page.keyboard.down('KeyW'); await page.waitForTimeout(2400); await page.keyboard.up('KeyW')
   const coverPosition = await position(page)

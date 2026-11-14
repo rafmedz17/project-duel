@@ -1,6 +1,6 @@
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
-import {state,presetLoadout, openGame,openMultiplayer} from './helpers.js'
+import {state,presetLoadout, openGame,openMultiplayer,enterTraining} from './helpers.js'
 
 const optics=page=>page.evaluate(async ()=> {
   const url=performance.getEntriesByType('resource').find(e=>new URL(e.name).pathname.endsWith('/@react-three_fiber.js')).name
@@ -10,7 +10,7 @@ const optics=page=>page.evaluate(async ()=> {
 for(const id of ['hyperion','railbreaker']) test(`${id} scope has a clear sight picture, zooms and restores the model after ADS`,async ({ page })=> {
   const errors=[];page.on('pageerror',e=>errors.push(e.message))
   await presetLoadout(page,{ primary:id,startingWeapon:id });await openGame(page,'/')
-  await page.getByRole('button',{ name:/ENTER TRAINING/ }).click();await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
+  await enterTraining(page)
   await expect.poll(async ()=>(await state(page)).mode).toBe('playing')
   await expect.poll(async ()=>(await optics(page)).modelVisible).toBe(true)
   await page.mouse.down({ button:'right' });await expect(page.getByLabel('Precision scope')).toBeVisible()

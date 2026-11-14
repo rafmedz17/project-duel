@@ -1,3 +1,4 @@
+import {enterTraining} from './helpers.js'
 import {test,expect} from '@playwright/test'
 
 const notice=page=>page.getByRole('dialog',{name:'HI, PLAYERS.',exact:true})
@@ -21,7 +22,8 @@ test('launch notice traps focus, can be declined, fits mobile and returns on rel
   await page.screenshot({path:'fullscreen-notice-mobile-preview.png'})
   await notice(page).getByRole('button',{name:'NO, THANKS',exact:true}).click()
   await expect(notice(page)).toHaveCount(0);expect(await fullscreen(page)).toBe(false)
-  await page.getByRole('button',{name:/ENTER TRAINING/}).click()
+  await enterTraining(page)
+  await page.evaluate(()=>document.exitPointerLock())
   await page.getByRole('button',{name:'RETURN TO MAIN MENU',exact:true}).click()
   await expect(notice(page)).toHaveCount(0)
   await page.reload()
@@ -61,7 +63,6 @@ for(const support of ['blocked','unavailable']) test(`${support} fullscreen show
   await expect(notice(page).getByRole('button',{name:'NO, THANKS',exact:true})).toBeEnabled()
   await notice(page).getByRole('button',{name:'NO, THANKS',exact:true}).click()
   await expect(notice(page)).toHaveCount(0)
-  await page.getByRole('button',{name:/ENTER TRAINING/}).click()
-  await expect(page.getByRole('button',{name:'RESUME / ENTER ARENA'})).toBeEnabled({timeout:30000})
+  await enterTraining(page)
   expect(await fullscreen(page)).toBe(false);expect(errors).toEqual([])
 })

@@ -1,6 +1,6 @@
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
-import {state,presetLoadout,moveUntil,equipWeapon,aimAtTarget, openGame,openMultiplayer} from './helpers.js'
+import {state,presetLoadout,moveUntil,equipWeapon,aimAtTarget, openGame,openMultiplayer,enterTraining} from './helpers.js'
 import { WEAPONS } from '../../shared/weapons.js'
 import { reflexProfile } from '../src/game/weapons/optics.js'
 
@@ -18,8 +18,7 @@ async function view(page) {
 async function start(page,id) {
   await presetLoadout(page,{ primary:id });await openGame(page,'/')
   await page.getByRole('button',{ name:/SETTINGS/ }).click();await page.getByRole('tab',{ name:'Graphics',exact:true }).click();await page.getByLabel('Render quality').selectOption('Low')
-  await page.getByRole('button',{ name:'BACK' }).click();await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
-  await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
+  await page.getByRole('button',{ name:'BACK' }).click();await enterTraining(page)
   await expect.poll(async ()=>(await state(page)).mode).toBe('playing')
 }
 for(const id of ['rifle','astral','nova','striker','titan','omega']) test(`${id} projects holographic fins only during ADS with a centered aiming zero and clean release`,async ({ page })=> {

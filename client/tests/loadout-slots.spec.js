@@ -4,7 +4,7 @@ import { makeLoadoutBank } from '../../shared/loadoutBank.js'
 import { validateLoadout } from '../../shared/loadout.js'
 import { PLAYER } from '../../shared/arena.js'
 import { ROBOT_HEAD_Y } from '../../shared/robot.js'
-import {state,editLoadout, openGame,reloadGame,openMultiplayer} from './helpers.js'
+import {state,editLoadout, openGame,reloadGame,openMultiplayer,enterTraining} from './helpers.js'
 
 const gear=(primary,character='vex')=>validateLoadout({ character,primary,secondary:'volt',melee:'gravity',unique:'scanner',startingWeapon:primary })
 function bank() {
@@ -63,8 +63,7 @@ test('five presets automatically save independent choices, survive reload and fi
   expect(saved.slots[4]).toMatchObject({ secondary:'magnus',melee:'fangs' })
   expect(saved.slots.every(slot=>slot.startingWeapon===slot.primary)).toBe(true)
   await dialog.getByRole('button',{ name:'BACK',exact:true }).click()
-  await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
-  await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
+  await enterTraining(page)
   await expect.poll(async ()=>(await state(page)).weapon).toBe('shotgun')
   expect(errors).toEqual([])
 })

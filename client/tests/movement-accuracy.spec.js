@@ -1,4 +1,4 @@
-import {openGame,openMultiplayer} from './helpers.js'
+import {openGame,openMultiplayer,enterTraining} from './helpers.js'
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
 
@@ -39,8 +39,7 @@ async function exercise(page) {
 test('training crosshair shows walk, sprint, jump and dash inaccuracy and settles after stopping',async({page})=>{
   const errors=[];page.on('pageerror',error=>errors.push(error.message))
   await openGame(page,'/')
-  await page.getByRole('button',{name:/ENTER TRAINING/}).click()
-  await page.getByRole('button',{name:'RESUME / ENTER ARENA'}).click()
+  await enterTraining(page)
   await exercise(page)
   expect(errors).toEqual([])
 })

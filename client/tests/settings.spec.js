@@ -1,11 +1,11 @@
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
-import {state,position,lookAt,moveUntil,aimAtTarget, openGame,reloadGame,openMultiplayer} from './helpers.js'
+import {state,position,lookAt,moveUntil,aimAtTarget, openGame,reloadGame,openMultiplayer,enterTraining} from './helpers.js'
 
 const settings=async page=> { await page.getByRole('button',{ name:/^.*SETTINGS/,exact:false }).first().click();return page.getByRole('dialog',{ name:'SETTINGS',exact:true }) }
 const tab=async(page,name)=>page.getByRole('tab',{ name,exact:true }).click()
 const rebind=async(page,name,key)=> { await page.getByRole('button',{ name:`Rebind ${name}`,exact:true }).click();await page.keyboard.press(key) }
-const enter=async page=> { await page.getByRole('button',{ name:/ENTER TRAINING/ }).click();await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click();await expect.poll(async()=>(await state(page)).mode).toBe('playing') }
+const enter=async page=> { await enterTraining(page);await expect.poll(async()=>(await state(page)).mode).toBe('playing') }
 const camera=page=>page.evaluate(async()=> { const url=performance.getEntriesByType('resource').find(e=>new URL(e.name).pathname.endsWith('/@react-three_fiber.js')).name;const { _roots }=await import(url);const { camera,scene }=_roots.get(document.querySelector('canvas')).store.getState();let aura=null;scene.traverse(mesh=> { if(mesh.name==='enemy-aura') aura={ color:mesh.material.color.getHexString(),depthTest:mesh.material.depthTest } });return { fov:camera.fov,aura } })
 const sound=page=>page.evaluate(async()=> { const url=performance.getEntriesByType('resource').find(e=>new URL(e.name).pathname==='/src/audio/synth.js').name;return (await import(url)).audio.diagnostics() })
 
@@ -72,7 +72,7 @@ test('damage opacity and stacked totals use real hits while disabling numbers pr
   await page.mouse.down();await page.waitForTimeout(550);await page.mouse.up()
   const feed=await page.evaluate(()=>window.__damage);expect(feed.some(h=>h.style==='stacked' && h.opacity==='0.4')).toBe(true)
   expect(feed.some(h=>Number.parseInt(h.text)>24)).toBe(true)
-  await page.evaluate(()=>document.exitPointerLock());await settings(page);await page.getByLabel('Damage numbers',{ exact:true }).uncheck();await page.getByRole('button',{ name:'BACK →',exact:true }).click();await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click();await aimAtTarget(page,6)
+  await page.evaluate(()=>document.exitPointerLock());await settings(page);await page.getByLabel('Damage numbers',{ exact:true }).uncheck();await page.getByRole('button',{ name:'BACK →',exact:true }).click();await page.getByRole('button',{ name:'RESUME' }).click();await aimAtTarget(page,6)
   await page.mouse.down();await page.mouse.up();await expect(page.getByTestId('hit-feedback').locator('.hit-strokes i').first()).toBeVisible();await expect(page.getByTestId('damage-numbers')).toHaveCount(0)
 })
 

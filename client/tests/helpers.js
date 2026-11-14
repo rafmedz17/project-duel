@@ -17,6 +17,11 @@ export async function reloadGame(page,options) {
   await dismissFullscreenNotice(page)
   return response
 }
+export async function enterTraining(page) {
+  await page.getByRole('button',{name:/ENTER TRAINING/}).click()
+  await expect.poll(async()=>{const s=await state(page);return s.ready && s.mode==='playing'},{timeout:30000}).toBe(true)
+  await expect.poll(()=>page.evaluate(()=>document.pointerLockElement===document.querySelector('canvas'))).toBe(true)
+}
 export async function openMultiplayer(page,mode='casual',name,waitForRoom=true) {
   if(name) await page.evaluate(value=>localStorage.setItem('duel-callsign',value),name)
   await page.getByRole('button',{name:/^MULTIPLAYER/}).click()

@@ -1,5 +1,5 @@
 import { test,expect } from '@playwright/test'
-import {state,presetLoadout,lookAt,editLoadout, openGame} from './helpers.js'
+import {state,presetLoadout,lookAt,editLoadout, openGame,enterTraining} from './helpers.js'
 
 async function start(page,gear) {
   await presetLoadout(page,gear)
@@ -7,8 +7,7 @@ async function start(page,gear) {
   await page.getByRole('button',{ name:/SETTINGS/ }).click()
   await page.getByRole('tab',{ name:'Graphics',exact:true }).click();await page.getByLabel('Render quality').selectOption('Low')
   await page.getByRole('button',{ name:'BACK' }).click()
-  await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
-  await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
+  await enterTraining(page)
   await expect.poll(async () => (await state(page)).mode).toBe('playing')
 }
 test('character armory shows four distinct operatives, the full arsenal and fits smaller screens',async ({ page }) => {
@@ -76,7 +75,7 @@ for(const unique of ['flashbang','smoke','stun']) test(`${unique} throws a visib
     const frozen=(await state(page)).time
     await page.waitForTimeout(250)
     expect((await state(page)).time).toBe(frozen)
-    await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
+    await page.getByRole('button',{ name:'RESUME' }).click()
   }
   if(unique==='stun') expect((await state(page)).rootedUntil).toBe(0)
   if(unique==='smoke') {

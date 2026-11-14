@@ -23,6 +23,8 @@ export default function App() {
   const [panel,setPanel] = useState(() => lobby.hasRecovery() ? 'multiplayer' : null)
   const [multiplayerMode,setMultiplayerMode]=useState('casual')
   const [showFullscreenNotice,setShowFullscreenNotice]=useState(true)
+  const [canvasReady,setCanvasReady]=useState(false)
+  const canvasCreated=useCallback(()=>setCanvasReady(true),[])
   const [reducedMotion,setReducedMotion]=useState(()=>window.matchMedia('(prefers-reduced-motion: reduce)').matches)
   const [pageVisible,setPageVisible]=useState(()=>!document.hidden)
   useEffect(()=>{
@@ -38,12 +40,34 @@ export default function App() {
   const multiplayerButton = useRef(null)
   const online = useLobby(s => Boolean(s.room?.arenaActive))
   const arenaEpoch = useLobby(s => s.room?.arenaEpoch || 0)
-  const enter = () => { game.reset({ loadout:accounts.get().loadout,bank:accounts.get().bank }); game.set({ mode:'paused', error:'' }); setPanel(null) }
   const restart = () => { game.reset({ loadout:game.get().loadout,bank:game.get().trainingBank });game.set({ mode:'paused',error:'' });setPanel(null) }
   const resume = useCallback(async () => {
     const canvas = document.querySelector('canvas')
-    if (!canvas?.requestPointerLock) { game.set({ error:'This browser does not support mouse capture. Use desktop Chrome, Edge, or Firefox.' }); return }
-    try { await canvas.requestPointerLock() } catch { game.set({ error:'Mouse capture was blocked. Click Resume to try again.' }) }
+    const generation=game.get().generation
+    if (!canvas?.requestPointerLock) { game.set({ mode:'paused',error:'This browser does not support mouse capture. Use desktop Chrome, Edge, or Firefox.' }); return }
+    game.set({ mode:'entering',error:'' })
+    try {
+      await canvas.requestPointerLock()
+      if(game.get().generation===generation && game.get().mode==='entering' && document.pointerLockElement===canvas) game.set({ mode:'playing',error:'' })
+    } catch {
+      if(game.get().generation===generation && game.get().mode==='entering') game.set({ mode:'paused',error:'Mouse capture was blocked. Click Resume to try again.' })
+    }
+  },[])
+  const enter = () => {
+    game.reset({ loadout:accounts.get().loadout,bank:accounts.get().bank })
+    game.set({ ready:false,error:'' });setPanel(null)
+    void resume()
+  }
+  useEffect(()=>{
+    // Capture starts from the menu click, before the physics/player can mount.
+    const pending=()=>game.get().mode==='entering' || (game.get().mode==='playing' && !game.get().ready)
+    const lock=()=>{
+      if(!pending()) return
+      game.set({ mode:document.pointerLockElement===document.querySelector('canvas') ? 'playing' : 'paused' })
+    }
+    const blocked=()=>{if(pending()) game.set({ mode:'paused',error:'Mouse capture was blocked. Click Resume to try again.' })}
+    document.addEventListener('pointerlockchange',lock);document.addEventListener('pointerlockerror',blocked)
+    return ()=>{document.removeEventListener('pointerlockchange',lock);document.removeEventListener('pointerlockerror',blocked)}
   },[])
   const closeArmory=useCallback((capture=false)=> { setPanel(null);game.set({ mode:'paused' });if(capture) void resume() },[resume])
   useEffect(()=> {
@@ -60,10 +84,11 @@ export default function App() {
   const menu = () => { document.exitPointerLock(); game.set({ mode:'menu', ready:false }); setPanel(null) }
   return <main className={mode==='menu' && !online ? 'main-menu-screen' : undefined}>
     <RoomScoreboard/>
-    <Suspense fallback={<div className="engine-loading" role="status">LOADING COMBAT SYSTEMS…</div>}><World online={online} arenaEpoch={arenaEpoch} menuAnimated={!showFullscreenNotice && !reducedMotion && pageVisible && !panel && !recovery}/></Suspense>
+    <Suspense fallback={<div className="engine-loading" role="status">LOADING COMBAT SYSTEMS…</div>}><World onCanvasReady={canvasCreated} online={online} arenaEpoch={arenaEpoch} menuAnimated={!showFullscreenNotice && !reducedMotion && pageVisible && !panel && !recovery}/></Suspense>
     {online ? <OnlineOverlay onSettings={() => setPanel('settings')} onLeave={() => { void lobby.leave(); setPanel(null) }} /> : <>
     {s.mode !== 'menu' && <Hud />}
-    {s.mode === 'menu' ? <MainMenu onMultiplayer={mode=>{setMultiplayerMode(mode);setPanel('multiplayer')}} onPanel={setPanel} onTraining={enter} accountLoading={accountLoading} multiplayerButton={multiplayerButton}/> : s.mode !== 'playing' && s.mode !== 'loadout' && <div className="overlay"><section className="dialog"><div className="eyebrow">PROJECT DUEL / SECTOR 01</div><h2>{s.mode === 'dead' ? 'SYSTEM OFFLINE' : s.time > 0 ? 'SIMULATION PAUSED' : 'READY TO DEPLOY'}</h2><p>{s.mode === 'dead' ? 'Your health is depleted. Restart to deploy again.' : 'Capture your mouse to enter the facility. Press Escape to pause.'}</p>{s.error && <p role="alert" className="error">{s.error}</p>}{s.mode !== 'dead' && <button className="primary" disabled={!s.ready} onClick={resume}>{s.ready ? 'RESUME / ENTER ARENA →' : 'INITIALIZING PHYSICS…'}</button>}<button onClick={restart}>RESTART TRAINING</button><button onClick={() => setPanel('settings')}>SETTINGS</button><button onClick={menu}>RETURN TO MAIN MENU</button><p className="muted">{'Four courses surround the central hub. G controls the current course. B opens the field armory. Aim for robot heads for bonus damage.'}</p></section></div>}
+    {['entering','playing'].includes(s.mode) && !s.ready && <div className="training-loading" role="status">LOADING TRAINING</div>}
+    {s.mode === 'menu' ? <MainMenu onMultiplayer={mode=>{setMultiplayerMode(mode);setPanel('multiplayer')}} onPanel={setPanel} onTraining={enter} accountLoading={accountLoading || !canvasReady} multiplayerButton={multiplayerButton}/> : s.mode !== 'playing' && s.mode !== 'entering' && s.mode !== 'loadout' && <div className="overlay"><section className="dialog"><div className="eyebrow">PROJECT DUEL / SECTOR 01</div><h2>{s.mode === 'dead' ? 'SYSTEM OFFLINE' : 'SIMULATION PAUSED'}</h2><p>{s.mode === 'dead' ? 'Your health is depleted. Restart to deploy again.' : 'Capture your mouse to enter the facility. Press Escape to pause.'}</p>{s.error && <p role="alert" className="error">{s.error}</p>}{s.mode !== 'dead' && <button className="primary" disabled={!s.ready} onClick={resume}>{s.ready ? 'RESUME' : 'INITIALIZING PHYSICS…'}</button>}<button onClick={restart}>RESTART TRAINING</button><button onClick={() => setPanel('settings')}>SETTINGS</button><button onClick={menu}>RETURN TO MAIN MENU</button><p className="muted">{'Four courses surround the central hub. G controls the current course. B opens the field armory. Aim for robot heads for bonus damage.'}</p></section></div>}
     </>}
     {panel==='training-loadout' ? <TrainingArmory onClose={closeArmory}/> : recovery || ['profile','loadout','leaderboard'].includes(panel) ? <AccountPanel key={panel || 'recovery'} initial={panel || 'profile'} onShowProfile={() => setPanel('profile')} onClose={() => setPanel(null)} /> : panel === 'multiplayer' ? <Lobby mode={multiplayerMode} onProfile={()=>setPanel('profile')} returnFocusRef={multiplayerButton} onClose={() => setPanel(null)} /> : panel==='settings' ? <Settings onClose={() => setPanel(null)}/> : null}
     {showFullscreenNotice && <FullscreenNotice onDismiss={()=>setShowFullscreenNotice(false)}/>}

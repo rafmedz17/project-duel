@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test'
 import {Client} from '@colyseus/sdk'
-import {diagnostics,state, openGame,openMultiplayer} from './helpers.js'
+import {diagnostics,state, openGame,openMultiplayer,enterTraining} from './helpers.js'
 
 const crosshair=page=>page.locator('.custom-crosshair[data-crouched]')
 const view=(page,id)=>page.evaluate(async id=>{
@@ -22,8 +22,7 @@ test('training crouch lowers the capsule, slows sprinting and clears on release/
   await page.getByRole('tab',{name:'Controls',exact:true}).click()
   await expect(page.getByRole('button',{name:'Rebind Crouch (hold)',exact:true})).toHaveText('L CTRL')
   await page.getByRole('button',{name:/^BACK/}).click()
-  await page.getByRole('button',{name:/ENTER TRAINING/}).click()
-  await page.getByRole('button',{name:'RESUME / ENTER ARENA'}).click()
+  await enterTraining(page)
   await expect.poll(async()=>(await diagnostics(page)).grounded).toBe(true)
   const initial=(await diagnostics(page)).position[1]
   const initialEye=(await view(page)).eye
@@ -39,7 +38,7 @@ test('training crouch lowers the capsule, slows sprinting and clears on release/
   await expect.poll(async()=>(await diagnostics(page)).position[1]).toBeGreaterThan(initial-.02)
   await pressCrouch(page,'ControlRight')
   await page.evaluate(()=>document.exitPointerLock());await page.keyboard.up('ControlRight')
-  await page.getByRole('button',{name:'RESUME / ENTER ARENA'}).click()
+  await page.getByRole('button',{name:'RESUME'}).click()
   await expect(crosshair(page)).toHaveAttribute('data-crouched','false')
   await page.evaluate(()=>document.exitPointerLock())
   await page.getByRole('button',{name:'SETTINGS',exact:true}).click()
@@ -48,7 +47,7 @@ test('training crouch lowers the capsule, slows sprinting and clears on release/
   await page.keyboard.press('KeyV')
   await page.getByRole('button',{name:'SAVE ON DEVICE',exact:true}).click()
   await page.getByRole('button',{name:/^BACK/}).click()
-  await page.getByRole('button',{name:'RESUME / ENTER ARENA'}).click()
+  await page.getByRole('button',{name:'RESUME'}).click()
   expect((await state(page)).settings.bindings.crouch).toBe('KeyV')
   await pressCrouch(page,'KeyV');await page.keyboard.up('KeyV')
   await expect(crosshair(page)).toHaveAttribute('data-crouched','false')

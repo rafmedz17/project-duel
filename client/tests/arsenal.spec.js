@@ -1,12 +1,11 @@
 import { test,expect } from '@playwright/test'
-import {equipWeapon, state,presetLoadout,lookAt,moveUntil,aimAtTarget,observeHitFeedback,observedFeedback,editLoadout, openGame,reloadGame} from './helpers.js'
+import {equipWeapon, state,presetLoadout,lookAt,moveUntil,aimAtTarget,observeHitFeedback,observedFeedback,editLoadout, openGame,reloadGame,enterTraining} from './helpers.js'
 import { WEAPONS,WEAPON_IDS } from '../../shared/weapons.js'
 
 async function start(page,gear) {
   await presetLoadout(page,gear);await openGame(page,'/')
   await page.getByRole('button',{ name:/SETTINGS/ }).click();await page.getByRole('tab',{ name:'Graphics',exact:true }).click();await page.getByLabel('Render quality').selectOption('Low')
-  await page.getByRole('button',{ name:'BACK' }).click();await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
-  await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
+  await page.getByRole('button',{ name:'BACK' }).click();await enterTraining(page)
   await expect.poll(async ()=>(await state(page)).mode).toBe('playing')
   await equipWeapon(page,gear.startingWeapon || gear.primary || 'rifle')
 }
@@ -38,7 +37,7 @@ test('all 17 arsenal models and stats are selectable; pistol and melee choices p
   }
   await editLoadout(page,{primary:'omega',secondary:'magnus',melee:'fangs'})
   await reloadGame(page)
-  await page.getByRole('button',{ name:/ENTER TRAINING/ }).click();await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
+  await enterTraining(page)
   expect((await state(page)).loadout).toMatchObject({ primary:'omega',secondary:'magnus',melee:'fangs' })
   await page.keyboard.press('Digit3');await expect.poll(async ()=>(await state(page)).weapon).toBe('fangs')
   await expect.poll(()=>model(page,'model-fangs')).not.toBeNull()

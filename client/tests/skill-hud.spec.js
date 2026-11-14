@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test'
 import {Client} from '@colyseus/sdk'
-import {openGame,openMultiplayer,presetLoadout,state} from './helpers.js'
+import {openGame,openMultiplayer,presetLoadout,state,enterTraining} from './helpers.js'
 
 test.beforeEach(async({page})=>{
   await page.emulateMedia({reducedMotion:'reduce'})
@@ -12,8 +12,7 @@ test('training skill icons refill with the real cooldown, freeze when paused and
   const errors=[];page.on('pageerror',error=>errors.push(error.message))
   await presetLoadout(page,{character:'vex',unique:'scanner'})
   await openGame(page)
-  await page.getByRole('button',{name:/ENTER TRAINING/}).click()
-  await page.getByRole('button',{name:'RESUME / ENTER ARENA'}).click()
+  await enterTraining(page)
   await expect(page.locator('.skill-icon-fill svg')).toHaveCount(4)
   await expect(page.getByTestId('ability-ultimate').locator('.skill-icon-fill svg')).toHaveAttribute('data-skill-icon','ultimate-dash')
   const shield=page.getByTestId('ability-shield')
@@ -30,7 +29,7 @@ test('training skill icons refill with the real cooldown, freeze when paused and
   const paused=await charge(shield)
   await page.waitForTimeout(250)
   expect(await charge(shield)).toBe(paused)
-  await page.getByRole('button',{name:'RESUME / ENTER ARENA'}).click()
+  await page.getByRole('button',{name:'RESUME'}).click()
   await expect(shield).toHaveClass(/ready/,{timeout:10000})
   await expect(progress).toHaveCount(0);expect(await charge(shield)).toBe(1)
   await page.keyboard.press('KeyX');await page.keyboard.press('KeyE')
