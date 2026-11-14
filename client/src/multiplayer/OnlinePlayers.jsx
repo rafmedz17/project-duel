@@ -255,7 +255,7 @@ function RemotePlayer({ player }) {
     return time<smoke.activeUntil && throughSmoke(origin,target,[{ origin:smoke.origin.map((v,i)=>v+(i===1 ? 1 : 0)),radius:4 }]) && !blocked(origin,target,getMap(lobby.get().room.mapId).solids)
   }
   return <group ref={root} name={`remote-player-${player.id}`}>
-    <RobotModel enemy headRef={head} stance={()=>samplePose(player.id)?.crouched || false} characterId={player.combat.characterId} color={player.connected ? undefined : '#728599'} reveal={reveal} />
+    <RobotModel enemy equipped headRef={head} stance={()=>samplePose(player.id)?.crouched || false} characterId={player.combat.characterId} color={player.connected ? undefined : '#728599'} reveal={reveal} />
     <RemoteEquipment player={player}/>
   </group>
 }

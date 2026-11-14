@@ -13,6 +13,29 @@ import { createWeaponTracer } from '../src/game/weapons/traceWeapon.js'
 import { TRAINING_SOLIDS,TRAINING_TARGETS } from '../src/game/training/config.js'
 import { weaponAnimation } from '../src/game/weapons/animation.js'
 import { createRecoil,recoilLimits,recoilAim,resetRecoil,stepRecoil } from '../src/game/weapons/recoil.js'
+import { armorGeometry } from '../src/game/characters/armorGeometry.js'
+import { CHARACTERS } from '../../shared/characters.js'
+
+test('reference roster retains saved character IDs, effects and bounded shared armor geometry',()=>{
+  assert.deepEqual(Object.keys(CHARACTERS),['vex','aegis','ion','raze'])
+  assert.deepEqual(Object.values(CHARACTERS).map(c=>[c.name,c.effect]),[['VEX','dash'],['SPECTRA','shield'],['ZERO','ammo'],['AXIOM','power']])
+  for(const character of Object.values(CHARACTERS)) {
+    let triangles=0
+    for(const part of ROBOT_PARTS) {
+      const geometry=armorGeometry(part,character)
+      assert.equal(armorGeometry(part,character),geometry,'instances share their design geometry')
+      for(const buffer of Object.values(geometry)) {
+        if(!buffer.attributes.position) continue
+        assert.ok([...buffer.attributes.position.array].every(Number.isFinite))
+        assert.equal(buffer.attributes.position.count,buffer.attributes.normal.count)
+        assert.equal(buffer.attributes.position.count,buffer.attributes.color.count)
+        triangles+=buffer.attributes.position.count/3
+      }
+      if(part.id.startsWith('arm')) assert.ok(armorGeometry(part,character,true).armor.attributes.position.count<geometry.armor.attributes.position.count,'held weapons use articulated forearms instead of dangling duplicate hands')
+    }
+    assert.ok(triangles<12000,`${character.name} armor budget: ${triangles}`)
+  }
+})
 
 test('every firearm has bounded spray and returns exactly to mouse aim after firing stops',()=>{
   for(const weapon of Object.values(WEAPONS).filter(w=>w.magazine)) {

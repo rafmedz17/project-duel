@@ -72,7 +72,7 @@ test('training auto-saves to the account, retries failures, queues rapid edits a
   shared.failLoadoutBank=true
   await editLoadout(page,{character:'ion'},{wait:false})
   await expect(dialog.getByRole('alert')).toContainText('Loadout save unavailable')
-  await expect(dialog.getByRole('button',{name:'Change character',exact:true})).toContainText('ION')
+  await expect(dialog.getByRole('button',{name:'Change character',exact:true})).toContainText('ZERO')
   expect((await state(page)).loadout).toEqual(before.loadout)
   shared.failLoadoutBank=false
   let release
@@ -99,7 +99,7 @@ test('training auto-saves to the account, retries failures, queues rapid edits a
     await other.getByRole('dialog').getByRole('button',{name:'BACK',exact:true}).click()
     await other.getByRole('button',{name:/^CHARACTER & LOADOUT/}).click()
     await expect(other.getByRole('button',{name:'Loadout slot 3',exact:true})).toHaveAttribute('aria-pressed','true')
-    await expect(other.getByRole('button',{name:'Change character',exact:true})).toContainText('ION')
+    await expect(other.getByRole('button',{name:'Change character',exact:true})).toContainText('ZERO')
     await expect(other.getByRole('button',{name:'Change unique skill',exact:true})).toContainText('SPECTRAL SMOKE')
   } finally {await second.close()}
   expect(errors).toEqual([])
@@ -185,7 +185,7 @@ test('email sign-in, saved callsign/loadout, restored session, history and leade
     await expect(second.getByLabel('CALLSIGN')).toHaveValue('Nova Saved')
     await second.getByRole('dialog').getByRole('button',{ name:'CHARACTER & LOADOUT',exact:true }).click()
     await expect(second.getByRole('button',{ name:'Change primary gun',exact:true })).toContainText('VXR-9 PHANTOM')
-    await expect(second.getByRole('button',{ name:'Change character',exact:true })).toContainText('ION')
+    await expect(second.getByRole('button',{ name:'Change character',exact:true })).toContainText('ZERO')
     await expect(second.getByRole('button',{ name:'Change unique skill',exact:true })).toContainText('SPECTRAL SMOKE')
     await second.getByRole('dialog').getByRole('button',{ name:'PLAYER PROFILE',exact:true }).click()
     await second.getByRole('button',{ name:'SIGN OUT',exact:true }).click()

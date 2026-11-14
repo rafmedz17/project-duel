@@ -1,12 +1,16 @@
 import {forwardRef,useRef} from 'react'
 import {useFrame} from '@react-three/fiber'
 import {Quaternion,Vector3} from 'three'
+import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js'
 import {getCharacter} from '../../../../shared/characters.js'
 import {WEAPONS} from '../../../../shared/weapons.js'
 import {weaponAnimation} from '../weapons/animation.js'
 
-function Plate({position=[0,0,0],size,color,glow=false}) {
-  return <mesh position={position} raycast={()=>null}><boxGeometry args={size}/>{glow ? <meshBasicMaterial color={color} toneMapped={false}/> : <meshStandardMaterial color={color} metalness={.55} roughness={.48}/>}</mesh>
+const plates=new Map()
+function Plate({position=[0,0,0],size,color,glow=false,rotation}) {
+  const key=size.join(',')
+  if(!plates.has(key)) plates.set(key,new RoundedBoxGeometry(...size,1,Math.min(.006,...size.map(v=>v*.15))))
+  return <mesh position={position} rotation={rotation} geometry={plates.get(key)} dispose={null} raycast={()=>null}>{glow ? <meshBasicMaterial color={color} toneMapped={false}/> : <meshStandardMaterial color={color} metalness={.65} roughness={.36}/>}</mesh>
 }
 
 const Glove=forwardRef(function Glove({side,character,motion,name},ref) {
@@ -22,10 +26,11 @@ const Glove=forwardRef(function Glove({side,character,motion,name},ref) {
   },-.25)
   return <group ref={ref} name={name}>
     <Plate size={[.103,.115,.088]} color={character.armor}/>
-    <Plate position={[0,0,.049]} size={[.083,.083,.017]} color={character.secondary}/>
+    <Plate position={[0,0,.049]} size={[.083,.083,.017]} color={character.trim}/>
+    {[0,1,2,3].map(i=><Plate key={i} position={[-.034+i*.023,.041,.052]} size={[.018,.024,.025]} color={character.armor} rotation={[.15,0,0]}/>)}
     <Plate position={[0,-.038,.06]} size={[.064,.012,.008]} color={character.color} glow/>
     <mesh position={[0,-.087,.015]} raycast={()=>null}><cylinderGeometry args={[.052,.059,.065,8]}/><meshStandardMaterial color="#152432" roughness={.7}/></mesh>
-    <Plate position={[0,-.089,.064]} size={[.065,.025,.012]} color={character.color}/>
+    <Plate position={[0,-.089,.064]} size={[.065,.025,.012]} color={character.secondary}/>
     {[0,1,2,3].map(i=><group key={i} ref={node=>{fingers.current[i]=node}} position={[side*(.034-i*.023),.052,-.017]} name={`${name}-finger-${i}`}>
       <Plate position={[0,.022,0]} size={[.019,.044,.025]} color={i===0 ? '#78919d' : '#4a626f'}/>
       <group ref={node=>{tips.current[i]=node}} position={[0,.041,0]}>
@@ -40,9 +45,10 @@ const Glove=forwardRef(function Glove({side,character,motion,name},ref) {
 const Sleeve=forwardRef(function Sleeve({character,forearm,name},ref) {
   return <group ref={ref} name={name}>
     <mesh raycast={()=>null}><cylinderGeometry args={[forearm ? .052 : .074,forearm ? .073 : .082,1,8]}/><meshStandardMaterial color={character.armor} roughness={.65} metalness={.35}/></mesh>
-    <Plate position={[0,.03,.061]} size={[forearm ? .1 : .12,.64,.034]} color={character.secondary}/>
-    <Plate position={[0,.04,.082]} size={[.018,.42,.009]} color={character.color} glow/>
-    {[-.26,.27].map(y=><Plate key={y} position={[0,y,.056]} size={[.112,.035,.032]} color="#69828b"/>)}
+    {[-.22,0,.22].map((y,i)=><Plate key={y} position={[0,y,.061]} size={[forearm ? .095 : .12,.21,.04]} color={i===1 ? character.armor : character.trim} rotation={[.06,0,i===1 ? -.08 : .08]}/>)}
+    <Plate position={[0,.04,.088]} size={[.012,.45,.008]} color={character.color} glow/>
+    <Plate position={[.042,.12,.078]} size={[.014,.23,.019]} color={character.secondary}/>
+    {[-.33,.33].map(y=><Plate key={y} position={[0,y,.056]} size={[.112,.035,.032]} color={character.secondary}/>)}
   </group>
 })
 

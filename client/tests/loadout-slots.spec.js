@@ -55,7 +55,7 @@ test('five presets automatically save independent choices, survive reload and fi
   await expect(dialog.getByRole('button',{ name:'Loadout slot 5',exact:true })).toHaveAttribute('aria-pressed','true')
   await expect(dialog.getByRole('button',{ name:'Change primary gun',exact:true })).toContainText('OMEGA-88')
   await dialog.getByRole('button',{ name:'Loadout slot 2',exact:true }).click()
-  await expect(dialog.getByRole('button',{ name:'Change character',exact:true })).toContainText('AEGIS')
+  await expect(dialog.getByRole('button',{ name:'Change character',exact:true })).toContainText('SPECTRA')
   await page.setViewportSize({ width:640,height:670 });await slots.scrollIntoViewIfNeeded()
   const box=await slots.boundingBox();expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(641)
   await page.screenshot({ path:'five-loadouts-preview.png' })

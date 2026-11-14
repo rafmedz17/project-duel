@@ -1,17 +1,25 @@
 import { ROBOT_PARTS,robotParts } from '../../../../shared/robot.js'
-import { PLAYER } from '../../../../shared/arena.js'
-import { CROUCH } from '../../../../shared/stance.js'
 import { getCharacter } from '../../../../shared/characters.js'
-import { useRef } from 'react'
+import { useEffect,useMemo,useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { BackSide } from 'three'
+import { BackSide,MeshBasicMaterial,MeshStandardMaterial } from 'three'
 import { useGame } from '../store.js'
+import { armorGeometry } from './armorGeometry.js'
 
-export default function RobotModel({ targetId, characterId = 'vex', color, flash = false, down = false, headRef, revealed = false, reveal,enemy=false,stance }) {
+const noRaycast=()=>null
+
+export default function RobotModel({ targetId,characterId='vex',color,flash=false,down=false,headRef,revealed=false,reveal,enemy=false,stance,equipped=false }) {
   const settings=useGame(s=>s.settings),aura=enemy && settings.enemyAura && !down
-  const character = getCharacter(characterId), accent = color || character.color
-  const root = useRef(),parts=useRef({}),feet=useRef(),lastStance=useRef(false)
-  useFrame(() => {
+  const character=getCharacter(characterId),accent=color || character.color
+  const root=useRef(),parts=useRef({}),lastStance=useRef(false)
+  const geometry=useMemo(()=>ROBOT_PARTS.map(part=>armorGeometry(part,character,equipped)),[character,equipped])
+  const materials=useMemo(()=>({
+    armor:new MeshStandardMaterial({vertexColors:true,metalness:.32,roughness:.42}),
+    light:new MeshBasicMaterial({color:accent,toneMapped:false}),
+    outline:new MeshBasicMaterial({color:settings.enemyColor,side:BackSide,transparent:true,opacity:.28,depthWrite:false}),
+  }),[accent,settings.enemyColor])
+  useEffect(()=>()=>Object.values(materials).forEach(material=>material.dispose()),[materials])
+  useFrame(({clock})=> {
     const crouched=Boolean(stance?.())
     if(crouched!==lastStance.current) {
       robotParts(crouched).forEach((part,index)=>{
@@ -20,35 +28,32 @@ export default function RobotModel({ targetId, characterId = 'vex', color, flash
         group.scale.set(...part.size.map((value,axis)=>value/base.size[axis]))
         if(part.id!=='head') group.rotation.set(...(part.rotation || [0,0,0]))
       })
-      feet.current.position.y=-(crouched ? CROUCH.height : PLAYER.height)/2+.025
       lastStance.current=crouched
     }
-    if (!reveal || !root.current) return
-    const visible = !down && reveal()
-    root.current.traverse(mesh => {
-      if (!mesh.userData.characterArmor) return
-      mesh.renderOrder = visible ? 100 : 0
-      mesh.material.depthTest = !visible
-      mesh.material.depthWrite = !visible
-      if (mesh.material.transparent!==visible) { mesh.material.transparent=visible; mesh.material.needsUpdate=true }
-      mesh.material.emissive.set(visible ? accent : aura ? settings.enemyColor : '#000000')
-      mesh.material.emissiveIntensity = visible ? 1.5 : aura ? .42 : 0
-    })
+    const visible=!down && (revealed || Boolean(reveal?.()))
+    const armor=parts.current.head.getObjectByName('armor-head').material
+    const light=parts.current.head.getObjectByName('armor-lights-head').material
+    for(const material of [armor,light]) if(material.transparent!==visible) {
+      material.transparent=visible;material.needsUpdate=true
+    }
+    armor.depthTest=!visible;armor.depthWrite=!visible
+    light.depthTest=!visible;light.depthWrite=!visible
+    armor.color.set(down ? '#4a5360' : color || '#ffffff')
+    armor.emissive.set(flash ? '#ffffff' : visible ? accent : aura ? settings.enemyColor : '#000000')
+    armor.emissiveIntensity=flash ? .8 : visible ? 1.25 : aura ? .09 : 0
+    light.color.set(down ? '#34404c' : flash ? '#ffffff' : accent)
+    // Subtle reactor breathing; no flashing skills or extra combat effects.
+    light.color.multiplyScalar(down ? 1 : .9+Math.sin(clock.elapsedTime*1.7+Number(character.number))*.1)
+    root.current.traverse(mesh=>{if(mesh.userData.characterArmor) mesh.renderOrder=visible ? 100 : 0})
   })
-  return <group ref={root}>
-    {ROBOT_PARTS.map(part => <group key={part.id} position={part.position} ref={node=>{parts.current[part.id]=node;if(part.id==='head' && headRef) headRef.current=node}}>
-      <mesh name={`robot-${part.id}`} renderOrder={revealed ? 100 : 0} userData={{ blocksShot:!down,targetId,hitRegion:part.region,characterArmor:true }}>
-        <boxGeometry args={part.size} />
-        <meshStandardMaterial depthTest={!revealed} color={down ? '#243044' : flash ? '#ffffff' : revealed ? accent : part.id==='head' ? character.secondary : character.armor} emissive={revealed ? accent : aura ? settings.enemyColor : '#000000'} emissiveIntensity={revealed ? 0.8 : aura ? .42 : 0} metalness={0.65} roughness={0.4} />
+  return <group ref={root} name={`operative-${character.name.toLowerCase()}`}>
+    {ROBOT_PARTS.map((part,index)=><group key={part.id} position={part.position} ref={node=>{parts.current[part.id]=node;if(part.id==='head' && headRef) headRef.current=node}}>
+      <mesh name={`robot-${part.id}`} userData={{blocksShot:!down,targetId,hitRegion:part.region}}>
+        <boxGeometry args={part.size}/><meshBasicMaterial visible={false}/>
       </mesh>
-      {aura && <mesh name="enemy-aura" scale={[1.055,1.055,1.055]} raycast={()=>null}><boxGeometry args={part.size}/><meshBasicMaterial color={settings.enemyColor} side={BackSide} transparent opacity={.36} depthWrite={false}/></mesh>}
-      {(part.id==='head' || part.id==='torso') && <group position={[0,0,-part.size[2]/2-0.002]} rotation={[0,Math.PI,0]}>
-        {character.motif==='engine' ? <mesh><ringGeometry args={[part.id==='head' ? 0.07 : 0.09,part.id==='head' ? 0.095 : 0.13,24]} /><meshBasicMaterial color={down ? '#485868' : accent} /></mesh> : character.motif==='hunter' ? [-1,0,1].map(index => <mesh key={index} position={[index*0.085,0,0]} rotation={[0,0,-0.45]}><planeGeometry args={[0.022,part.id==='head' ? 0.14 : 0.22]} /><meshBasicMaterial color={down ? '#485868' : accent}/></mesh>) : <>
-          <mesh rotation={[0,0,character.motif==='runner' ? 0.12 : 0]}><planeGeometry args={[0.29,part.id==='head' ? 0.05 : 0.055]} /><meshBasicMaterial color={down ? '#485868' : accent}/></mesh>
-          {character.motif==='warden' && <mesh><planeGeometry args={[0.045,part.id==='head' ? 0.25 : 0.3]}/><meshBasicMaterial color={down ? '#485868' : accent}/></mesh>}
-        </>}
-      </group>}
+      <mesh name={`armor-${part.id}`} geometry={geometry[index].armor} material={materials.armor} dispose={null} raycast={noRaycast} userData={{characterArmor:true}}/>
+      {geometry[index].lights.attributes.position && <mesh name={`armor-lights-${part.id}`} geometry={geometry[index].lights} material={materials.light} dispose={null} raycast={noRaycast} userData={{characterArmor:true}}/>}
+      {aura && <mesh name="enemy-aura" scale={[1.035,1.035,1.035]} geometry={geometry[index].armor} material={materials.outline} dispose={null} raycast={noRaycast}/>}
     </group>)}
-    <mesh ref={feet} position={[0,-PLAYER.height/2+0.025,0]} rotation={[-Math.PI/2,0,0]}><ringGeometry args={[0.37,0.4,24]} /><meshBasicMaterial color={accent} transparent opacity={down ? 0.2 : 0.7} /></mesh>
   </group>
 }

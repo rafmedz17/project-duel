@@ -82,7 +82,7 @@ test('B edits character, guns, melee and skill in place while freezing an active
   await page.screenshot({ path:'training-reflex-preview.png' })
   await page.keyboard.press('KeyB');await expect(dialog).toBeVisible()
   await dialog.getByRole('button',{name:'Change character',exact:true}).click()
-  await page.getByRole('button',{name:'Select RAZE',exact:true}).hover()
+  await page.getByRole('button',{name:'Select AXIOM',exact:true}).hover()
   await page.keyboard.press('Escape')
   await dialog.getByRole('button',{ name:/RETURN TO TRAINING/ }).click()
   expect((await state(page)).loadout.character).toBe('ion')

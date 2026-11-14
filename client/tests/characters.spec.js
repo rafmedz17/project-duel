@@ -1,5 +1,7 @@
 import { test,expect } from '@playwright/test'
 import {state,presetLoadout,lookAt,editLoadout, openGame,enterTraining} from './helpers.js'
+import {CHARACTERS} from '../../shared/characters.js'
+import {ROBOT_PARTS} from '../../shared/robot.js'
 
 async function start(page,gear) {
   await presetLoadout(page,gear)
@@ -16,10 +18,13 @@ test('character armory shows four distinct operatives, the full arsenal and fits
   const dialog=page.getByRole('dialog',{ name:'CHARACTER & LOADOUT' })
   await dialog.getByRole('button',{name:'Change character',exact:true}).click()
   await expect(page.locator('.operative-option')).toHaveCount(4)
+  await expect(page.locator('.operative-option img.character-portrait')).toHaveCount(4)
+  const portraits=await page.locator('.operative-option img').evaluateAll(images=>Promise.all(images.map(async image=>{await image.decode();return image.naturalWidth>500})))
+  expect(portraits).toEqual([true,true,true,true])
   await page.keyboard.press('Escape')
   for(const character of ['vex','aegis','ion','raze']) {
     await editLoadout(page,{character})
-    await expect(dialog.getByRole('button',{name:'Change character',exact:true})).toContainText(character.toUpperCase())
+    await expect(dialog.getByRole('button',{name:'Change character',exact:true})).toContainText(CHARACTERS[character].name)
     await expect(dialog.getByRole('button',{name:'View ultimate skill',exact:true})).toContainText('10s')
   }
   await dialog.getByRole('button',{name:'Change primary gun',exact:true}).click()
@@ -33,6 +38,41 @@ test('character armory shows four distinct operatives, the full arsenal and fits
   const button=await dialog.getByRole('button',{ name:'Change primary gun',exact:true }).boundingBox()
   expect(button.x).toBeGreaterThanOrEqual(0); expect(button.x+button.width).toBeLessThanOrEqual(640)
   await dialog.screenshot({ path:'character-armory-small-preview.png' })
+})
+
+test('layered character armor preserves actual head, torso and foot raycast hits in training',async({page})=>{
+  const errors=[];page.on('pageerror',error=>errors.push(error.message))
+  await start(page,{character:'vex',unique:'scanner'})
+  const result=await page.evaluate(async ROBOT_PARTS=>{
+    const module=async path=>import(performance.getEntriesByType('resource').find(e=>new URL(e.name).pathname===path)?.name||path)
+    const fiber=performance.getEntriesByType('resource').find(e=>new URL(e.name).pathname.endsWith('/@react-three_fiber.js')).name
+    const {_roots}=await import(fiber),{scene}=_roots.get(document.querySelector('canvas')).store.getState()
+    const {Scene,PerspectiveCamera}=await import('/node_modules/.vite/deps/three.js')
+    const {createWeaponTracer}=await module('/src/game/weapons/traceWeapon.js')
+    const trace=createWeaponTracer(),results=[]
+    for(const name of ['vex','spectra','zero','axiom']) {
+      const source=scene.getObjectByName(`operative-${name}`),model=source.clone(),isolated=new Scene()
+      isolated.add(model);isolated.updateMatrixWorld(true)
+      const camera=new PerspectiveCamera(70,1,.05,100)
+      const regions=[]
+      for(const id of ['head','torso','foot-1']) {
+        const part=ROBOT_PARTS.find(part=>part.id===id)
+        camera.position.set(part.position[0],part.position[1],-4)
+        camera.lookAt(part.position[0],part.position[1],0);camera.updateMatrixWorld(true)
+        regions.push(trace(isolated,camera,{range:10,accuracy:100,damage:1},1).hits[0]?.region)
+      }
+      results.push({name,regions,vertices:source.getObjectByName('armor-head').geometry.attributes.position.count})
+    }
+    return results
+  },ROBOT_PARTS)
+  for(const model of result) {expect(model.regions).toEqual(['head','body','foot']);expect(model.vertices).toBeGreaterThan(300)}
+  await page.keyboard.press('KeyC')
+  await expect.poll(()=>page.evaluate(async()=>{
+    const fiber=performance.getEntriesByType('resource').find(e=>new URL(e.name).pathname.endsWith('/@react-three_fiber.js')).name
+    const {_roots}=await import(fiber),mesh=_roots.get(document.querySelector('canvas')).store.getState().scene.getObjectByName('armor-head')
+    return {transparent:mesh.material.transparent,depthTest:mesh.material.depthTest,renderOrder:mesh.renderOrder}
+  })).toEqual({transparent:true,depthTest:false,renderOrder:100})
+  expect(errors).toEqual([])
 })
 for(const character of ['vex','aegis','ion','raze']) test(`${character} has a visible ten-second ultimate and exactly four equipped skills`,async ({ page }) => {
   const errors=[]; page.on('pageerror',e=>errors.push(e.message))
