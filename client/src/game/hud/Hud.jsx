@@ -34,7 +34,6 @@ export default function Hud() {
     <WeaponStatus state={s} />
     <div className="hud-bottom">
       <div className="health"><span className="eyebrow">VITAL SYSTEMS / {s.hp > 30 ? 'STABLE' : 'CRITICAL'}</span><strong>{s.hp}<small> / 100 HP</small></strong><div className="health-track"><i style={{ width:`${s.hp}%` }} /></div>{shield && <div className="shield-charge" data-testid="shield-charge">SHIELD {s.shieldCharge} / {ABILITIES.shield.capacity}<i style={{ width:`${s.shieldCharge/ABILITIES.shield.capacity*100}%` }} /></div>}</div>
-      <span className="hint">{bindingLabel(s.settings.bindings.cycle)} CYCLE · {bindingLabel(s.settings.bindings.reload)} RELOAD · ESC PAUSE</span>
       <div className={`ammo ${melee ? 'blade-status' : s.weapon === 'rifle' ? 'rifle-status' : weapon.pellets ? 'shotgun-status' : ''}`}>
         <div className="weapon-slots" aria-label="Weapon selection">
           {weaponSlots(s.loadout).map((id,index) => <span key={id} className={s.weapon === id ? 'selected' : ''}>{bindingLabel(s.settings.bindings[['primary','secondary','melee'][index]])} {WEAPONS[id].shortName}</span>)}

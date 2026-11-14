@@ -32,7 +32,7 @@ export function AbilityBar({ state:s }) {
           <kbd>{abilityKey(id,settings)}</kbd>
           {cooling && <div className="skill-cooldown" role="progressbar" aria-label={`${name} cooldown`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(charge*100)} aria-valuetext={`${remaining.toFixed(1)} seconds remaining`}>{!active && <span>{remaining.toFixed(1)}</span>}</div>}
         </div>
-        <span className="skill-name">{name}</span><strong className="skill-status">{status}</strong>
+        <span className="skill-name">{name}</span><strong className="skill-status">{status==='READY' ? '' : status}</strong>
       </div>
     })}
   </div>
