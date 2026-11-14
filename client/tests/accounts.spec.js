@@ -1,5 +1,5 @@
 import { test,expect } from '@playwright/test'
-import {state,editLoadout, openGame,reloadGame} from './helpers.js'
+import {state,editLoadout, openGame,reloadGame,openMultiplayer} from './helpers.js'
 
 const cloudOrigin='http://127.0.0.1:5174'
 const userId='11111111-1111-4111-8111-111111111111'
@@ -171,7 +171,7 @@ test('email sign-in, saved callsign/loadout, restored session, history and leade
   await page.getByRole('button',{ name:/^PLAYER PROFILE/ }).click()
   await expect(page.getByLabel('CALLSIGN')).toHaveValue('Nova Saved')
   await page.getByRole('dialog').getByRole('button',{ name:'BACK',exact:true }).click()
-  await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
+  await openMultiplayer(page,'casual',undefined,false)
   await expect(page.getByLabel('YOUR CALLSIGN')).toHaveValue('Nova Saved')
   await expect(page.getByLabel('YOUR CALLSIGN')).toBeDisabled()
   // A fresh browser loads the same saved equipment after signing in.

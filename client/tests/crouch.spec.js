@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test'
 import {Client} from '@colyseus/sdk'
-import {diagnostics,state, openGame} from './helpers.js'
+import {diagnostics,state, openGame,openMultiplayer} from './helpers.js'
 
 const crosshair=page=>page.locator('.custom-crosshair[data-crouched]')
 const view=(page,id)=>page.evaluate(async id=>{
@@ -58,9 +58,7 @@ test('training crouch lowers the capsule, slows sprinting and clears on release/
 test('online crouch predicts locally, replicates both players and fires from the lowered authoritative eye',async({page})=>{
   const errors=[];page.on('pageerror',error=>errors.push(error.message))
   await openGame(page,'/')
-  await page.getByRole('button',{name:/^MULTIPLAYER/}).click()
-  await page.getByLabel('YOUR CALLSIGN').fill('Crouch Pilot')
-  await page.getByRole('button',{name:'CREATE PRIVATE ROOM'}).click()
+  await openMultiplayer(page,'casual','Crouch Pilot')
   const peer=await new Client('http://127.0.0.1:2567').joinById(await page.getByTestId('invite-code').textContent(),{name:'Crouch Peer'}),trails=[]
   peer.onMessage('loadout-bank',()=>{});peer.onMessage('shot-trail',trail=>trails.push(trail))
   let peerInput
@@ -68,7 +66,6 @@ test('online crouch predicts locally, replicates both players and fires from the
     await page.getByLabel('Match format').selectOption('freeplay')
     peer.send('ready',{ready:true})
     await page.getByRole('button',{name:'READY UP',exact:true}).click()
-    await page.getByRole('button',{name:'START SHARED ARENA'}).click()
     await page.getByRole('button',{name:'ENTER ARENA',exact:true}).click()
     const host=()=>peer.state.players.get(peer.state.hostId)
     await expect.poll(()=>host()?.grounded).toBe(true)

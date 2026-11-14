@@ -17,6 +17,12 @@ export async function reloadGame(page,options) {
   await dismissFullscreenNotice(page)
   return response
 }
+export async function openMultiplayer(page,mode='casual',name,waitForRoom=true) {
+  if(name) await page.evaluate(value=>localStorage.setItem('duel-callsign',value),name)
+  await page.getByRole('button',{name:/^MULTIPLAYER/}).click()
+  await page.getByRole('dialog',{name:'Choose multiplayer mode',exact:true}).getByRole('button',{name:new RegExp(`^${mode.toUpperCase()} `)}).click()
+  if(mode==='casual' && waitForRoom) await expect(page.getByTestId('invite-code')).toHaveText(/^[A-HJ-NP-Z2-9]{6}$/,{timeout:15000})
+}
 
 export async function editLoadout(page,choices,{wait=true}={}) {
   const labels={character:'character',primary:'primary gun',secondary:'pistol',melee:'melee',unique:'unique skill'}

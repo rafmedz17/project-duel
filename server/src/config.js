@@ -1,6 +1,7 @@
 export const LOBBY = Object.freeze({
   roomType:'duel_lobby',
   maxPlayers:2,
+  autoCountdownSeconds:5,
   codeLength:6,
   codeAlphabet:'ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
   reconnectSeconds:15,

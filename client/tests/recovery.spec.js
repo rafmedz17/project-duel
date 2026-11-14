@@ -1,4 +1,4 @@
-import {openGame,reloadGame} from './helpers.js'
+import {openGame,reloadGame,openMultiplayer} from './helpers.js'
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
 
@@ -13,9 +13,7 @@ async function state(page) {
 test('refresh restores the same arena seat and ammo, accepts new actions, and explicit leave clears recovery',async ({ page }) => {
   test.setTimeout(90000)
   await openGame(page,'/')
-  await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
-  await page.getByLabel('YOUR CALLSIGN').fill('Refresh Pilot')
-  await page.getByRole('button',{ name:'CREATE PRIVATE ROOM' }).click()
+  await openMultiplayer(page,'casual','Refresh Pilot')
   await expect(page.getByTestId('invite-code')).toHaveText(/^[A-HJ-NP-Z2-9]{6}$/)
   const code = await page.getByTestId('invite-code').textContent()
   const peer = await new Client('http://127.0.0.1:2567').joinById(code,{ name:'Recovery Peer' })
@@ -23,7 +21,6 @@ test('refresh restores the same arena seat and ammo, accepts new actions, and ex
     await page.getByLabel('Match format').selectOption('freeplay')
     await page.getByRole('button',{ name:'READY UP',exact:true }).click()
     peer.send('ready',{ ready:true })
-    await page.getByRole('button',{ name:'START SHARED ARENA' }).click()
     await page.getByRole('button',{ name:'ENTER ARENA',exact:true }).click()
     await expect.poll(async () => (await state(page)).captured).toBe(true)
     await page.mouse.click(640,400)
@@ -59,5 +56,5 @@ test('an invalid recovery token shows a retryable lobby and never creates a repl
   await expect(page.getByRole('alert')).toContainText('reserved seat expired')
   expect((await state(page)).room).toBeNull()
   expect(await page.evaluate(() => sessionStorage.getItem('duel-room-recovery-v1'))).toBeNull()
-  await expect(page.getByRole('button',{ name:'CREATE PRIVATE ROOM' })).toBeEnabled()
+  await expect(page.getByRole('button',{ name:'RETRY CONNECTION' })).toBeEnabled()
 })

@@ -1,6 +1,6 @@
 # Private multiplayer lobbies
 
-Milestone 3 includes private lobbies and a shared combat arena. Two browsers connect to Node.js/Colyseus, share an invite code, ready up, and enter the same facility after a host-started countdown. See the [online arena guide](ONLINE_ARENA.md) for controls, authority, and connection behavior. Online weapons, regional damage, abilities and Best of Three matches are server validated. The host can choose Free Play instead. Local robot training works without a server.
+Milestone 3 includes private lobbies and a shared combat arena. Two browsers connect to Node.js/Colyseus, share an invite code, ready up, and enter the same facility after an automatic five-second countdown. See the [online arena guide](ONLINE_ARENA.md) for controls, authority, and connection behavior. Online weapons, regional damage, abilities and Best of Three matches are server validated. The host can choose Free Play instead. Local robot training works without a server.
 
 ## Launch on your PC
 
@@ -18,13 +18,15 @@ npm.cmd run dev:server
 npm.cmd run dev:client
 ```
 
-1. Open the Vite address and choose **Multiplayer / Private Lobbies**.
-2. Enter a callsign of 2–18 characters and choose **Create Private Room**.
-3. Copy the six-character invite code.
-4. Open a second browser window, tab, or browser profile. Choose Multiplayer, enter another callsign and the code, then **Join Room**. Codes accept lowercase and are shown in uppercase.
-5. The host selects **Best of Three** or **Free Play**. Changing format resets both ready flags. Select **Ready Up** in each browser. Both see **Both Players Ready**. The host can select **Start Shared Arena**; either can cancel readiness during its three-second countdown.
+1. Open the Vite address and choose **Play Multiplayer**, then **Casual** or **Ranked** in the nearby picker. Escape closes the picker; arrow keys switch choices.
+2. Your room opens automatically, using your saved profile/callsign or an assigned guest callsign. Ranked requires a signed-in account.
+3. Copy the six-character invite code with the copy icon at the top of the lobby. The player cards show each operative, callsign, account status and readiness.
+4. Open a second browser window, tab, or browser profile. Choose Play Multiplayer and a mode, enter the code in the separate **Enter Code** field at the top, then **Join Room**. Codes accept lowercase and are shown in uppercase. Joining adopts the existing room's settings. Your current room stays open if the code is invalid or the other room is full; a successful join leaves your previous room.
+5. The host selects **Best of Three** or **Free Play**. Changing format resets both ready flags. Select **Ready Up** in each browser. Both see **Both Players Ready** and the shared five-second countdown starts automatically; either player can cancel readiness to stop it.
 6. Select **Enter Arena** to capture the mouse and play together. Escape releases controls. In Best of Three, use **Forfeit Match** to concede, then **Return to Lobby** after results to ready up again. In Free Play, Return to Lobby ends practice for both.
 7. Choose **Leave Room** to leave. Escape also closes the lobby while outside the arena. Local training is available from the main menu.
+
+Casual permits guests. Ranked requires two different signed-in accounts and Best of Three; guests are directed to Profile to sign in. A host who creates from Ranked waits for the second eligible player, then the lobby requests server confirmation of ranked mode. Ready checks stay locked until it is confirmed. The host can explicitly choose Casual to change that setup. The map preview and match controls remain visible to both players, while only the host can change settings.
 
 The shared arena supports all 17 weapons, server-validated regional damage, all four abilities and kills/deaths. Free Play has five-second respawns with preset selection; Best of Three resets eliminated players for the next round. Best of Three awards the match after two round wins, with a scoreboard, five-second loadout phases, countdowns, fresh rounds and results. Higher HP wins after 90 seconds; ties replay. Free Play keeps unlimited respawns. Results are held in memory only.
 

@@ -1,4 +1,4 @@
-import {openGame} from './helpers.js'
+import {openGame,openMultiplayer} from './helpers.js'
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
 import { PLAYER } from '../../shared/arena.js'
@@ -13,9 +13,7 @@ const network=page=>page.evaluate(async ()=> {
 async function pair(page,format) {
   await page.addInitScript(()=>localStorage.setItem('duel-loadout',JSON.stringify({character:'vex',primary:'hyperion',unique:'scanner'})))
   await openGame(page,'/')
-  await page.getByRole('button',{name:/^MULTIPLAYER/}).click()
-  await page.getByLabel('YOUR CALLSIGN').fill('Roster Pilot')
-  await page.getByRole('button',{name:'CREATE PRIVATE ROOM'}).click()
+  await openMultiplayer(page,'casual','Roster Pilot')
   await expect(page.getByTestId('invite-code')).toHaveText(/^[A-HJ-NP-Z2-9]{6}$/)
   const peer=await new Client('http://127.0.0.1:2567').joinById(await page.getByTestId('invite-code').textContent(),{name:'Roster Peer'})
   peer.onMessage('shot-trail',()=>{})
@@ -24,7 +22,6 @@ async function pair(page,format) {
   await page.getByLabel('Match format').selectOption(format)
   peer.send('ready',{ready:true})
   await page.getByRole('button',{name:'READY UP',exact:true}).click()
-  await page.getByRole('button',{name:'START SHARED ARENA'}).click()
   await page.getByRole('button',{name:'ENTER ARENA',exact:true}).click({timeout:30000})
   await expect.poll(async ()=>(await network(page)).captured).toBe(true)
   return peer

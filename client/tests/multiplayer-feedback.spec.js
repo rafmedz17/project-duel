@@ -1,4 +1,4 @@
-import {openGame} from './helpers.js'
+import {openGame,openMultiplayer} from './helpers.js'
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
 import { PLAYER } from '../src/game/config.js'
@@ -42,15 +42,12 @@ async function aim(page,id,miss=false) {
 async function setup(page,format) {
   await page.addInitScript(()=>localStorage.setItem('duel-loadout',JSON.stringify({ character:'ion',primary:'hyperion',unique:'scanner' })))
   await openGame(page,'/')
-  await page.getByRole('button',{name:/^MULTIPLAYER/}).click()
-  await page.getByLabel('YOUR CALLSIGN').fill('Effects Pilot')
-  await page.getByRole('button',{name:'CREATE PRIVATE ROOM'}).click()
+  await openMultiplayer(page,'casual','Effects Pilot')
   const peer=await new Client('http://127.0.0.1:2567').joinById(await page.getByTestId('invite-code').textContent(),{name:'Effects Peer',loadout:{character:'vex',primary:'railbreaker',unique:'flashbang'}})
   const events=[];peer.onMessage('shot-trail',event=>events.push(event));peer.onMessage('loadout-bank',()=>{})
   await page.getByLabel('Match format').selectOption(format)
   peer.send('ready',{ready:true})
   await page.getByRole('button',{name:'READY UP',exact:true}).click()
-  await page.getByRole('button',{name:'START SHARED ARENA'}).click()
   const enter=async()=>{
     await expect(page.getByRole('button',{name:'ENTER ARENA',exact:true})).toBeEnabled({timeout:25000})
     await page.getByRole('button',{name:'ENTER ARENA',exact:true}).click()

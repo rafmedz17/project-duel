@@ -40,7 +40,7 @@ function sync(room) {
   }
   if (performance.now()-lastTicketWrite>5000) { saveRecovery(endpoint(),room.reconnectionToken); lastTicketWrite = performance.now() }
   recordPoses(state)
-  const metadata = { mapId:state.mapId,ranked:state.ranked,saveStatus:state.saveStatus,resultRanked:state.resultRanked }
+  const metadata = { autoStart:state.autoStart,mapId:state.mapId,ranked:state.ranked,saveStatus:state.saveStatus,resultRanked:state.resultRanked }
   const next = { format:state.format,matchPhase:state.matchPhase,roundNumber:state.roundNumber,roundId:state.roundId,roundRemaining:state.roundRemaining,phaseRemaining:state.phaseRemaining,roundWinnerId:state.roundWinnerId,winnerId:state.winnerId,matchReason:state.matchReason,roundResults:[...state.roundResults].map(r => ({ number:r.number,winnerId:r.winnerId,reason:r.reason })),results:[...state.results].map(r => ({ id:r.id,name:r.name,slot:r.slot,roundWins:r.roundWins,kills:r.kills,deaths:r.deaths })),code:state.code,hostId:state.hostId,phase:state.phase,arenaActive:state.arenaActive,arenaEpoch:state.arenaEpoch,countdown:state.countdown,note:state.note,time:state.tick/ONLINE.tickRate,
     players:[...state.players.entries()].map(([id,player]) => ({ id,name:player.name,slot:player.slot,roundWins:player.roundWins,ready:player.ready,connected:player.connected,combat:{ abilities:Object.fromEntries([...player.abilities.entries()].map(([id,a]) => [id,{ readyAt:a.readyAt,activeUntil:a.activeUntil,startedAt:a.startedAt,uses:a.uses,result:a.result,origin:[a.originX,a.originY,a.originZ],direction:[a.directionX,a.directionZ] }])),disabledUntil:player.disabledUntil,shieldCharge:player.shieldCharge,shieldHit:player.shieldHit,hitShieldDamage:player.hitShieldDamage,hp:player.hp,weapon:player.weapon,magazines:Object.fromEntries(Object.keys(freshMagazines()).map(id=>[id,['pistol','rifle','shotgun'].includes(id) ? player[id+'Ammo'] : player.arsenal[id+'Ammo']])),reloading:player.reloading,reloadWeapon:player.reloading ? player.weapon : null,reloadStart:player.reloadStart,reloadEnd:player.reloadEnd,reloadReason:player.reloadReason,attackReadyAt:player.attackReadyAt,lastSwitch:player.lastSwitch,lastShot:player.lastShot,lastSwing:player.lastSwing,shot:player.shot,hit:player.hit,hitId:player.hitId,hitDamage:player.hitDamage,hitDefeated:player.hitDefeated,hitHeadshot:player.hitHeadshot,hurt:player.hurt,kills:player.kills,deaths:player.deaths,respawnAt:player.respawnAt } })).sort((a,b) => a.slot-b.slot),
   }
@@ -141,7 +141,7 @@ export const lobby = {
     }
   },
   async connect(kind, name, code = '') {
-    if (['connecting','connected','reconnecting'].includes(snapshot.status)) return
+    if (['connecting','reconnecting'].includes(snapshot.status) || (snapshot.status==='connected' && (kind!=='join' || snapshot.room?.arenaActive || snapshot.room?.phase==='countdown'))) return
     const callsign = name.trim().replace(/\s+/g,' ')
     const invite = code.trim().toUpperCase()
     if (!/^[\p{L}\p{N} _-]{2,18}$/u.test(callsign) || callsign.length > 18) {
@@ -150,9 +150,12 @@ export const lobby = {
     if (kind === 'join' && !/^[A-HJ-NP-Z2-9]{6}$/.test(invite)) {
       update({ error:'Enter the six-character invite code.' }); return
     }
+    if (kind==='join' && invite===snapshot.room?.code) {update({error:'You are already in this room.'});return}
+    const previousRoom=activeRoom
+    if(previousRoom) previousRoom.send('ready',{ready:false})
     const operationId = ++attempt
     let timer
-    update({ ...empty,status:'connecting' })
+    update(previousRoom ? {status:'connecting',error:'',notice:''} : {...empty,status:'connecting'})
     try {
       let options
       try { options = { name:callsign,...await accounts.joinOptions() } }
@@ -160,7 +163,7 @@ export const lobby = {
       const { Client } = await import('@colyseus/sdk')
       if (operationId !== attempt) return
       const client = new Client(endpoint())
-      const request = kind === 'create' ? client.create('duel_lobby',options) : client.joinById(invite,options)
+      const request = kind === 'create' ? client.create('duel_lobby',{...options,autoStart:true}) : client.joinById(invite,options)
       // A cancelled or timed-out request may finish later; never leave a ghost seat.
       request.then(room => { if (operationId !== attempt) room.leave().catch(() => {}) }).catch(() => {})
       const room = await Promise.race([request,new Promise((_,reject) => {
@@ -170,12 +173,15 @@ export const lobby = {
       clearTimeout(timer)
       if (operationId !== attempt) return
       attach(room)
+      if(previousRoom) void previousRoom.leave().catch(()=>{})
       try { localStorage.setItem('duel-callsign',callsign) } catch { /* Storage may be disabled. */ }
+      return true
     } catch (error) {
       clearTimeout(timer)
       if (operationId !== attempt) return
       attempt++
-      update({ ...empty,status:'error',error:connectionError(error) })
+      if(previousRoom && activeRoom===previousRoom) update({status:snapshot.status==='reconnecting' ? 'reconnecting' : 'connected',error:connectionError(error)})
+      else update({ ...empty,status:'error',error:connectionError(error) })
     }
   },
   ready(value) {

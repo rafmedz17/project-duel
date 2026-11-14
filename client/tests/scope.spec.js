@@ -1,6 +1,6 @@
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
-import {state,presetLoadout, openGame} from './helpers.js'
+import {state,presetLoadout, openGame,openMultiplayer} from './helpers.js'
 
 const optics=page=>page.evaluate(async ()=> {
   const url=performance.getEntriesByType('resource').find(e=>new URL(e.name).pathname.endsWith('/@react-three_fiber.js')).name
@@ -28,13 +28,11 @@ test('multiplayer sniper scope stays clear while firing and returns to hip view 
   let peer
   try {
     await presetLoadout(page,{ primary:'railbreaker',startingWeapon:'railbreaker' });await openGame(page,'/')
-    await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click();await page.getByLabel('YOUR CALLSIGN').fill('Scope Pilot')
-    await page.getByRole('button',{ name:'CREATE PRIVATE ROOM' }).click()
+    await openMultiplayer(page,'casual','Scope Pilot')
     const code=await page.getByTestId('invite-code').textContent()
     peer=await new Client('http://127.0.0.1:2567').joinById(code,{ name:'Scope Target' })
     await page.getByLabel('Match format').selectOption('freeplay');peer.send('ready',{ ready:true })
-    await page.getByRole('button',{ name:'READY UP',exact:true }).click();await page.getByRole('button',{ name:'START SHARED ARENA' }).click()
-    await page.getByRole('button',{ name:'ENTER ARENA',exact:true }).click()
+    await page.getByRole('button',{ name:'READY UP',exact:true }).click();await page.getByRole('button',{ name:'ENTER ARENA',exact:true }).click()
     await expect.poll(()=>page.evaluate(()=>Boolean(document.pointerLockElement))).toBe(true)
     await page.mouse.down({ button:'right' });await expect(page.getByLabel('Precision scope')).toBeVisible()
     await expect.poll(async ()=>(await optics(page)).modelVisible).toBe(false)

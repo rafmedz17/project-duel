@@ -4,7 +4,7 @@ import { makeLoadoutBank } from '../../shared/loadoutBank.js'
 import { validateLoadout } from '../../shared/loadout.js'
 import { PLAYER } from '../../shared/arena.js'
 import { ROBOT_HEAD_Y } from '../../shared/robot.js'
-import {state,editLoadout, openGame,reloadGame} from './helpers.js'
+import {state,editLoadout, openGame,reloadGame,openMultiplayer} from './helpers.js'
 
 const gear=(primary,character='vex')=>validateLoadout({ character,primary,secondary:'volt',melee:'gravity',unique:'scanner',startingWeapon:primary })
 function bank() {
@@ -17,13 +17,10 @@ const network=page=>page.evaluate(async ()=> {
 const self=async page=> { const s=await network(page);return s.room?.players.find(p=>p.id===s.sessionId)?.combat }
 async function openRoom(page,format) {
   await page.addInitScript(value=>localStorage.setItem('duel-loadout-bank',JSON.stringify(value)),bank())
-  await openGame(page,'/');await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
-  await page.getByLabel('YOUR CALLSIGN').fill('Preset Pilot');await page.getByRole('button',{ name:'CREATE PRIVATE ROOM' }).click()
-  const peer=await new Client('http://127.0.0.1:2567').joinById(await page.getByTestId('invite-code').textContent(),{ name:'Preset Peer',loadout:gear('hyperion') })
+  await openGame(page,'/');await openMultiplayer(page,'casual','Preset Pilot');const peer=await new Client('http://127.0.0.1:2567').joinById(await page.getByTestId('invite-code').textContent(),{ name:'Preset Peer',loadout:gear('hyperion') })
   peer.onMessage('shot-trail',()=>{})
   await page.getByLabel('Match format').selectOption(format)
   peer.send('ready',{ ready:true });await page.getByRole('button',{ name:'READY UP',exact:true }).click()
-  await page.getByRole('button',{ name:'START SHARED ARENA' }).click()
   return peer
 }
 async function aimAtPeer(page,id) {

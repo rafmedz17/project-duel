@@ -35,8 +35,10 @@ test('main menu follows the play layout, renders the map tour and pauses behind 
   await expect(page.getByRole('dialog',{name:'CHARACTER & LOADOUT',exact:true})).toBeVisible()
   await page.getByRole('button',{name:'Close loadout',exact:true}).click()
   await menu.getByRole('button',{name:/^MULTIPLAYER/}).click()
-  await expect(page.getByRole('heading',{name:'PRIVATE MULTIPLAYER',exact:true})).toBeVisible()
-  await page.getByRole('button',{name:'BACK',exact:true}).click()
+  await expect(page.getByRole('dialog',{name:'Choose multiplayer mode',exact:true})).toBeVisible()
+  await page.getByRole('button',{name:/^CASUAL /}).click()
+  await expect(page.getByTestId('invite-code')).toHaveText(/^[A-HJ-NP-Z2-9]{6}$/)
+  await page.getByRole('button',{name:'LEAVE ROOM',exact:true}).click()
   expect(errors).toEqual([])
 })
 

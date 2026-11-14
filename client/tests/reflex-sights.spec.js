@@ -1,6 +1,6 @@
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
-import {state,presetLoadout,moveUntil,equipWeapon,aimAtTarget, openGame} from './helpers.js'
+import {state,presetLoadout,moveUntil,equipWeapon,aimAtTarget, openGame,openMultiplayer} from './helpers.js'
 import { WEAPONS } from '../../shared/weapons.js'
 import { reflexProfile } from '../src/game/weapons/optics.js'
 
@@ -66,12 +66,9 @@ test('rifle ADS fires real hits through its open sight, drops for reload, switch
 for(const id of ['astral','omega']) test(`${id} multiplayer ADS preserves its firing behavior and remains centered`,async ({ page })=> {
   test.setTimeout(60000);let peer
   try {
-    await presetLoadout(page,{ primary:id });await openGame(page,'/');await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
-    await page.getByLabel('YOUR CALLSIGN').fill('Reflex Pilot');await page.getByRole('button',{ name:'CREATE PRIVATE ROOM' }).click()
-    peer=await new Client('http://127.0.0.1:2567').joinById(await page.getByTestId('invite-code').textContent(),{ name:'Sight Target' });peer.onMessage('shot-trail',()=>{})
+    await presetLoadout(page,{ primary:id });await openGame(page,'/');await openMultiplayer(page,'casual','Reflex Pilot');peer=await new Client('http://127.0.0.1:2567').joinById(await page.getByTestId('invite-code').textContent(),{ name:'Sight Target' });peer.onMessage('shot-trail',()=>{})
     await page.getByLabel('Match format').selectOption('freeplay');peer.send('ready',{ ready:true })
-    await page.getByRole('button',{ name:'READY UP',exact:true }).click();await page.getByRole('button',{ name:'START SHARED ARENA' }).click()
-    await page.getByRole('button',{ name:'ENTER ARENA',exact:true }).click();await page.evaluate(()=>document.dispatchEvent(new MouseEvent('mousemove',{ movementY:-200 })))
+    await page.getByRole('button',{ name:'READY UP',exact:true }).click();await page.getByRole('button',{ name:'ENTER ARENA',exact:true }).click();await page.evaluate(()=>document.dispatchEvent(new MouseEvent('mousemove',{ movementY:-200 })))
     await page.mouse.down({ button:'right' });await expect(page.getByTestId('reflex-sight')).toBeVisible()
     await expect.poll(async ()=>Math.abs((await view(page)).fov-reflexProfile(WEAPONS[id]).fov)).toBeLessThan(0.2)
     await page.mouse.down()

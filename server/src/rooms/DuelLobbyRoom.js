@@ -36,7 +36,9 @@ export class DuelLobbyRoom extends Room {
   latency = new LatencyTracker()
   latencyTimer = null
 
-  async onCreate() {
+  async onCreate(options = {}) {
+    // New clients opt into automatic starts; older clients retain their host-start flow.
+    this.state.autoStart = options.autoStart === true
     this.roomId = reserveCode()
     this.state.code = this.roomId
     await this.setPrivate(true)
@@ -82,44 +84,10 @@ export class DuelLobbyRoom extends Room {
       player.ready = payload.ready
       if (!payload.ready) this.cancelCountdown()
       this.refreshPhase()
+      if (this.state.autoStart) this.beginCountdown()
     })
     this.onMessage('start',client => {
-      if (client.sessionId !== this.state.hostId || this.state.phase !== 'ready') return
-      if (this.state.ranked && !this.canRank()) return
-      this.state.note = ''
-      this.state.countdown = ONLINE.countdownSeconds
-      this.state.phase = 'countdown'
-      const advance = () => {
-        this.state.countdown--
-        if (this.state.countdown > 0) this.countdownTimer = this.clock.setTimeout(advance,1000)
-        else {
-          this.countdownTimer = null
-          this.simulation = new ArenaSimulation(this.state.players,this.state.mapId)
-          this.matchId = randomUUID()
-          this.startedAt = new Date().toISOString()
-          this.matchIdentities = new Map(this.identities)
-          this.state.saveStatus = ''; this.state.resultRanked = false
-          this.state.arenaActive = true
-          this.state.arenaEpoch++
-          if (this.state.format==='duel') {
-            this.match = new DuelMatch(this.state,this.simulation,() => { void this.saveMatch() })
-            this.combat = this.match.combat
-          } else {
-            this.combat = new ArenaCombat(this.state.players,this.simulation,this.state.arenaEpoch)
-            this.state.matchPhase = 'freeplay'
-          }
-          this.combat.onShot=event => this.broadcast('shot-trail',event)
-          this.state.tick = 0
-          this.refreshPhase()
-          this.setFixedTimestep(() => {
-            if (this.state.phase !== 'arena') return
-            if (this.match) this.match.step()
-            else { this.combat.step(); this.simulation.step() }
-            this.state.tick++
-          },ONLINE.tickRate)
-        }
-      }
-      this.countdownTimer = this.clock.setTimeout(advance,1000)
+      if (client.sessionId === this.state.hostId) this.beginCountdown()
     })
     this.onMessage('move',(client,payload) => {
       if (this.state.phase!=='arena' || !this.state.players.get(client.sessionId)?.connected) return
@@ -153,6 +121,45 @@ export class DuelLobbyRoom extends Room {
         this.resetReady()
       }
     })
+  }
+
+  beginCountdown() {
+    if (this.state.phase !== 'ready' || this.state.arenaActive || this.countdownTimer) return
+    if (this.state.ranked && !this.canRank()) return
+    this.state.note = ''
+    this.state.countdown = this.state.autoStart ? LOBBY.autoCountdownSeconds : ONLINE.countdownSeconds
+    this.state.phase = 'countdown'
+    const advance = () => {
+      this.state.countdown--
+      if (this.state.countdown > 0) this.countdownTimer = this.clock.setTimeout(advance,1000)
+      else {
+        this.countdownTimer = null
+        this.simulation = new ArenaSimulation(this.state.players,this.state.mapId)
+        this.matchId = randomUUID()
+        this.startedAt = new Date().toISOString()
+        this.matchIdentities = new Map(this.identities)
+        this.state.saveStatus = ''; this.state.resultRanked = false
+        this.state.arenaActive = true
+        this.state.arenaEpoch++
+        if (this.state.format==='duel') {
+          this.match = new DuelMatch(this.state,this.simulation,() => { void this.saveMatch() })
+          this.combat = this.match.combat
+        } else {
+          this.combat = new ArenaCombat(this.state.players,this.simulation,this.state.arenaEpoch)
+          this.state.matchPhase = 'freeplay'
+        }
+        this.combat.onShot=event => this.broadcast('shot-trail',event)
+        this.state.tick = 0
+        this.refreshPhase()
+        this.setFixedTimestep(() => {
+          if (this.state.phase !== 'arena') return
+          if (this.match) this.match.step()
+          else { this.combat.step(); this.simulation.step() }
+          this.state.tick++
+        },ONLINE.tickRate)
+      }
+    }
+    this.countdownTimer = this.clock.setTimeout(advance,1000)
   }
 
   async onAuth(client, options) {

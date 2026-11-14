@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test'
 import {Client} from '@colyseus/sdk'
 import {ONLINE} from '../../shared/arena.js'
-import {openGame,presetLoadout,state} from './helpers.js'
+import {openGame,presetLoadout,state,openMultiplayer} from './helpers.js'
 
 async function inspect(page,id) {
   return page.evaluate(async id=>{
@@ -73,9 +73,7 @@ test('multiplayer opponents carry their selected gun and animate server-owned re
   test.setTimeout(90000)
   const errors=[];page.on('pageerror',error=>errors.push(error.message))
   await openGame(page)
-  await page.getByRole('button',{name:/^MULTIPLAYER/}).click()
-  await page.getByLabel('YOUR CALLSIGN').fill('Arms Pilot')
-  await page.getByRole('button',{name:'CREATE PRIVATE ROOM'}).click()
+  await openMultiplayer(page,'casual','Arms Pilot')
   const peer=await new Client('http://127.0.0.1:2567').joinById(await page.getByTestId('invite-code').textContent(),{name:'Arms Peer',loadout:{character:'aegis',primary:'rifle',secondary:'magnus',melee:'gravity',unique:'scanner'}})
   peer.onMessage('loadout-bank',()=>{});peer.onMessage('shot-trail',()=>{})
   let interval,sequence=0,combatSequence=0,z=-1,crouch=false,pitch=0
@@ -84,7 +82,6 @@ test('multiplayer opponents carry their selected gun and animate server-owned re
     await page.getByLabel('Match format').selectOption('freeplay')
     peer.send('ready',{ready:true})
     await page.getByRole('button',{name:'READY UP',exact:true}).click()
-    await page.getByRole('button',{name:'START SHARED ARENA'}).click()
     await page.getByRole('button',{name:'ENTER ARENA',exact:true}).click()
     await expect.poll(()=>inspect(page,peer.sessionId)).not.toBeNull()
     await expect.poll(async()=>(await inspect(page,peer.sessionId)).model).toBe('model-phantom')

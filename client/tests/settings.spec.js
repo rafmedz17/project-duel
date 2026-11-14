@@ -1,6 +1,6 @@
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
-import {state,position,lookAt,moveUntil,aimAtTarget, openGame,reloadGame} from './helpers.js'
+import {state,position,lookAt,moveUntil,aimAtTarget, openGame,reloadGame,openMultiplayer} from './helpers.js'
 
 const settings=async page=> { await page.getByRole('button',{ name:/^.*SETTINGS/,exact:false }).first().click();return page.getByRole('dialog',{ name:'SETTINGS',exact:true }) }
 const tab=async(page,name)=>page.getByRole('tab',{ name,exact:true }).click()
@@ -80,9 +80,8 @@ test('multiplayer keeps running on tab switch, clears held fire and opens settin
   let peer
   try {
     await openGame(page,'/');await settings(page);await page.getByLabel('Scope input').selectOption('tap');await tab(page,'Controls');await rebind(page,'Reload','KeyL');await page.getByRole('button',{ name:'BACK →',exact:true }).click()
-    await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click();await page.getByLabel('YOUR CALLSIGN').fill('Settings Pilot');await page.getByRole('button',{ name:'CREATE PRIVATE ROOM' }).click()
-    peer=await new Client('http://127.0.0.1:2567').joinById(await page.getByTestId('invite-code').textContent(),{ name:'Background Peer' });peer.onMessage('shot-trail',()=>{})
-    await page.getByLabel('Match format').selectOption('freeplay');peer.send('ready',{ ready:true });await page.getByRole('button',{ name:'READY UP',exact:true }).click();await page.getByRole('button',{ name:'START SHARED ARENA' }).click();await page.getByRole('button',{ name:'ENTER ARENA',exact:true }).click()
+    await openMultiplayer(page,'casual','Settings Pilot');peer=await new Client('http://127.0.0.1:2567').joinById(await page.getByTestId('invite-code').textContent(),{ name:'Background Peer' });peer.onMessage('shot-trail',()=>{})
+    await page.getByLabel('Match format').selectOption('freeplay');peer.send('ready',{ ready:true });await page.getByRole('button',{ name:'READY UP',exact:true }).click();await page.getByRole('button',{ name:'ENTER ARENA',exact:true }).click()
     await expect.poll(()=>page.evaluate(()=>Boolean(document.pointerLockElement))).toBe(true)
     await expect.poll(()=>[...peer.state.players.values()].every(p=>p.grounded)).toBe(true)
     await page.mouse.click(640,400,{ button:'right' });await expect(page.getByTestId('reflex-sight')).toBeVisible();await page.mouse.click(640,400,{ button:'right' })

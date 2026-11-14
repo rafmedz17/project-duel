@@ -1,5 +1,6 @@
-import {useEffect,useRef} from 'react'
+import {useCallback,useEffect,useRef,useState} from 'react'
 import {CINEMATIC_SHOTS,menuCinema} from './cinematic.js'
+import MultiplayerPicker from './MultiplayerPicker.jsx'
 import './menu.css'
 
 function MenuIcon({name}) {
@@ -7,7 +8,9 @@ function MenuIcon({name}) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]}/></svg>
 }
 
-export default function MainMenu({onPanel,onTraining,accountLoading,multiplayerButton}) {
+export default function MainMenu({onPanel,onTraining,onMultiplayer,accountLoading,multiplayerButton}) {
+  const [choosingMode,setChoosingMode]=useState(false)
+  const dismissPicker=useCallback((focus)=>{setChoosingMode(false);if(focus) multiplayerButton.current?.focus()},[multiplayerButton])
   const root=useRef(),title=useRef(),subtitle=useRef(),number=useRef(),curtain=useRef(),bars=useRef([])
   useEffect(()=>{
     let frame,lastShot=-1,lastFade=-1
@@ -36,7 +39,7 @@ export default function MainMenu({onPanel,onTraining,accountLoading,multiplayerB
     <section className="menu-cinematic-caption" aria-label="Cinematic map tour"><div className="cinema-eyebrow"><span>IN-ENGINE SHOWCASE</span><span ref={number}>01 / 04</span></div><h2 ref={title}>THE FACILITY</h2><p ref={subtitle}>CLEAN LANES. PURE COMPETITION.</p><div className="cinema-chapters" aria-hidden="true">{CINEMATIC_SHOTS.map((shot,i)=><span ref={node=>{bars.current[i]=node}} key={shot.mapId}><i/></span>)}</div><div className="cinema-controls"><span className="menu-track"><i/><i/><i/><i/>LIMIT BREAK <small>MENU THEME</small></span></div></section>
     <nav className="menu-play-actions" aria-label="Main menu"><div className="play-actions-heading"><span>FIND YOUR NEXT FIGHT</span><span>01—03</span></div>
       <button type="button" className="menu-action menu-training" disabled={accountLoading} onClick={onTraining} aria-label="ENTER TRAINING / TRAINING GROUNDS"><MenuIcon name="training"/><span><small>SHARPEN YOUR EDGE</small><strong>TRAINING GROUNDS</strong></span><MenuIcon name="arrow"/></button>
-      <button type="button" ref={multiplayerButton} className="menu-action menu-multiplayer" onClick={()=>onPanel('multiplayer')} aria-label="MULTIPLAYER / PLAY WITH FRIENDS"><span className="multiplayer-sigil" aria-hidden="true">Ⅱ</span><span><small>INVITE. READY UP. DUEL.</small><strong>PLAY MULTIPLAYER</strong><em>PRIVATE LOBBIES / BEST OF THREE + FREE PLAY</em></span><MenuIcon name="arrow"/></button>
+      <div className="multiplayer-launch"><button type="button" ref={multiplayerButton} className="menu-action menu-multiplayer" onClick={()=>setChoosingMode(value=>!value)} aria-expanded={choosingMode} aria-haspopup="dialog" aria-controls={choosingMode ? 'multiplayer-mode-picker' : undefined} aria-label="MULTIPLAYER / PLAY WITH FRIENDS"><span className="multiplayer-sigil" aria-hidden="true">Ⅱ</span><span><small>INVITE. READY UP. DUEL.</small><strong>PLAY MULTIPLAYER</strong><em>CASUAL + RANKED / PRIVATE LOBBIES</em></span><MenuIcon name="arrow"/></button>{choosingMode && <MultiplayerPicker anchorRef={multiplayerButton} onDismiss={dismissPicker} onChoose={mode=>{setChoosingMode(false);onMultiplayer(mode)}}/>}</div>
       <button type="button" className="menu-action menu-loadout" onClick={()=>onPanel('loadout')} aria-label="CHARACTER & LOADOUT / EQUIPMENT"><MenuIcon name="loadout"/><span><small>YOUR OPERATIVE. YOUR ARSENAL.</small><strong>LOADOUTS</strong></span><MenuIcon name="arrow"/></button>
     </nav>
     <footer className="duel-menu-footer"><span>PROJECT DUEL <b>/</b> RAFAEL VINCENT D. MEDINA</span><span>DESKTOP <b>/</b> KEYBOARD + MOUSE</span><span>BUILT FOR THE CLUTCH <i/></span></footer>

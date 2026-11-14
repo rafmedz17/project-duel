@@ -2,7 +2,7 @@ import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
 import { writeFile } from 'node:fs/promises'
 import { Buffer } from 'node:buffer'
-import {state,presetLoadout,position,lookAt, openGame} from './helpers.js'
+import {state,presetLoadout,position,lookAt, openGame,openMultiplayer} from './helpers.js'
 import { TARGETS,PLAYER } from '../src/game/config.js'
 import { ROBOT_HEAD_Y } from '../../shared/robot.js'
 
@@ -108,13 +108,11 @@ test('multiplayer confirms combo badges and sound, renders opponent shots, and c
   const errors=[];page.on('pageerror',e=>errors.push(e.message))
   try {
     await presetLoadout(page,{ primary:'hyperion',startingWeapon:'hyperion' });await openGame(page,'/')
-    await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click();await page.getByLabel('YOUR CALLSIGN').fill('Badge Pilot')
-    await page.getByRole('button',{ name:'CREATE PRIVATE ROOM' }).click()
+    await openMultiplayer(page,'casual','Badge Pilot')
     peer=await new Client('http://127.0.0.1:2567').joinById(await page.getByTestId('invite-code').textContent(),{ name:'Trail Pilot' })
     const events=[];peer.onMessage('shot-trail',event=>events.push(event))
     await page.getByLabel('Match format').selectOption('freeplay');peer.send('ready',{ ready:true })
-    await page.getByRole('button',{ name:'READY UP',exact:true }).click();await page.getByRole('button',{ name:'START SHARED ARENA' }).click()
-    await page.getByRole('button',{ name:'ENTER ARENA',exact:true }).click();await probeTrails(page)
+    await page.getByRole('button',{ name:'READY UP',exact:true }).click();await page.getByRole('button',{ name:'ENTER ARENA',exact:true }).click();await probeTrails(page)
     let sequence=0
     const send=(yaw,pitch)=>peer.send('combat',{ epoch:peer.state.arenaEpoch,sequence:sequence++,action:'fire',yaw,pitch })
     send(Math.PI,1)

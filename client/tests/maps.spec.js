@@ -1,46 +1,45 @@
-import {openGame} from './helpers.js'
-import { test,expect } from '@playwright/test'
+﻿import {openGame,openMultiplayer} from './helpers.js'
+import {test,expect} from '@playwright/test'
+import {Client} from '@colyseus/sdk'
 
-test('host selects both new maps; players share the map, move, and return to change it',async ({ browser }) => {
+test('host selects both new maps; players share the map, move, and return to change it',async({page})=>{
   test.setTimeout(90000)
-  const hostContext=await browser.newContext(),guestContext=await browser.newContext()
-  const host=await hostContext.newPage(),guest=await guestContext.newPage(),errors=[]
-  for (const page of [host,guest]) page.on('pageerror',e => errors.push(e.message))
-  const snapshot=page => page.evaluate(async () => {
-    const path='/src/multiplayer/lobby.js'
-    const url=performance.getEntriesByType('resource').find(e => new URL(e.name).pathname===path)?.name || path
-    const { lobby }=await import(url)
-    return lobby.get()
+  // A socket peer verifies replication without a second software-rendered arena.
+  await page.emulateMedia({reducedMotion:'reduce'})
+  await page.addInitScript(()=>localStorage.setItem('duel-settings',JSON.stringify({quality:'Low'})))
+  const errors=[];page.on('pageerror',error=>errors.push(error.message))
+  const snapshot=()=>page.evaluate(async()=>{
+    const path='/src/multiplayer/lobby.js',url=performance.getEntriesByType('resource').find(entry=>new URL(entry.name).pathname===path)?.name || path
+    return (await import(url)).lobby.get()
   })
+  await openGame(page);await openMultiplayer(page,'casual','Nova')
+  const code=await page.getByTestId('invite-code').textContent()
+  const peer=await new Client('http://127.0.0.1:2567').joinById(code,{name:'Echo'})
+  peer.onMessage('loadout-bank',()=>{});peer.onMessage('shot-trail',()=>{})
   try {
-    await openGame(host,'/'); await host.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
-    await host.getByLabel('YOUR CALLSIGN').fill('Nova')
-    await host.getByRole('button',{ name:'CREATE PRIVATE ROOM' }).click()
-    await expect(host.getByTestId('invite-code')).toHaveText(/^[A-HJ-NP-Z2-9]{6}$/)
-    const code=await host.getByTestId('invite-code').textContent()
-    await host.getByLabel('Match format').selectOption('freeplay')
-    await openGame(guest,'/'); await guest.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
-    await guest.getByLabel('YOUR CALLSIGN').fill('Echo')
-    await guest.getByLabel('INVITE CODE',{ exact:true }).fill(code)
-    await guest.getByRole('button',{ name:'JOIN ROOM',exact:true }).click()
-    await expect(guest.getByLabel('Arena map')).toBeDisabled()
-    await expect(guest.getByLabel('Match type').locator('option[value=ranked]')).toBeDisabled()
-    for (const [mapId,name] of [['neon','NEON DISTRICT'],['orbital','ORBITAL STATION']]) {
-      await host.getByLabel('Arena map').selectOption(mapId)
-      await expect(guest.getByLabel('Arena map')).toHaveValue(mapId)
-      await host.getByRole('button',{ name:'READY UP',exact:true }).click()
-      await guest.getByRole('button',{ name:'READY UP',exact:true }).click()
-      await host.getByRole('button',{ name:'START SHARED ARENA' }).click()
-      await expect(host.getByRole('dialog',{ name:'SHARED ARENA' })).toBeVisible({ timeout:10000 })
-      await expect(guest.locator('.online-top')).toContainText(name)
-      await host.bringToFront(); await host.getByRole('button',{ name:'ENTER ARENA',exact:true }).click()
-      await expect.poll(async () => (await snapshot(host)).captured).toBe(true)
-      await host.keyboard.down('KeyW'); await host.waitForTimeout(600); await host.keyboard.up('KeyW')
-      await host.screenshot({ path:`${mapId}-preview.png` })
-      await host.keyboard.press('Escape');await host.evaluate(() => document.exitPointerLock())
-      await host.getByRole('button',{ name:'RETURN TO LOBBY',exact:true }).click()
-      await expect(guest.getByRole('dialog',{ name:'PRIVATE MULTIPLAYER' })).toBeVisible()
+    await expect(page.getByTestId('lobby-slot-1')).toContainText('Echo')
+    await page.getByLabel('Match format').selectOption('freeplay')
+    await expect.poll(()=>peer.state.format).toBe('freeplay')
+    for(const [mapId,name] of [['neon','NEON DISTRICT'],['orbital','ORBITAL STATION']]) {
+      await page.getByLabel('Arena map').selectOption(mapId)
+      await expect.poll(()=>peer.state.mapId).toBe(mapId)
+      peer.send('ready',{ready:true})
+      await page.getByRole('button',{name:'READY UP',exact:true}).click()
+      await expect(page.getByText(/BOTH PLAYERS READY.*STARTING IN 5/)).toBeVisible()
+      await expect(page.getByRole('button',{name:'START SHARED ARENA',exact:true})).toHaveCount(0)
+      await expect(page.getByRole('dialog',{name:'SHARED ARENA'})).toBeVisible({timeout:15000})
+      await expect(page.locator('.online-top')).toContainText(name)
+      await page.getByRole('button',{name:'ENTER ARENA',exact:true}).click()
+      await expect.poll(async()=>(await snapshot()).captured).toBe(true)
+      const before=peer.state.players.get(peer.state.hostId).z
+      await page.keyboard.down('KeyW');await page.waitForTimeout(600);await page.keyboard.up('KeyW')
+      await expect.poll(()=>peer.state.players.get(peer.state.hostId).z).toBeLessThan(before-.2)
+      await page.screenshot({path:`${mapId}-preview.png`})
+      await page.keyboard.press('Escape');await page.evaluate(()=>document.exitPointerLock())
+      await page.getByRole('button',{name:'RETURN TO LOBBY',exact:true}).click()
+      await expect(page.getByRole('dialog',{name:'PRIVATE MULTIPLAYER'})).toBeVisible()
+      await expect.poll(()=>peer.state.arenaActive).toBe(false)
     }
     expect(errors).toEqual([])
-  } finally { await hostContext.close(); await guestContext.close() }
+  } finally {await peer.leave().catch(()=>{})}
 })

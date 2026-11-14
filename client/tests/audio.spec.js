@@ -1,6 +1,6 @@
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
-import {state,position,lookAt,moveUntil, openGame,reloadGame,dismissFullscreenNotice} from './helpers.js'
+import {state,position,lookAt,moveUntil, openGame,reloadGame,dismissFullscreenNotice,openMultiplayer} from './helpers.js'
 import { PLAYER,TARGETS } from '../src/game/config.js'
 import { ROBOT_HEAD_Y } from '../../shared/robot.js'
 import { ONLINE } from '../../shared/arena.js'
@@ -53,9 +53,9 @@ test('music is limited to the landing page and its settings, never training, pau
   await page.getByRole('button',{name:'BACK →',exact:true}).click()
   await page.getByRole('button',{name:'RETURN TO MAIN MENU'}).click()
   await expect.poll(async ()=>(await sound(page)).musicPlaying).toBe(true)
-  await page.getByRole('button',{name:/^MULTIPLAYER/}).click()
+  await openMultiplayer(page)
   await expect.poll(async ()=>(await sound(page)).musicPlaying).toBe(false)
-  await page.getByRole('button',{name:'BACK',exact:true}).click()
+  await page.getByRole('button',{name:'LEAVE ROOM',exact:true}).click()
   await expect.poll(async ()=>(await sound(page)).musicPlaying).toBe(true)
 })
 
@@ -191,9 +191,7 @@ test('browsers without Web Audio can still play and show an actionable audio not
 test('online opponent sounds use authoritative positions; replays, focus loss and resuming stay silent',async ({ page }) => {
   test.setTimeout(90000)
   const errors=[]; page.on('pageerror',e => errors.push(e.message))
-  await openGame(page,'/'); await page.getByRole('button',{ name:/^MULTIPLAYER/ }).click()
-  await page.getByLabel('YOUR CALLSIGN').fill('Audio Pilot')
-  await page.getByRole('button',{ name:'CREATE PRIVATE ROOM' }).click()
+  await openGame(page,'/'); await openMultiplayer(page,'casual','Audio Pilot')
   await expect(page.getByTestId('invite-code')).toHaveText(/^[A-HJ-NP-Z2-9]{6}$/)
   const code=await page.getByTestId('invite-code').textContent()
   // A real SDK peer sends ordinary intents. It never supplies hit results.
@@ -202,7 +200,6 @@ test('online opponent sounds use authoritative positions; replays, focus loss an
     await expect.poll(() => peer.state.players?.size).toBe(2)
     await page.getByLabel('Match format').selectOption('freeplay')
     peer.send('ready',{ ready:true }); await page.getByRole('button',{ name:'READY UP',exact:true }).click()
-    await page.getByRole('button',{ name:'START SHARED ARENA' }).click()
     await page.getByRole('button',{ name:'ENTER ARENA',exact:true }).click()
     await expect.poll(async () => (await sound(page)).state).toBe('running')
     expect((await sound(page)).musicPlaying).toBe(false)
