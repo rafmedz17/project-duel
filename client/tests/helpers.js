@@ -3,6 +3,7 @@ import { PLAYER, TARGETS } from '../src/game/config.js'
 import {WEAPONS} from '../../shared/weapons.js'
 import {CHARACTERS} from '../../shared/characters.js'
 import {ABILITIES} from '../../shared/abilities.js'
+import {MAPS} from '../../shared/maps.js'
 
 export async function dismissFullscreenNotice(page) {
   await page.getByRole('dialog',{name:'HI, PLAYERS.',exact:true}).getByRole('button',{name:'NO, THANKS',exact:true}).click()
@@ -27,6 +28,13 @@ export async function openMultiplayer(page,mode='casual',name,waitForRoom=true) 
   await page.getByRole('button',{name:/^MULTIPLAYER/}).click()
   await page.getByRole('dialog',{name:'Choose multiplayer mode',exact:true}).getByRole('button',{name:new RegExp(`^${mode.toUpperCase()} `)}).click()
   if(mode==='casual' && waitForRoom) await expect(page.getByTestId('invite-code')).toHaveText(/^[A-HJ-NP-Z2-9]{6}$/,{timeout:15000})
+}
+
+export async function selectArenaMap(page,mapId) {
+  await page.getByRole('button',{name:'Arena map',exact:true}).click()
+  await page.getByRole('dialog',{name:'CHOOSE YOUR ARENA',exact:true}).getByRole('button',{name:`Select ${MAPS[mapId].name}`,exact:true}).click()
+  await expect(page.getByRole('dialog',{name:'CHOOSE YOUR ARENA',exact:true})).toHaveCount(0)
+  await expect(page.getByRole('button',{name:'Arena map',exact:true})).toContainText(MAPS[mapId].name)
 }
 
 export async function enterOnlineArena(page) {

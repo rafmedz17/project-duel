@@ -1,4 +1,4 @@
-﻿import {openGame,openMultiplayer} from './helpers.js'
+﻿import {openGame,openMultiplayer,selectArenaMap} from './helpers.js'
 import {test,expect} from '@playwright/test'
 import {Client} from '@colyseus/sdk'
 
@@ -21,7 +21,7 @@ test('host selects both new maps; players share the map, move, and return to cha
     await page.getByLabel('Match format').selectOption('freeplay')
     await expect.poll(()=>peer.state.format).toBe('freeplay')
     for(const [mapId,name] of [['neon','NEON DISTRICT'],['orbital','ORBITAL STATION']]) {
-      await page.getByLabel('Arena map').selectOption(mapId)
+      await selectArenaMap(page,mapId)
       await expect.poll(()=>peer.state.mapId).toBe(mapId)
       peer.send('ready',{ready:true})
       await page.getByRole('button',{name:'READY UP',exact:true}).click()

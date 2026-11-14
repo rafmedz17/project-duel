@@ -1,0 +1,60 @@
+import {test,expect} from '@playwright/test'
+import {MAPS} from '../../shared/maps.js'
+import {openGame,openMultiplayer,selectArenaMap} from './helpers.js'
+
+test('map card opens all arenas, supports keyboard dismissal, selects maps and fits mobile',async({page})=>{
+  const errors=[];page.on('pageerror',error=>errors.push(error.message))
+  await openGame(page);await openMultiplayer(page)
+  const trigger=page.getByRole('button',{name:'Arena map',exact:true})
+  const gallery=page.getByRole('dialog',{name:'CHOOSE YOUR ARENA',exact:true})
+  await trigger.click()
+  await expect(gallery).toBeVisible()
+  await expect(trigger).toHaveAttribute('aria-expanded','true')
+  await expect(gallery.getByRole('button',{name:'Select TRAINING FACILITY',exact:true})).toBeFocused()
+  for(const map of Object.values(MAPS)) await expect(gallery.getByRole('button',{name:`Select ${map.name}`,exact:true})).toBeVisible()
+  await page.screenshot({path:'map-gallery-preview.png'})
+  await page.keyboard.press('Escape')
+  await expect(gallery).toHaveCount(0)
+  await expect(page.getByRole('dialog',{name:'PRIVATE MULTIPLAYER',exact:true})).toBeVisible()
+  await expect(trigger).toBeFocused()
+  for(const id of ['neon','orbital','spire','facility']) await selectArenaMap(page,id)
+  await trigger.click()
+  await gallery.getByRole('button',{name:'Close map selection',exact:true}).click()
+  await expect(trigger).toBeFocused()
+  await page.setViewportSize({width:390,height:844})
+  await trigger.click()
+  expect(await gallery.evaluate(element=>element.scrollWidth<=element.clientWidth)).toBe(true)
+  await gallery.getByRole('button',{name:'Select AETHER SPIRE',exact:true}).scrollIntoViewIfNeeded()
+  await page.screenshot({path:'map-gallery-mobile-preview.png'})
+  await gallery.getByRole('button',{name:'Select AETHER SPIRE',exact:true}).click()
+  await expect(trigger).toContainText('AETHER SPIRE')
+  expect(errors).toEqual([])
+})
+
+test('copying a real invite code confirms beside the button and resets for another copy',async({page,context})=>{
+  await context.grantPermissions(['clipboard-read','clipboard-write'])
+  await openGame(page);await openMultiplayer(page)
+  const code=await page.getByTestId('invite-code').textContent()
+  const copy=page.getByRole('button',{name:'COPY CODE',exact:true}),feedback=page.locator('.invite-copy-feedback')
+  await copy.click()
+  await expect(feedback).toHaveText('✓ COPIED!')
+  await expect(page.locator('.room-invite')).toHaveClass(/code-copied/)
+  expect(await page.evaluate(()=>navigator.clipboard.readText())).toBe(code)
+  await page.screenshot({path:'invite-copied-preview.png'})
+  await expect(feedback).toBeHidden({timeout:6000})
+  await expect(page.locator('.room-invite')).not.toHaveClass(/code-copied/)
+  await copy.click()
+  await expect(feedback).toHaveText('✓ COPIED!')
+})
+
+test('a blocked clipboard shows manual-copy help without reporting success',async({page})=>{
+  await page.addInitScript(()=>{
+    Object.defineProperty(navigator,'clipboard',{value:{writeText:()=>Promise.reject(new Error('Blocked'))},configurable:true})
+    document.execCommand=()=>false
+  })
+  await openGame(page);await openMultiplayer(page)
+  await page.getByRole('button',{name:'COPY CODE',exact:true}).click()
+  await expect(page.locator('.invite-copy-feedback')).toHaveText('Select the code and copy it manually.')
+  await expect(page.locator('.room-invite')).not.toHaveClass(/code-copied/)
+  await expect(page.getByRole('button',{name:'COPY CODE',exact:true})).toBeFocused()
+})

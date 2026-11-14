@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test'
-import {openGame,openMultiplayer} from './helpers.js'
+import {openGame,openMultiplayer,selectArenaMap} from './helpers.js'
 
 test('multiplayer opens an anchored mode picker with keyboard navigation and dismisses back to its button',async({page})=>{
   await openGame(page)
@@ -78,8 +78,8 @@ test('versus cards show both players and host settings synchronize and reset rea
     await expect(host.getByText(/BOTH PLAYERS READY.*STARTING IN/)).toBeVisible()
     await guest.getByRole('button',{name:'CANCEL READY',exact:true}).click()
     await expect(host.getByLabel('Arena map')).toBeEnabled()
-    await host.getByLabel('Arena map').selectOption('orbital')
-    await expect(guest.getByLabel('Arena map')).toHaveValue('orbital')
+    await selectArenaMap(host,'orbital')
+    await expect(guest.getByLabel('Arena map')).toContainText('ORBITAL STATION')
     await expect(guest.getByRole('button',{name:'READY UP',exact:true})).toBeVisible()
     await expect(host.getByRole('button',{name:'START SHARED ARENA',exact:true})).toHaveCount(0)
     await host.screenshot({path:'lobby-connected-preview.png'})

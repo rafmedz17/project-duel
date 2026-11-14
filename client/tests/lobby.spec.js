@@ -28,7 +28,7 @@ test('two independent browsers create and join by code, synchronize ready state,
     await contexts[0].grantPermissions(['clipboard-read','clipboard-write'])
     await host.bringToFront()
     await host.getByRole('button',{ name:'COPY CODE',exact:true }).click()
-    await expect(host.getByText('CODE COPIED',{ exact:true })).toBeVisible()
+    await expect(host.locator('.invite-copy-feedback')).toHaveText('✓ COPIED!')
     expect(await host.evaluate(() => navigator.clipboard.readText())).toBe(code)
     await expect(host.getByRole('button',{ name:'READY UP',exact:true })).toBeDisabled()
     await join(guest,'Echo',code)

@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test'
 import {Client} from '@colyseus/sdk'
-import {openGame,openMultiplayer} from './helpers.js'
+import {openGame,openMultiplayer,selectArenaMap} from './helpers.js'
 
 async function arena(page) {
   return page.evaluate(async()=>{
@@ -27,7 +27,7 @@ test('Aether Spire replicates through the lobby, plays online and scales graphic
   peer.onMessage('loadout-bank',()=>{});peer.onMessage('shot-trail',()=>{})
   try {
     await expect(page.getByTestId('lobby-slot-1')).toContainText('Spire Rival')
-    await page.getByLabel('Arena map').selectOption('spire')
+    await selectArenaMap(page,'spire')
     await expect.poll(()=>peer.state.mapId).toBe('spire')
     await expect(page.locator('.map-description')).toContainText('raised overlooks')
     await page.getByLabel('Match format').selectOption('freeplay')

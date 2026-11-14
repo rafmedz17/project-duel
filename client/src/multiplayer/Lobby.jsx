@@ -8,6 +8,18 @@ import LobbyMapCard from './LobbyMapCard.jsx'
 import './lobby.css'
 
 function savedName() {let value;try{value=localStorage.getItem('duel-callsign')}catch{/* Device storage can be unavailable. */}return value || `Pilot ${Math.random().toString(36).slice(2,8)}`}
+async function writeInviteCode(code) {
+  try {await navigator.clipboard.writeText(code);return true}
+  catch {
+    // Local-network HTTP pages may not have access to the Clipboard API.
+    const previous=document.activeElement,input=document.createElement('textarea')
+    input.value=code;input.readOnly=true;input.style.cssText='position:fixed;opacity:0;pointer-events:none'
+    document.body.append(input);input.select()
+    try {return document.execCommand('copy')}
+    catch {return false}
+    finally {input.remove();previous?.focus()}
+  }
+}
 function trapFocus(event) {
   if(event.key!=='Tab') return
   const controls=[...event.currentTarget.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled)')]
@@ -33,6 +45,13 @@ export default function Lobby({onClose,onProfile,returnFocusRef,mode='casual'}) 
   const callsign=account.profile?.callsign || name
   const close=()=>{void lobby.leave();onClose()}
   const title=room?.ranked ? 'RANKED MATCH' : connected ? seekingRanked ? 'RANKED LOBBY' : 'CASUAL MATCH' : mode==='ranked' ? 'RANKED LOBBY' : 'CASUAL LOBBY'
+  const copyFeedback=connected && copyStatus.code===room.code ? copyStatus.message : ''
+
+  useEffect(()=>{
+    if(!copyStatus.message) return
+    const timer=setTimeout(()=>setCopyStatus({code:'',message:''}),3500)
+    return ()=>clearTimeout(timer)
+  },[copyStatus])
 
   useEffect(()=>{
     if(initialConnection.current || account.loading || rankedLocked || s.status!=='idle') return
@@ -60,8 +79,8 @@ export default function Lobby({onClose,onProfile,returnFocusRef,mode='casual'}) 
   }
   async function copyCode() {
     const code=room.code
-    try{await navigator.clipboard.writeText(code);setCopyStatus({code,message:'CODE COPIED'})}
-    catch{setCopyStatus({code,message:'Select the code and copy it manually.'})}
+    const copied=await writeInviteCode(code)
+    setCopyStatus({code,message:copied ? 'CODE COPIED' : 'Select the code and copy it manually.'})
   }
   function changeType(value) {setRequestedRanked(value==='ranked');lobby.ranked(value==='ranked')}
   const status=s.status==='reconnecting' ? 'RESTORING CONNECTION' : room?.phase==='countdown' ? `BOTH PLAYERS READY / STARTING IN ${room.countdown}` : room?.phase==='ready' ? 'BOTH PLAYERS READY' : room?.phase==='reconnecting' ? 'HOLDING YOUR FRIEND’S SEAT' : players.length<2 ? 'WAITING FOR A CHALLENGER' : 'WAITING FOR READY CHECKS'
@@ -70,7 +89,7 @@ export default function Lobby({onClose,onProfile,returnFocusRef,mode='casual'}) 
   return <div className="overlay modal lobby-overlay" onKeyDown={trapFocus}>
     <section className="dialog lobby-dialog" role="dialog" aria-modal="true" aria-labelledby="lobby-title" aria-describedby="lobby-description">
       <header className="lobby-topbar"><div className="lobby-title-block"><div className="eyebrow">PROJECT DUEL / PRIVATE LINK</div><h2 id="lobby-title">PRIVATE MULTIPLAYER</h2></div>
-        <div className="room-invite"><span>INVITE CODE</span><div className="invite-code" data-testid={connected ? 'invite-code' : undefined}>{connected ? room.code : busy ? '......' : '------'}</div><button ref={copyButton} type="button" onClick={copyCode} disabled={!connected || busy} aria-label="COPY CODE"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M8 8h12v13H8zM16 8V3H3v13h5"/></svg></button></div>
+        <div className={`room-invite ${copyFeedback==='CODE COPIED' ? 'code-copied' : ''}`}><span>INVITE CODE</span><div className="invite-code" data-testid={connected ? 'invite-code' : undefined}>{connected ? room.code : busy ? '......' : '------'}</div><button ref={copyButton} type="button" onClick={copyCode} disabled={!connected || busy} aria-label="COPY CODE" title={copyFeedback==='CODE COPIED' ? 'Copied!' : 'Copy invite code'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">{copyFeedback==='CODE COPIED' ? <path d="m5 12 4 4L20 5"/> : <path d="M8 8h12v13H8zM16 8V3H3v13h5"/>}</svg></button><output className={`invite-copy-feedback ${copyFeedback && copyFeedback!=='CODE COPIED' ? 'copy-failed' : ''}`} role="status" aria-live="polite">{copyFeedback==='CODE COPIED' ? '✓ COPIED!' : copyFeedback}</output></div>
         <form className="lobby-join" onSubmit={event=>{event.preventDefault();connect('join')}}><label className="lobby-label">ENTER CODE<input className="code-input" aria-label="INVITE CODE" value={code} maxLength={6} disabled={busy || rankedLocked || s.status==='reconnecting' || room?.phase==='countdown'} onChange={event=>setCode(event.target.value.toUpperCase())} autoComplete="off" spellCheck={false} placeholder="ABC234"/></label><button type="submit" disabled={busy || account.loading || rankedLocked || s.status==='reconnecting' || room?.phase==='countdown'} aria-label="JOIN ROOM">JOIN</button></form>
         <div className={`lobby-mode-badge ${room?.ranked || seekingRanked || !connected && mode==='ranked' ? 'ranked' : ''}`}><span>{title}</span><small>{connected ? s.status==='reconnecting' ? 'RECONNECTING' : 'PRIVATE / 1 VS 1' : 'INVITE A FRIEND'}</small></div>
         <button ref={closeButton} type="button" className="lobby-close" onClick={close} aria-label="Close multiplayer lobby">×</button>
@@ -93,7 +112,7 @@ export default function Lobby({onClose,onProfile,returnFocusRef,mode='casual'}) 
       {connected ? <>
         <div className="lobby-room-options"><label className="lobby-label">MATCH TYPE<select aria-label="Match type" value={room.ranked || seekingRanked ? 'ranked' : 'casual'} disabled={locked} onChange={event=>changeType(event.target.value)}><option value="casual">CASUAL</option><option value="ranked" disabled={!eligible}>RANKED</option></select></label><p>{room.ranked ? 'RANKED / BEST OF THREE · Verified accounts. Elo eligibility is checked when results are saved.' : seekingRanked ? 'Waiting for a verified rival. This room cannot launch as casual while ranked is requested.' : room.format==='duel' ? 'FIRST TO TWO WINS · 90-second rounds. Draws replay. Changing settings resets readiness.' : 'FREE PLAY · Five-second respawns. Change your preset between lives.'}</p></div>
         <div className={`lobby-state ${room.phase==='ready' ? 'all-ready' : ''}`} role="status"><i/><div><strong>{status}</strong><span>{room.phase==='countdown' ? 'Cancel readiness to stop the countdown.' : room.phase==='ready' ? 'Both players are ready to enter the arena.' : room.phase==='reconnecting' ? 'Their seat is held for 15 seconds. Readiness resets after a disconnect.' : 'Both players must be connected to ready up.'}</span></div></div>
-        <div className="lobby-actions"><button type="button" className="lobby-back" onClick={close}>LEAVE ROOM</button><span className="invite-copy-status" role="status">{copyStatus.code===room.code ? copyStatus.message : 'Copy the code above to invite your rival.'}</span><button type="button" className="primary" disabled={!canReady} onClick={()=>lobby.ready(!self?.ready)}>{self?.ready ? 'CANCEL READY' : 'READY UP'}</button>{host && !room.autoStart && room.phase==='ready' && (!seekingRanked || room.ranked) && <button type="button" className="primary start-arena" onClick={()=>lobby.start()}>START SHARED ARENA</button>}</div>
+        <div className="lobby-actions"><button type="button" className="lobby-back" onClick={close}>LEAVE ROOM</button><span className="invite-copy-status">Copy the code above to invite your rival.</span><button type="button" className="primary" disabled={!canReady} onClick={()=>lobby.ready(!self?.ready)}>{self?.ready ? 'CANCEL READY' : 'READY UP'}</button>{host && !room.autoStart && room.phase==='ready' && (!seekingRanked || room.ranked) && <button type="button" className="primary start-arena" onClick={()=>lobby.start()}>START SHARED ARENA</button>}</div>
         {s.notice && <p className="lobby-message" role="status">{s.notice}</p>}{room.note && <p className="lobby-message" role="status">{room.note}</p>}
       </> : <>
         <div className="lobby-setup-note">{account.user ? 'Your saved profile and active loadout are ready.' : 'Your device loadout is equipped. Both players ready up to begin the five-second countdown.'}</div>

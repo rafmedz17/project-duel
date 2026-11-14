@@ -16,3 +16,41 @@
 .lobby-join{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid #334b63;background:#101f3188;min-width:0;min-height:52px}.lobby-join .lobby-label{font-size:7px;letter-spacing:1px;min-width:0}.lobby-join .code-input{padding:0;background:none;border:0;min-height:20px;margin-top:5px;font-size:12px;letter-spacing:2px;min-width:0}.lobby-dialog .lobby-join button{padding:5px 0 5px 8px;margin:0;background:none;border:0;border-left:1px solid #334b63;color:#87e7f7;font-size:8px;white-space:nowrap}.lobby-dialog .room-invite{min-width:0;padding:10px;gap:8px}.lobby-dialog .invite-code{font-size:16px;letter-spacing:3px}.lobby-dialog .lobby-mode-badge{min-width:100px;padding-left:12px}.lobby-dialog .lobby-mode-badge>span{font-size:10px}
 @media(max-width:1000px){.lobby-dialog .lobby-topbar{grid-template-columns:minmax(0,1fr) auto 30px}.lobby-topbar .room-invite{grid-column:1;grid-row:2;justify-content:center}.lobby-topbar .lobby-join{grid-column:2/4;grid-row:2}.lobby-topbar .lobby-mode-badge{grid-column:2;grid-row:1}.lobby-topbar .lobby-close{grid-column:3;grid-row:1}}
 @media(max-width:650px){.lobby-dialog .lobby-topbar{grid-template-columns:minmax(0,1fr) auto 28px;gap:10px}.lobby-topbar .room-invite{grid-column:1/-1;grid-row:2}.lobby-topbar .lobby-join{grid-column:1/-1;grid-row:3}.lobby-join .lobby-label{flex:1;display:flex;align-items:center;gap:16px}.lobby-join .code-input{width:120px;margin:0}.lobby-dialog .lobby-mode-badge{min-width:0;padding-left:0}.lobby-dialog .lobby-mode-badge>span{font-size:8px}}
+
+/* The whole tactical preview opens the arena gallery. */
+.dialog.lobby-dialog button.lobby-map-card{display:block;width:100%;padding:0;text-align:left;border:1px solid #36546c;background:linear-gradient(130deg,#182b41,#0c1725);letter-spacing:normal;transition:border-color .18s,box-shadow .18s}
+.dialog.lobby-dialog button.lobby-map-card:hover:not(:disabled){border-color:var(--map-color);box-shadow:0 0 22px color-mix(in srgb,var(--map-color) 12%,transparent)}
+.dialog.lobby-dialog button.lobby-map-card:disabled{opacity:.75}
+.lobby-map-card .map-select-label{display:block}
+.map-select-label strong{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:5px 0;color:#e3f0fa;font:700 12px/1.4 'Segoe UI',sans-serif;letter-spacing:.6px}
+.map-select-label strong>span{color:var(--map-color);font-size:18px}
+.map-select-label>small{display:block;color:#8ca9bd;font:7px/1.5 Consolas,monospace;letter-spacing:1px}
+.lobby-map-gallery{width:min(800px,calc(100vw - 32px));max-width:none;max-height:calc(100svh - 40px);margin:auto;padding:0;overflow:auto;color:#e3f0fa;border:1px solid #466680;border-top:2px solid #88e8ff;background:radial-gradient(ellipse at top,#19364b88,transparent 65%),#0b1523;box-shadow:0 30px 100px #000b}
+.lobby-map-gallery::backdrop{background:#030914d9;backdrop-filter:blur(8px)}
+.map-gallery-content{padding:26px}
+.map-gallery-content>header{display:flex;justify-content:space-between;align-items:center;gap:16px}
+.map-gallery-content .eyebrow{font:8px/1.5 Consolas,monospace;color:#85d9ee;letter-spacing:2px}
+.map-gallery-content h2{font-size:24px;letter-spacing:1px;margin:8px 0 0}
+.map-gallery-content>p{font-size:11px;line-height:1.6;color:#96adbf;margin:16px 0 20px}
+.lobby-map-gallery button.map-gallery-close{width:34px;height:34px;flex-shrink:0;padding:0;margin:0;font:24px/1 'Segoe UI',sans-serif;color:#abc4d4;border:1px solid #426075;background:#101f30}
+.map-gallery-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.lobby-map-gallery button.map-gallery-option{display:block;width:100%;padding:0;margin:0;overflow:hidden;text-align:left;letter-spacing:normal;color:#e3f0fa;border:1px solid #324d63;background:#101e2d;transition:border-color .18s,background .18s}
+.lobby-map-gallery button.map-gallery-option:hover:not(:disabled),.lobby-map-gallery button.map-gallery-option[aria-pressed=true]{border-color:var(--map-color);background:color-mix(in srgb,var(--map-color) 7%,#101e2d)}
+.lobby-map-gallery button.map-gallery-option:disabled{opacity:.6}
+.lobby-map-gallery .map-card-art{height:150px;border-bottom:1px solid #294052}
+.lobby-map-gallery .map-card-art>span{font-size:7px;color:#9bb6ca}
+.lobby-map-gallery .map-card-art>small{font-size:6px;color:#8aa8bf}
+.map-gallery-details{display:block;padding:14px 16px 17px}
+.map-gallery-name{display:flex;justify-content:space-between;align-items:center;gap:10px;font:700 12px/1.5 'Segoe UI',sans-serif;letter-spacing:.5px}
+.map-gallery-name small{color:var(--map-color);font:7px/1.5 Consolas,monospace;letter-spacing:.6px;white-space:nowrap}
+.map-gallery-description{display:block;margin-top:8px;font:11px/1.6 'Segoe UI',sans-serif;color:#96acbe}
+.map-gallery-content>footer{display:flex;justify-content:space-between;gap:12px;margin-top:20px;padding-top:15px;border-top:1px solid #2b4052;font:8px/1.5 Consolas,monospace;letter-spacing:1px;color:#7695aa}
+.lobby-map-gallery button:focus-visible,.dialog.lobby-dialog button.lobby-map-card:focus-visible{outline:2px solid #8ceaff;outline-offset:3px}
+.room-invite{position:relative;transition:border-color .15s}
+.room-invite.code-copied{border-color:#71e8ba}
+.lobby-dialog .room-invite.code-copied button{color:#88ffd0;background:#1c493b80;border-radius:3px}
+.invite-copy-feedback{position:absolute;z-index:2;right:0;top:calc(100% + 6px);padding:6px 10px;border:1px solid #3c8c71;background:#102e29;color:#a5ffda;font:700 9px/1.5 Consolas,monospace;letter-spacing:1px;box-shadow:0 5px 20px #0005;white-space:nowrap;pointer-events:none}
+.invite-copy-feedback:empty{display:none}
+.invite-copy-feedback.copy-failed{max-width:220px;white-space:normal;background:#302419;border-color:#92734e;color:#ffdda8;letter-spacing:0}
+@media(max-width:650px){.map-select-label strong{font-size:10px}.map-select-label>small{font-size:6px;letter-spacing:.4px}.map-gallery-content{padding:18px}.map-gallery-content h2{font-size:20px}.map-gallery-grid{grid-template-columns:1fr}.lobby-map-gallery .map-card-art{height:135px}}
+@media(prefers-reduced-motion:reduce){.dialog.lobby-dialog button.lobby-map-card,.lobby-map-gallery button.map-gallery-option,.room-invite{transition:none}}
