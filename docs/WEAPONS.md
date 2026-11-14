@@ -43,7 +43,7 @@ Low graphics uses simpler diffuse armor shading and fewer decorative vents, scre
 
 ## Movement accuracy
 
-Hold Ctrl to crouch in training or multiplayer (rebind in Settings → Controls). Crouching moves at 55% of normal walking speed and overrides sprint. While grounded and outside a dash, it tightens base firearm spread, shotgun patterns and movement spread by 20%; damage, fire rate and recoil remain unchanged. Jumping or dashing removes the accuracy bonus. A mint `CROUCHED / STEADY AIM` hint confirms the bonus. The lowered camera, capsule and robot damage volumes share the stance; releasing crouch only stands up when the full capsule fits. Respawning restores standing height.
+Hold Ctrl to crouch in training or multiplayer (rebind in Settings → Controls). Crouching moves at 55% of normal walking speed and overrides sprint. While grounded and outside a dash, it tightens base firearm spread, shotgun patterns and movement spread by 20%; damage, fire rate and recoil remain unchanged. Jumping or dashing removes the accuracy bonus. The crosshair tightens to reflect the bonus; movement and stance text notices are hidden. The lowered camera, capsule and robot damage volumes share the stance; releasing crouch only stands up when the full capsule fits. Respawning restores standing height.
 
 Walking adds spread to every firearm. Sprinting widens the cone further; airborne shots remain inaccurate even at the top of a jump, and dashing carries the strongest penalty. SMGs are more forgiving while moving, while rifles, LMGs and especially snipers reward stopping. Shotguns keep their pellet pattern with an additional movement offset. Melee attacks do not gain bullet spread. Scope input does not bypass movement penalties.
 

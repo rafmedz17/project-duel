@@ -12,7 +12,7 @@ const view=(page,id)=>page.evaluate(async id=>{
 async function pressCrouch(page,key='ControlLeft') {
   await page.keyboard.down(key)
   await expect(crosshair(page)).toHaveAttribute('data-crouched','true')
-  await expect(page.locator('.movement-spread-hint')).toHaveText('CROUCHED / STEADY AIM')
+  await expect(page.locator('.movement-spread-hint')).toHaveCount(0)
 }
 
 test('training crouch lowers the capsule, slows sprinting and clears on release/pause with a rebindable control',async({page})=>{
