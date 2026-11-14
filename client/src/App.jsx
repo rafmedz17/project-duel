@@ -22,10 +22,10 @@ export default function App() {
   const s = { mode, ready, error, time:game.get().time }
   const [panel,setPanel] = useState(() => lobby.hasRecovery() ? 'multiplayer' : null)
   const [showFullscreenNotice,setShowFullscreenNotice]=useState(true)
-  const [cinematicPaused,setCinematicPaused]=useState(()=>window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+  const [reducedMotion,setReducedMotion]=useState(()=>window.matchMedia('(prefers-reduced-motion: reduce)').matches)
   const [pageVisible,setPageVisible]=useState(()=>!document.hidden)
   useEffect(()=>{
-    const motion=window.matchMedia('(prefers-reduced-motion: reduce)'),change=()=>setCinematicPaused(motion.matches),visibility=()=>setPageVisible(!document.hidden)
+    const motion=window.matchMedia('(prefers-reduced-motion: reduce)'),change=()=>setReducedMotion(motion.matches),visibility=()=>setPageVisible(!document.hidden)
     motion.addEventListener('change',change);document.addEventListener('visibilitychange',visibility)
     return ()=>{motion.removeEventListener('change',change);document.removeEventListener('visibilitychange',visibility)}
   },[])
@@ -59,10 +59,10 @@ export default function App() {
   const menu = () => { document.exitPointerLock(); game.set({ mode:'menu', ready:false }); setPanel(null) }
   return <main className={mode==='menu' && !online ? 'main-menu-screen' : undefined}>
     <RoomScoreboard/>
-    <Suspense fallback={<div className="engine-loading" role="status">LOADING COMBAT SYSTEMS…</div>}><World online={online} arenaEpoch={arenaEpoch} menuAnimated={!showFullscreenNotice && !cinematicPaused && pageVisible && !panel && !recovery}/></Suspense>
+    <Suspense fallback={<div className="engine-loading" role="status">LOADING COMBAT SYSTEMS…</div>}><World online={online} arenaEpoch={arenaEpoch} menuAnimated={!showFullscreenNotice && !reducedMotion && pageVisible && !panel && !recovery}/></Suspense>
     {online ? <OnlineOverlay onSettings={() => setPanel('settings')} onLeave={() => { void lobby.leave(); setPanel(null) }} /> : <>
     {s.mode !== 'menu' && <Hud />}
-    {s.mode === 'menu' ? <MainMenu onPanel={setPanel} onTraining={enter} accountLoading={accountLoading} multiplayerButton={multiplayerButton} paused={cinematicPaused} onToggleMotion={()=>setCinematicPaused(value=>!value)}/> : s.mode !== 'playing' && s.mode !== 'loadout' && <div className="overlay"><section className="dialog"><div className="eyebrow">PROJECT DUEL / SECTOR 01</div><h2>{s.mode === 'dead' ? 'SYSTEM OFFLINE' : s.time > 0 ? 'SIMULATION PAUSED' : 'READY TO DEPLOY'}</h2><p>{s.mode === 'dead' ? 'Your health is depleted. Restart to deploy again.' : 'Capture your mouse to enter the facility. Press Escape to pause.'}</p>{s.error && <p role="alert" className="error">{s.error}</p>}{s.mode !== 'dead' && <button className="primary" disabled={!s.ready} onClick={resume}>{s.ready ? 'RESUME / ENTER ARENA →' : 'INITIALIZING PHYSICS…'}</button>}<button onClick={restart}>RESTART TRAINING</button><button onClick={() => setPanel('settings')}>SETTINGS</button><button onClick={menu}>RETURN TO MAIN MENU</button><p className="muted">{'Four courses surround the central hub. G controls the current course. B opens the field armory. Aim for robot heads for bonus damage.'}</p></section></div>}
+    {s.mode === 'menu' ? <MainMenu onPanel={setPanel} onTraining={enter} accountLoading={accountLoading} multiplayerButton={multiplayerButton}/> : s.mode !== 'playing' && s.mode !== 'loadout' && <div className="overlay"><section className="dialog"><div className="eyebrow">PROJECT DUEL / SECTOR 01</div><h2>{s.mode === 'dead' ? 'SYSTEM OFFLINE' : s.time > 0 ? 'SIMULATION PAUSED' : 'READY TO DEPLOY'}</h2><p>{s.mode === 'dead' ? 'Your health is depleted. Restart to deploy again.' : 'Capture your mouse to enter the facility. Press Escape to pause.'}</p>{s.error && <p role="alert" className="error">{s.error}</p>}{s.mode !== 'dead' && <button className="primary" disabled={!s.ready} onClick={resume}>{s.ready ? 'RESUME / ENTER ARENA →' : 'INITIALIZING PHYSICS…'}</button>}<button onClick={restart}>RESTART TRAINING</button><button onClick={() => setPanel('settings')}>SETTINGS</button><button onClick={menu}>RETURN TO MAIN MENU</button><p className="muted">{'Four courses surround the central hub. G controls the current course. B opens the field armory. Aim for robot heads for bonus damage.'}</p></section></div>}
     </>}
     {panel==='training-loadout' ? <TrainingArmory onClose={closeArmory}/> : recovery || ['profile','loadout','leaderboard'].includes(panel) ? <AccountPanel key={panel || 'recovery'} initial={panel || 'profile'} onShowProfile={() => setPanel('profile')} onClose={() => setPanel(null)} /> : panel === 'multiplayer' ? <Lobby returnFocusRef={multiplayerButton} onClose={() => setPanel(null)} /> : panel==='settings' ? <Settings onClose={() => setPanel(null)}/> : null}
     {showFullscreenNotice && <FullscreenNotice onDismiss={()=>setShowFullscreenNotice(false)}/>}

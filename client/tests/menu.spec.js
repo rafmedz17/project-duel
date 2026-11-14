@@ -23,12 +23,7 @@ test('main menu follows the play layout, renders the map tour and pauses behind 
   expect(multiplayer.height).toBeGreaterThan(training.height)
   expect(settings.y+settings.height).toBeLessThan(140)
   await page.screenshot({path:'menu-desktop-preview.png'})
-  await menu.getByRole('button',{name:'Pause cinematic background'}).click()
-  await expect.poll(async()=>(await cinema(page)).running).toBe(false)
-  const paused=(await cinema(page)).time
-  await page.waitForTimeout(400);expect((await cinema(page)).time).toBe(paused)
-  await menu.getByRole('button',{name:'Play cinematic background'}).click()
-  await expect.poll(async()=>(await cinema(page)).time).toBeGreaterThan(paused)
+  await expect(menu.locator('.cinema-toggle,.menu-reel-progress')).toHaveCount(0)
   for(const [label,heading] of [['SETTINGS','SETTINGS'],['LEADERBOARD','LEADERBOARD'],['PLAYER PROFILE','PLAYER PROFILE']]) {
     await menu.getByRole('button',{name:label,exact:true}).click()
     await expect(page.getByRole('heading',{name:heading,exact:true})).toBeVisible()
@@ -60,7 +55,7 @@ test('reduced motion starts still and the compact menu fits a phone viewport',as
   await page.setViewportSize({width:390,height:844})
   await openGame(page,'/')
   const menu=page.getByTestId('main-menu')
-  await expect(menu.getByRole('button',{name:'Play cinematic background'})).toBeVisible()
+  await expect(menu.locator('.cinema-toggle,.menu-reel-progress')).toHaveCount(0)
   await expect.poll(async()=>(await cinema(page)).time).toBe(1)
   await page.waitForTimeout(300);expect((await cinema(page)).time).toBe(1)
   expect(await menu.evaluate(element=>element.scrollWidth<=element.clientWidth)).toBe(true)

@@ -7,10 +7,10 @@ function MenuIcon({name}) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]}/></svg>
 }
 
-export default function MainMenu({onPanel,onTraining,accountLoading,multiplayerButton,paused,onToggleMotion}) {
-  const root=useRef(),title=useRef(),subtitle=useRef(),number=useRef(),progress=useRef(),curtain=useRef(),bars=useRef([])
+export default function MainMenu({onPanel,onTraining,accountLoading,multiplayerButton}) {
+  const root=useRef(),title=useRef(),subtitle=useRef(),number=useRef(),curtain=useRef(),bars=useRef([])
   useEffect(()=>{
-    let frame,lastShot=-1,lastProgress=-1,lastFade=-1
+    let frame,lastShot=-1,lastFade=-1
     const update=()=>{
       if(lastShot!==menuCinema.shot) {
         const shot=CINEMATIC_SHOTS[menuCinema.shot]
@@ -21,7 +21,6 @@ export default function MainMenu({onPanel,onTraining,accountLoading,multiplayerB
         bars.current.forEach((bar,i)=>{if(bar) bar.dataset.active=String(i===menuCinema.shot)})
         lastShot=menuCinema.shot
       }
-      if(lastProgress!==menuCinema.progress) {progress.current.style.width=`${menuCinema.progress*100}%`;lastProgress=menuCinema.progress}
       if(lastFade!==menuCinema.fade) {curtain.current.style.opacity=String(menuCinema.fade);lastFade=menuCinema.fade}
       frame=requestAnimationFrame(update)
     }
@@ -34,13 +33,12 @@ export default function MainMenu({onPanel,onTraining,accountLoading,multiplayerB
       <nav className="menu-utilities" aria-label="Player menu">{[['settings','SETTINGS'],['leaderboard','LEADERBOARD'],['profile','PROFILE']].map(([id,label])=><button type="button" key={id} onClick={()=>onPanel(id)} aria-label={id==='profile' ? 'PLAYER PROFILE' : label}><span className="utility-icon"><MenuIcon name={id}/></span><span>{label}</span></button>)}</nav>
     </header>
     <div className="menu-topline"><span><i/>PRIVATE ARENAS. REAL RIVALRIES.</span><span>PROJECT DUEL / COMBAT PROGRAM</span></div>
-    <section className="menu-cinematic-caption" aria-label="Cinematic map tour"><div className="cinema-eyebrow"><span>IN-ENGINE SHOWCASE</span><span ref={number}>01 / 04</span></div><h2 ref={title}>THE FACILITY</h2><p ref={subtitle}>CLEAN LANES. PURE COMPETITION.</p><div className="cinema-chapters" aria-hidden="true">{CINEMATIC_SHOTS.map((shot,i)=><span ref={node=>{bars.current[i]=node}} key={shot.mapId}><i/></span>)}</div><div className="cinema-controls"><button type="button" className="cinema-toggle" onClick={onToggleMotion} aria-label={paused ? 'Play cinematic background' : 'Pause cinematic background'} aria-pressed={paused}><MenuIcon name={paused ? 'play' : 'pause'}/>{paused ? 'PLAY CINEMATIC' : 'CINEMATIC ON'}</button><span className="menu-track"><i/><i/><i/><i/>LIMIT BREAK <small>MENU THEME</small></span></div></section>
+    <section className="menu-cinematic-caption" aria-label="Cinematic map tour"><div className="cinema-eyebrow"><span>IN-ENGINE SHOWCASE</span><span ref={number}>01 / 04</span></div><h2 ref={title}>THE FACILITY</h2><p ref={subtitle}>CLEAN LANES. PURE COMPETITION.</p><div className="cinema-chapters" aria-hidden="true">{CINEMATIC_SHOTS.map((shot,i)=><span ref={node=>{bars.current[i]=node}} key={shot.mapId}><i/></span>)}</div><div className="cinema-controls"><span className="menu-track"><i/><i/><i/><i/>LIMIT BREAK <small>MENU THEME</small></span></div></section>
     <nav className="menu-play-actions" aria-label="Main menu"><div className="play-actions-heading"><span>FIND YOUR NEXT FIGHT</span><span>01—03</span></div>
       <button type="button" className="menu-action menu-training" disabled={accountLoading} onClick={onTraining} aria-label="ENTER TRAINING / TRAINING GROUNDS"><MenuIcon name="training"/><span><small>SHARPEN YOUR EDGE</small><strong>TRAINING GROUNDS</strong></span><MenuIcon name="arrow"/></button>
       <button type="button" ref={multiplayerButton} className="menu-action menu-multiplayer" onClick={()=>onPanel('multiplayer')} aria-label="MULTIPLAYER / PLAY WITH FRIENDS"><span className="multiplayer-sigil" aria-hidden="true">Ⅱ</span><span><small>INVITE. READY UP. DUEL.</small><strong>PLAY MULTIPLAYER</strong><em>PRIVATE LOBBIES / BEST OF THREE + FREE PLAY</em></span><MenuIcon name="arrow"/></button>
       <button type="button" className="menu-action menu-loadout" onClick={()=>onPanel('loadout')} aria-label="CHARACTER & LOADOUT / EQUIPMENT"><MenuIcon name="loadout"/><span><small>YOUR OPERATIVE. YOUR ARSENAL.</small><strong>LOADOUTS</strong></span><MenuIcon name="arrow"/></button>
     </nav>
     <footer className="duel-menu-footer"><span>PROJECT DUEL <b>/</b> RAFAEL VINCENT D. MEDINA</span><span>DESKTOP <b>/</b> KEYBOARD + MOUSE</span><span>BUILT FOR THE CLUTCH <i/></span></footer>
-    <div className="menu-reel-progress" aria-hidden="true"><i ref={progress}/></div>
   </div>
 }

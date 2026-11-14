@@ -14,15 +14,6 @@ function Tube({ p=[0,0,0],radius=0.04,length=0.3,color='#263347',glow=false }) {
 function Ring({ p=[0,0,0],radius=0.07,color }) {
   return <mesh position={p}><torusGeometry args={[radius,0.007,6,24]}/><meshBasicMaterial color={color} toneMapped={false}/></mesh>
 }
-function Hand({ p=[0,0,0],left=false }) {
-  return <group position={p} rotation={[0,0,left ? -0.12 : 0.12]}>
-    <Plate s={[0.1,0.14,0.12]} color="#233144"/>
-    <Plate p={[0,-0.13,0.03]} s={[0.09,0.18,0.11]} r={[0.25,0,0]} color="#142333"/>
-    {[-1.5,-0.5,0.5,1.5].map(i=><group key={i} position={[i*0.025,0.025,-0.06]}><Plate s={[0.02,0.06,0.035]} color="#7890a4"/><Plate p={[0,0.035,-0.014]} s={[0.02,0.025,0.05]} color="#3e536b"/></group>)}
-    <Plate p={[left ? 0.06 : -0.06,0.02,0]} s={[0.035,0.07,0.035]} r={[0,0,left ? -0.4 : 0.4]} color="#668397"/>
-    <Plate p={[0,-0.08,0.09]} s={[0.07,0.025,0.005]} color="#6fe5ef" glow/>
-  </group>
-}
 const Cell=forwardRef(function Cell({ weapon },ref) {
   const drum=['omega','ravager','magnus'].includes(weapon.model)
   return <group position={[0,-0.17,weapon.slot==='2' ? 0.1 : -0.08]}>
@@ -64,9 +55,9 @@ export default function ArsenalModel({ weapon,parts,preview=false }) {
           <mesh position={[0,0,0.13]}><icosahedronGeometry args={[0.05,0]}/><meshBasicMaterial color="#f1d9ff" toneMapped={false}/></mesh>
         </group>
       </group> : <EnergyBlade weapon={weapon} short={dual}/>}
-      {!preview && <Hand p={[0,-0.14,0.015]}/>}
+      {!preview && <><group ref={parts?.grip} name="weapon-grip-right" position={[0,-.14,.015]}/>{hammer && <group ref={parts?.support} name="weapon-grip-left" position={[0,.12,.025]}/>}</>}
     </group>
-    {dual && <group ref={parts?.offhand} position={[-0.64,0,0]} rotation={[0,0,0.3]}><EnergyBlade weapon={weapon} short/>{!preview && <Hand p={[0,-0.14,0.015]} left/>}</group>}
+    {dual && <group ref={parts?.offhand} position={[-0.64,0,0]} rotation={[0,0,0.3]}><EnergyBlade weapon={weapon} short/>{!preview && <group ref={parts?.support} name="weapon-grip-left" position={[0,-.14,.015]}/>}</group>}
     <mesh ref={parts?.trail} position={[0,0.28,-0.04]} rotation={[0,0,-0.2]}><torusGeometry args={[hammer ? 0.48 : 0.42,0.018,6,28,Math.PI*0.9]}/><meshBasicMaterial color={weapon.color} transparent opacity={0} depthWrite={false} toneMapped={false}/></mesh>
   </group>
   return <group name={`model-${weapon.model}`}>
@@ -104,7 +95,7 @@ export default function ArsenalModel({ weapon,parts,preview=false }) {
     {weapon.model==='striker' && [-1,1].map(i=><Plate key={i} p={[i*0.11,-0.12,-0.03]} s={[0.04,0.23,0.1]} r={[0,0,i*0.16]} color="#4f5875"/>)}
     {weapon.model==='astral' && <Plate p={[0,-0.13,0.31]} s={[0.13,0.2,0.15]} color="#52537d"/>}
     {lmg && <group position={[0.16,0.06,0.03]}><mesh ref={parts?.core}><icosahedronGeometry args={[0.055,0]}/><meshBasicMaterial color={weapon.color} toneMapped={false}/></mesh><Ring radius={0.08} color={weapon.color}/></group>}
-    {!preview && <><Hand p={[0,-0.23,0.15]}/><group ref={parts?.offhand} position={[-0.04,-0.2,compact ? 0.13 : -0.33]}><Hand left/></group></>}
+    {!preview && <><group ref={parts?.grip} name="weapon-grip-right" position={[0,-.23,.15]}/><group ref={parts?.offhand} position={[-.04,-.2,compact ? .13 : -.33]}><group ref={parts?.support} name="weapon-grip-left"/></group></>}
     <group ref={parts?.flash} position={[0,0,rotary ? -0.76 : double ? -0.63 : -length-0.12]}>
       <mesh rotation={[Math.PI/2,0,0]}><coneGeometry args={[weapon.pellets ? 0.15 : 0.08,0.25,6]}/><meshBasicMaterial color={weapon.color} toneMapped={false} transparent opacity={0.8} depthWrite={false}/></mesh>
       <mesh rotation={[0,0,Math.PI/4]}><octahedronGeometry args={[weapon.pellets ? 0.12 : 0.06]}/><meshBasicMaterial color="#efffff" toneMapped={false}/></mesh>

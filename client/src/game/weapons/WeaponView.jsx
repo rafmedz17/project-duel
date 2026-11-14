@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { memo,useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { MathUtils } from 'three'
 import { useGame,game } from '../store.js'
@@ -7,14 +7,20 @@ import { WEAPONS } from '../../../../shared/weapons.js'
 import { weaponAnimation } from './animation.js'
 import ArsenalModel from './ArsenalModel.jsx'
 import { activeOptic,REFLEX_AIM_POSITION } from './optics.js'
+import {animateParts} from './animateParts.js'
+import OperativeArms from '../characters/OperativeArms.jsx'
+import {runtime} from '../runtime.js'
+import {arenaView} from '../../multiplayer/poses.js'
 
-export default function WeaponView({ source=game }) {
+function WeaponView({ source=game }) {
   const detail=useGame(s=>s.settings.quality!=='Low')
   const local=useGame(s=>s.weapon),online=useLobby(s=>s.room?.players.find(p=>p.id===s.sessionId)?.combat.weapon)
   const selected=source===game ? local : online || 'pistol', weapon=WEAPONS[selected]
-  const root=useRef(),rotation=useRef(0),ads=useRef(0),reticle=useRef(),projection=useRef()
+  const localCharacter=useGame(s=>s.loadout.character),onlineCharacter=useLobby(s=>s.room?.players.find(p=>p.id===s.sessionId)?.combat.characterId)
+  const character=source===game ? localCharacter : onlineCharacter
+  const root=useRef(),ads=useRef(0),reticle=useRef(),projection=useRef(),grip=useRef(),support=useRef()
   const action=useRef(),rotor=useRef(),offhand=useRef(),trail=useRef(),cell=useRef(),bolt=useRef(),pump=useRef(),hinge=useRef(),core=useRef(),flash=useRef(),eject=useRef()
-  const parts={action,rotor,offhand,trail,cell,bolt,pump,hinge,core,flash,eject,reticle,projection}
+  const parts={action,rotor,offhand,trail,cell,bolt,pump,hinge,core,flash,eject,reticle,projection,grip,support}
   useFrame(({ camera },delta)=> {
     const s=source.get()
     if (!s || s.weapon!==selected || !root.current) return
@@ -23,36 +29,24 @@ export default function WeaponView({ source=game }) {
     const optic=activeOptic(s,time,game.get().aiming),scoped=optic==='precision'
     ads.current=MathUtils.damp(ads.current,optic==='reflex' ? 1 : 0,18,Math.min(delta,0.1))
     const blend=ads.current,steady=1-blend*0.8
+    const motion=source===game ? runtime : arenaView.motion,speed=Math.min(1.4,Math.hypot(motion.velocity[0],motion.velocity[2])/5),stride=Math.sin(time*10)*speed*(1-blend)
     const group=root.current
     // The hologram deploys only during ADS. Its HUD zero stays aligned with the
     // camera's shot direction through recoil and equip transitions.
     group.visible=s.hp>0 && !scoped; group.position.copy(camera.position); group.quaternion.copy(camera.quaternion)
-    group.translateX(melee ? 0.36-a.hit*0.38 : MathUtils.lerp(0.31-a.reloadPose*0.08,REFLEX_AIM_POSITION[0],blend))
-    group.translateY((melee ? -0.43+a.hit*0.12 : MathUtils.lerp(-0.3,REFLEX_AIM_POSITION[1],blend))+a.reloadPose*0.22-a.equip*0.3+Math.sin(time*1.8)*0.002*(1-blend))
-    group.translateZ((melee ? -0.63 : MathUtils.lerp(compact ? -0.52 : -0.63,REFLEX_AIM_POSITION[2],blend))+a.kick*(weapon.recoil*2+0.035)*steady-a.reloadPose*0.2+a.equip*0.2)
+    group.scale.setScalar(MathUtils.lerp(.86,1,blend))
+    group.translateX(melee ? .34-a.hit*.34 : MathUtils.lerp(.31-a.reloadPose*.08,REFLEX_AIM_POSITION[0],blend))
+    group.translateY((melee ? -.28+a.hit*.12 : MathUtils.lerp(-.22,REFLEX_AIM_POSITION[1],blend))+a.reloadPose*.22-a.equip*.3+Math.sin(time*1.8)*.002*(1-blend))
+    group.translateZ((melee ? -.78 : MathUtils.lerp(compact ? -.76 : -.84,REFLEX_AIM_POSITION[2],blend))+a.kick*(weapon.recoil*2+.035)*steady-a.reloadPose*.2+a.equip*.2)
     group.rotateX(melee ? a.windup*-0.75+a.hit*0.15 : a.kick*weapon.recoil*3*steady+a.reloadPose*0.18)
     group.rotateZ(melee ? -0.28+a.hit*(weapon.model==='fangs' && (s.swings || 0)%2 ? -1.25 : 1.25) : -a.reloadPose*0.65-inspect*0.8*(1-blend))
     group.rotateY(-a.reloadPose*0.35+inspect*0.9*(1-blend))
+    group.translateY(stride*.007);group.rotateZ(stride*.008)
     if(projection.current) { projection.current.visible=optic==='reflex';projection.current.scale.y=.9+blend*.1 }
     if(reticle.current) reticle.current.visible=false
-    if (action.current) action.current.rotation.x=melee ? -a.windup*0.5+a.hit*0.2 : a.kick*0.04
-    if (cell.current) { cell.current.position.set(-a.drop*0.13,-a.drop*0.32,a.drop*0.09); cell.current.rotation.z=-a.drop*0.35 }
-    if (bolt.current) bolt.current.position.z=-0.02+a.bolt*(weapon.scope ? 0.17 : 0.055)
-    if (pump.current) pump.current.position.z=-0.35+a.pump*0.14
-    if (hinge.current) hinge.current.rotation.x=a.hinge
-    if (rotor.current) { rotation.current+=Math.min(delta,0.1)*a.spin*28; rotor.current.rotation.z=rotation.current }
-    if (core.current) { core.current.rotation.x=time; core.current.rotation.y=time*1.4 }
-    if (flash.current) { flash.current.visible=a.flash; flash.current.rotation.z=(s.shot || 0)*2.4 }
-    if (trail.current) { trail.current.visible=a.hit>0.12; trail.current.material.opacity=a.hit*0.5; trail.current.rotation.z=-0.3+a.hit }
-    if (eject.current) {
-      const age=time-s.lastShot; eject.current.visible=age>=0 && age<0.24
-      eject.current.position.set(0.14+age*0.8,0.04+age*0.7-age*age*3,0.08+age*0.4)
-      eject.current.rotation.set(age*20,age*13,age*17)
-    }
-    if (offhand.current) {
-      if (weapon.model==='fangs') { offhand.current.position.set(-0.64+a.hit*0.4,0.04+a.hit*0.15,-a.hit*0.15); offhand.current.rotation.z=0.3-a.hit*1.2 }
-      else { offhand.current.position.set(-0.04-a.drop*0.1,-0.2+a.drop*0.02,(compact ? 0.13 : -0.33)+a.drop*0.18); offhand.current.rotation.z=-a.drop*0.35 }
-    }
+    animateParts(parts,a,weapon,s,time,delta)
   },-1)
-  return <group ref={root} name="first-person-weapon">{detail && <pointLight position={[-.35,.55,.45]} intensity={2.6} distance={2.2} color="#c5d9f3"/>}<ArsenalModel key={selected} weapon={weapon} parts={parts}/></group>
+  return <><group ref={root} name="first-person-weapon">{detail && <pointLight position={[-.35,.55,.45]} intensity={2.6} distance={2.2} color="#c5d9f3"/>}<ArsenalModel key={selected} weapon={weapon} parts={parts}/></group><OperativeArms weaponRoot={root} parts={parts} source={source} characterId={character} firstPerson/></>
 }
+
+export default memo(WeaponView)

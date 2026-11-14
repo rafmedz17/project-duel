@@ -5,7 +5,7 @@ import {state,presetLoadout, openGame} from './helpers.js'
 const optics=page=>page.evaluate(async ()=> {
   const url=performance.getEntriesByType('resource').find(e=>new URL(e.name).pathname.endsWith('/@react-three_fiber.js')).name
   const { _roots }=await import(url),view=_roots.get(document.querySelector('canvas')).store.getState()
-  return { modelVisible:view.scene.getObjectByName('first-person-weapon').visible,fov:view.camera.fov }
+  return { modelVisible:view.scene.getObjectByName('first-person-weapon').visible,armsVisible:view.scene.getObjectByName('view-arms').visible,fov:view.camera.fov }
 })
 for(const id of ['hyperion','railbreaker']) test(`${id} scope has a clear sight picture, zooms and restores the model after ADS`,async ({ page })=> {
   const errors=[];page.on('pageerror',e=>errors.push(e.message))
@@ -15,6 +15,7 @@ for(const id of ['hyperion','railbreaker']) test(`${id} scope has a clear sight 
   await expect.poll(async ()=>(await optics(page)).modelVisible).toBe(true)
   await page.mouse.down({ button:'right' });await expect(page.getByLabel('Precision scope')).toBeVisible()
   await expect.poll(async ()=>(await optics(page)).modelVisible).toBe(false)
+  await expect.poll(async ()=>(await optics(page)).armsVisible).toBe(false)
   await expect.poll(async ()=>(await optics(page)).fov).toBeLessThan(33)
   await expect(page.locator('.crosshair')).toBeHidden()
   await page.screenshot({ path:`${id}-clear-scope-preview.png` })
@@ -37,6 +38,7 @@ test('multiplayer sniper scope stays clear while firing and returns to hip view 
     await expect.poll(()=>page.evaluate(()=>Boolean(document.pointerLockElement))).toBe(true)
     await page.mouse.down({ button:'right' });await expect(page.getByLabel('Precision scope')).toBeVisible()
     await expect.poll(async ()=>(await optics(page)).modelVisible).toBe(false)
+    await expect.poll(async ()=>(await optics(page)).armsVisible).toBe(false)
     await page.mouse.down();await page.mouse.up();await expect(page.getByTestId('online-ammo')).toHaveText('02 / 3')
     await expect.poll(async ()=>(await optics(page)).modelVisible).toBe(false)
     await page.mouse.up({ button:'right' });await expect.poll(async ()=>(await optics(page)).modelVisible).toBe(true)

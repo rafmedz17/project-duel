@@ -1,7 +1,7 @@
 import {openGame} from './helpers.js'
 import { test,expect } from '@playwright/test'
 
-test('cinematic draws while playing; paused cinematic and paused training stop drawing',async ({ page }) => {
+test('cinematic draws in the menu and stops behind settings; paused training also stops drawing',async ({ page }) => {
   await page.addInitScript(() => {
     window.duelDrawCalls = 0
     for (const proto of [WebGLRenderingContext.prototype,WebGL2RenderingContext.prototype]) {
@@ -17,11 +17,12 @@ test('cinematic draws while playing; paused cinematic and paused training stop d
   await page.waitForTimeout(500)
   const menu = await page.evaluate(() => window.duelDrawCalls)
   await expect.poll(() => page.evaluate(() => window.duelDrawCalls)).toBeGreaterThan(menu+100)
-  await page.getByRole('button',{name:'Pause cinematic background'}).click()
+  await page.getByRole('button',{name:'SETTINGS',exact:true}).click()
   await page.waitForTimeout(500)
   const still = await page.evaluate(() => window.duelDrawCalls)
   await page.waitForTimeout(500)
   expect(await page.evaluate(() => window.duelDrawCalls)).toBe(still)
+  await page.getByRole('button',{name:/^BACK/}).click()
   await page.getByRole('button',{ name:/ENTER TRAINING/ }).click()
   await page.getByRole('button',{ name:'RESUME / ENTER ARENA' }).click()
   await expect.poll(() => page.evaluate(() => window.duelDrawCalls)).toBeGreaterThan(still+100)

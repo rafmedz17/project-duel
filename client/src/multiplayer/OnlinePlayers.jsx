@@ -8,6 +8,7 @@ import { canPlayArena } from '../../../shared/match.js'
 import { PLAYER, ONLINE } from '../../../shared/arena.js'
 import { eyeHeight } from '../../../shared/stance.js'
 import RobotModel from '../game/characters/RobotModel.jsx'
+import RemoteEquipment from './RemoteEquipment.jsx'
 import WeaponView from '../game/weapons/WeaponView.jsx'
 import { abilityForBinding } from '../../../shared/abilities.js'
 import { weaponForBinding,weaponSlots } from '../../../shared/loadout.js'
@@ -217,7 +218,7 @@ function RemotePlayer({ player }) {
     root.current.rotation.y = pose.yaw
     head.current.rotation.x = pose.pitch
     arenaView.remotes[player.id] = { position:[pose.x,pose.y,pose.z],yaw:pose.yaw,pitch:pose.pitch,crouched:pose.crouched }
-  })
+  },-2)
   const reveal = () => {
     const self = lobby.self(), time = lobby.get().room.time, pose = samplePose(player.id)
     if (!self || self.hp<=0 || !pose) return false
@@ -227,6 +228,7 @@ function RemotePlayer({ player }) {
   }
   return <group ref={root} name={`remote-player-${player.id}`}>
     <RobotModel enemy headRef={head} stance={()=>samplePose(player.id)?.crouched || false} characterId={player.combat.characterId} color={player.connected ? undefined : '#728599'} reveal={reveal} />
+    <RemoteEquipment player={player}/>
   </group>
 }
 

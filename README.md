@@ -55,9 +55,11 @@ Escape releases your own controls while the opponent can keep playing. A connect
 
 Each fresh page load opens a fullscreen recommendation with **No, thanks** and **I agree**. Agree requests fullscreen for the whole game through the browser API; declining continues normally. A blocked or unsupported request leaves a message and a way to continue. The choice lasts until the next page load. Browser shortcuts such as Ctrl+W can still close the tab; fullscreen cannot guarantee shortcut blocking. F11 is also available manually in desktop browsers that support it.
 
-The menu has Settings, Leaderboard and Profile in the upper right, with Training Grounds, Play Multiplayer and Loadouts below. Its live cinematic loops through the Facility, Neon District, Orbital Station and Training Nexus with camera moves, staged operatives and cosmetic bullet trails. **Pause cinematic** freezes the view; reduced-motion preferences start it paused. Opening a panel or hiding the tab also stops the cinematic from continuously rendering.
+The menu has Settings, Leaderboard and Profile in the upper right, with Training Grounds, Play Multiplayer and Loadouts below. Its live cinematic loops through the Facility, Neon District, Orbital Station and Training Nexus with camera moves, staged operatives and cosmetic bullet trails. Reduced-motion preferences keep the camera still. Opening a panel or hiding the tab also stops the cinematic from continuously rendering.
 
 The original **Limit Break** theme is a 138 BPM electronic score with a drum/bass build and a synth hook. It starts after a click or key press, follows Settings → Audio, and stops in training and multiplayer. The stereo loop ships as a cached WAV asset; the browser does not synthesize the song during play. To regenerate it after editing `client/src/audio/menuTheme.js`, run `node scripts/render-menu-theme.mjs` before building.
+
+First-person operatives have character-colored armored arms, articulated gloves, trigger fingers and a magazine handoff during reloads. The arms follow the gun's grips through recoil, movement, inspection and melee attacks; precision scopes hide both arms and the weapon. Multiplayer opponents carry their actual equipped gun or melee model, with pitch, crouch, reload and attack animations driven by server combat snapshots. Arm extensions and equipment are cosmetic; the shared robot hit volumes and combat rules remain authoritative.
 
 ## Verification
 
