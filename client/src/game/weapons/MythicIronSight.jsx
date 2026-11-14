@@ -1,13 +1,15 @@
 import { REFLEX_LENS_POSITION,reflexProfile } from './optics.js'
 import { Armor,Filament,Fastener } from './ForgedParts.jsx'
-import { weaponFinish } from './weaponFinish.js'
+import { weaponFinish,sightAccent } from './weaponFinish.js'
 import HologramPanel from './HologramPanel.jsx'
+import {modelProfile,SIGHT_MODEL_SCALE} from './modelProfiles.js'
 
 export default function MythicIronSight({ weapon,reticleRef,projectionRef,preview=false }) {
-  const profile=reflexProfile(weapon),finish=weaponFinish(weapon)
+  const profile=reflexProfile(weapon),finish={...weaponFinish(weapon),accent:sightAccent(weapon)}
   const compact=profile.variant==='compact',heavy=profile.variant==='reinforced'
   const width=compact ? .098 : heavy ? .128 : .113,height=compact ? .112 : heavy ? .135 : .122
-  return <group name="mythic-iron-sight" position={REFLEX_LENS_POSITION}>
+  const mount=[REFLEX_LENS_POSITION[0],REFLEX_LENS_POSITION[1],modelProfile(weapon).sightZ]
+  return <group name="mythic-iron-sight" position={mount} scale={SIGHT_MODEL_SCALE}>
     <object3D name="iron-sight-zero" position={[0,0,.026]}/>
     <Armor points={[[.10,-.13],[.085,-.105],[-.08,-.098],[-.22,-.125],[-.14,-.147],[.07,-.147]]} thickness={width*.95} color={finish.body}/>
     {[-1,1].map(side=><group key={side}>

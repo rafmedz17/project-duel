@@ -3,14 +3,27 @@ import {WEAPONS} from '../../../shared/weapons.js'
 import {ABILITIES} from '../../../shared/abilities.js'
 import {getCharacter,ULTIMATE_DURATION} from '../../../shared/characters.js'
 import CharacterPortrait from '../game/characters/CharacterPortrait.jsx'
+import {weaponFinish} from '../game/weapons/weaponFinish.js'
 
 const ArsenalPreview=lazy(()=>import('../game/weapons/ArsenalPreview.jsx'))
 
 export function WeaponGlyph({id}) {
   const w=WEAPONS[id],melee=w.category==='MELEE',pistol=w.category==='PISTOL'
-  return <svg className="equipment-glyph" viewBox="0 0 240 100" aria-hidden="true" style={{color:w.color}}>
+  return <svg className="equipment-glyph" viewBox="0 0 240 100" aria-hidden="true" style={{color:weaponFinish(w).accent}}>
     <path d="M12 82H228M22 18V25M218 18V25" fill="none" stroke="currentColor" opacity=".18"/>
-    {melee ? id==='gravity' ? <><path d="M100 30L113 23L148 79L140 85Z" fill="#586e82"/><path d="M74 15L103 7L132 33L109 53L77 37Z" fill="#233e54" stroke="currentColor"/><path d="M86 20L108 38M95 15L117 32" stroke="currentColor" strokeWidth="4"/></> : <>{[0,...(id==='fangs' ? [58] : [])].map(offset=><g key={offset} transform={`translate(${offset} 0)`}><path d="M64 77L142 13L131 42L85 76Z" fill="#476179" stroke="currentColor"/><path d="M85 67L142 13" stroke="currentColor" strokeWidth="3"/><path d="M59 73L74 85M67 80L55 92" stroke="#91a9be" strokeWidth="5"/></g>)}</> : <>
+    {melee ? id==='gravity' ? <><path d="M100 30L113 23L148 79L140 85Z" fill="#586e82"/><path d="M74 15L103 7L132 33L109 53L77 37Z" fill="#233e54" stroke="currentColor"/><path d="M86 20L108 38M95 15L117 32" stroke="currentColor" strokeWidth="4"/></> : <>{[0,...(id==='fangs' ? [58] : [])].map(offset=><g key={offset} transform={`translate(${offset} 0)`}><path d="M64 77L142 13L131 42L85 76Z" fill="#476179" stroke="currentColor"/><path d="M85 67L142 13" stroke="currentColor" strokeWidth="3"/><path d="M59 73L74 85M67 80L55 92" stroke="#91a9be" strokeWidth="5"/></g>)}</> : id==='magnus' ? <g data-weapon-silhouette="revolver">
+      <path d="M91 31H155V39H149V60H108L101 84L83 78L91 54H85V39Z" fill="#303e54" stroke="#9eabc0"/>
+      <path d="M146 29H202V41H146Z M199 27H211V44H199Z" fill="#39465d" stroke="currentColor"/>
+      <circle cx="127" cy="46" r="16" fill="#192436" stroke="currentColor"/>
+      {Array.from({length:8},(_,i)=>{const a=i*Math.PI/4;return <circle key={i} cx={127+Math.cos(a)*10} cy={46+Math.sin(a)*10} r="2.6" fill="#c5acdc"/>})}
+      <path d="M87 31L78 22L85 18L98 31M99 62L109 70L120 63" fill="none" stroke="#9eabc0" strokeWidth="3"/>
+    </g> : id==='astral' ? <g data-weapon-silhouette="bullpup">
+      <path d="M28 30H103L124 37H170V54H130L114 62H34Z" fill="#34405a" stroke="#a59ac2"/>
+      <path d="M28 30V63H19V27H29M52 59H76L71 82L55 79Z M103 59H117L112 81L99 77Z" fill="#202c40" stroke="#7c7299"/>
+      <path d="M166 35H211V48H166Z M208 33H219V51H208Z" fill="#26334b" stroke="currentColor"/>
+      <path d="M37 38H94L106 46H38Z M77 24H146V30H77Z" fill="currentColor" opacity=".75"/>
+      <path d="M45 46V53M53 46V53M61 46V53M177 38V45M187 38V45M197 38V45" stroke="currentColor"/>
+    </g> : <>
       {!pistol && <path d="M24 42L65 37L75 61L30 68Z" fill="#20364b" stroke="#58758e"/>}
       <path d={pistol ? 'M77 30L158 30L174 38L171 53L113 54L105 80L87 76L92 53L77 51Z' : 'M60 31L147 25L165 35L173 53L139 62L73 59Z'} fill="#2e4b64" stroke="#718ba2"/>
       <path d={pistol ? 'M91 37H158M112 48H143' : 'M75 38L133 34L143 42L83 46Z'} fill="currentColor" opacity=".85"/>

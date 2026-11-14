@@ -11,6 +11,7 @@ import {animateParts} from './animateParts.js'
 import OperativeArms from '../characters/OperativeArms.jsx'
 import {runtime} from '../runtime.js'
 import {arenaView} from '../../multiplayer/poses.js'
+import {modelProfile} from './modelProfiles.js'
 
 function WeaponView({ source=game }) {
   const detail=useGame(s=>s.settings.quality!=='Low')
@@ -24,7 +25,7 @@ function WeaponView({ source=game }) {
   useFrame(({ camera },delta)=> {
     const s=source.get()
     if (!s || s.weapon!==selected || !root.current) return
-    const time=source.now(), a=weaponAnimation(s,time,weapon),melee=weapon.fireMode==='melee',compact=weapon.slot==='2'
+    const time=source.now(), a=weaponAnimation(s,time,weapon),melee=weapon.fireMode==='melee'
     const inspect=Math.sin(Math.PI*Math.max(0,Math.min(1,(time-(game.get().inspectAt ?? -10))/2)))
     const optic=activeOptic(s,time,game.get().aiming),scoped=optic==='precision'
     ads.current=MathUtils.damp(ads.current,optic==='reflex' ? 1 : 0,18,Math.min(delta,0.1))
@@ -37,7 +38,7 @@ function WeaponView({ source=game }) {
     group.scale.setScalar(MathUtils.lerp(.86,1,blend))
     group.translateX(melee ? .34-a.hit*.34 : MathUtils.lerp(.31-a.reloadPose*.08,REFLEX_AIM_POSITION[0],blend))
     group.translateY((melee ? -.28+a.hit*.12 : MathUtils.lerp(-.22,REFLEX_AIM_POSITION[1],blend))+a.reloadPose*.22-a.equip*.3+Math.sin(time*1.8)*.002*(1-blend))
-    group.translateZ((melee ? -.78 : MathUtils.lerp(compact ? -.76 : -.84,REFLEX_AIM_POSITION[2],blend))+a.kick*(weapon.recoil*2+.035)*steady-a.reloadPose*.2+a.equip*.2)
+    group.translateZ((melee ? -.78 : MathUtils.lerp(modelProfile(weapon).hipZ,REFLEX_AIM_POSITION[2],blend))+a.kick*(weapon.recoil*2+.035)*steady-a.reloadPose*.2+a.equip*.2)
     group.rotateX(melee ? a.windup*-0.75+a.hit*0.15 : a.kick*weapon.recoil*3*steady+a.reloadPose*0.18)
     group.rotateZ(melee ? -0.28+a.hit*(weapon.model==='fangs' && (s.swings || 0)%2 ? -1.25 : 1.25) : -a.reloadPose*0.65-inspect*0.8*(1-blend))
     group.rotateY(-a.reloadPose*0.35+inspect*0.9*(1-blend))
@@ -46,7 +47,7 @@ function WeaponView({ source=game }) {
     if(reticle.current) reticle.current.visible=false
     animateParts(parts,a,weapon,s,time,delta)
   },-1)
-  return <><group ref={root} name="first-person-weapon">{detail && <pointLight position={[-.35,.55,.45]} intensity={2.6} distance={2.2} color="#c5d9f3"/>}<ArsenalModel key={selected} weapon={weapon} parts={parts}/></group><OperativeArms weaponRoot={root} parts={parts} source={source} characterId={character} firstPerson/></>
+  return <><group ref={root} name="first-person-weapon">{detail && <pointLight position={[-.35,.55,.45]} intensity={2.6} distance={2.2} color="#c5d9f3"/>}<ArsenalModel key={selected} weapon={weapon} parts={parts} firstPerson/></group><OperativeArms weaponRoot={root} parts={parts} source={source} characterId={character} firstPerson/></>
 }
 
 export default memo(WeaponView)

@@ -3,6 +3,7 @@ import { Canvas,useFrame } from '@react-three/fiber'
 import { WEAPONS } from '../../../../shared/weapons.js'
 import ArsenalModel from './ArsenalModel.jsx'
 import { weaponAnimation } from './animation.js'
+import {animateParts} from './animateParts.js'
 
 function Display({ id,mode }) {
   const group=useRef(),action=useRef(),rotor=useRef(),offhand=useRef(),trail=useRef(),cell=useRef(),bolt=useRef(),pump=useRef(),hinge=useRef(),core=useRef(),flash=useRef(),eject=useRef(),weapon=WEAPONS[id]
@@ -16,17 +17,9 @@ function Display({ id,mode }) {
     group.current.rotation.z=Math.sin(time*0.8)*0.025-a.reloadPose*0.2
     group.current.position.y=Math.sin(time*1.4)*0.018-(weapon.fireMode==='melee' ? 0.28 : 0)
     group.current.position.z=a.kick*0.035
-    if(action.current) action.current.rotation.x=weapon.fireMode==='melee' ? a.hit*0.9-a.windup*0.5 : a.kick*0.08
-    if(cell.current) cell.current.position.y=-a.drop*0.32
-    if(bolt.current) bolt.current.position.z=-0.02+a.bolt*0.15
-    if(pump.current) pump.current.position.z=-0.35+a.pump*0.14
-    if(hinge.current) hinge.current.rotation.x=a.hinge
-    if(rotor.current) rotor.current.rotation.z+=Math.min(delta,0.1)*a.spin*28
-    if(core.current) core.current.rotation.y=time
+    animateParts(parts,a,weapon,{...s,shot:mode==='fire' ? s.shot : 0},time,delta)
     if(flash.current) flash.current.visible=mode==='fire' && a.flash && (!weapon.spinUp || time-start>weapon.spinUp)
-    if(trail.current) trail.current.material.opacity=a.hit*0.5
     if(eject.current) eject.current.visible=false
-    if(offhand.current) offhand.current.rotation.z=0.3-a.hit
   })
   return <group ref={group}><ArsenalModel weapon={weapon} parts={parts} preview/></group>
 }

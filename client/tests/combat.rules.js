@@ -15,6 +15,27 @@ import { weaponAnimation } from '../src/game/weapons/animation.js'
 import { createRecoil,recoilLimits,recoilAim,resetRecoil,stepRecoil } from '../src/game/weapons/recoil.js'
 import { armorGeometry } from '../src/game/characters/armorGeometry.js'
 import { CHARACTERS } from '../../shared/characters.js'
+import { animateParts } from '../src/game/weapons/animateParts.js'
+import { modelProfile } from '../src/game/weapons/modelProfiles.js'
+
+test('revolver animation indexes accepted shots once, swings its cylinder out on reload and returns the support hand',()=>{
+  const parts=Object.fromEntries(['action','rotor','offhand','cell','bolt','pump','hinge','core','flash','eject'].map(id=>[id,{current:new Group()}]));parts.trail={current:null}
+  const weapon=WEAPONS.magnus,state={weapon:'magnus',hp:100,lastShot:0,lastSwing:-10,lastSwitch:-10,shot:1,reloading:false}
+  let a=weaponAnimation(state,.3,weapon)
+  animateParts(parts,a,weapon,state,.3,1/60)
+  const angle=parts.rotor.current.rotation.z
+  assert.ok(Math.abs(angle+Math.PI/4)<.001)
+  animateParts(parts,a,weapon,state,.3,1/30)
+  assert.equal(parts.rotor.current.rotation.z,angle,'rendering twice never advances the cylinder twice')
+  assert.equal(parts.eject.current.visible,false)
+  const reload={...state,reloading:true,reloadStart:0,reloadEnd:weapon.reload}
+  a=weaponAnimation(reload,weapon.reload*.45,weapon);animateParts(parts,a,weapon,reload,weapon.reload*.45,1/60)
+  assert.ok(parts.cell.current.position.x<-.15)
+  assert.ok(parts.offhand.current.position.x<-.15)
+  a=weaponAnimation(state,3,weapon);animateParts(parts,a,weapon,state,3,1/60)
+  assert.equal(parts.cell.current.position.length(),0)
+  assert.deepEqual(parts.offhand.current.position.toArray(),modelProfile(weapon).support)
+})
 
 test('reference roster retains saved character IDs, effects and bounded shared armor geometry',()=>{
   assert.deepEqual(Object.keys(CHARACTERS),['vex','aegis','ion','raze'])

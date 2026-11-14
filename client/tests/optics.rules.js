@@ -2,6 +2,11 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { WEAPONS,WEAPON_IDS } from '../../shared/weapons.js'
 import { activeOptic,aimFov,reflexProfile } from '../src/game/weapons/optics.js'
+import {sightAccent} from '../src/game/weapons/weaponFinish.js'
+
+test('the original sight palette stays independent from the redesigned weapon finishes',()=>{
+  for(const [id,color] of Object.entries({rifle:'#8feaff',astral:'#bd96ff',nova:'#73ffda',striker:'#d576ff',titan:'#ffd17c',omega:'#ff937a'})) assert.equal(sightAccent(WEAPONS[id]),color)
+})
 
 test('every assault rifle, SMG and LMG has a reflex profile with light category zoom',()=> {
   const ids=WEAPON_IDS.filter(id=>reflexProfile(WEAPONS[id]))
