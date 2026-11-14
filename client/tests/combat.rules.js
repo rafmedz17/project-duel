@@ -12,6 +12,66 @@ import { ONLINE } from '../../shared/arena.js'
 import { createWeaponTracer } from '../src/game/weapons/traceWeapon.js'
 import { TRAINING_SOLIDS,TRAINING_TARGETS } from '../src/game/training/config.js'
 import { weaponAnimation } from '../src/game/weapons/animation.js'
+import { createRecoil,recoilLimits,recoilAim,resetRecoil,stepRecoil } from '../src/game/weapons/recoil.js'
+
+test('every firearm has bounded spray and returns exactly to mouse aim after firing stops',()=>{
+  for(const weapon of Object.values(WEAPONS).filter(w=>w.magazine)) {
+    const recoil=createRecoil(),aim={yaw:.7,pitch:.25},limit=recoilLimits(weapon)
+    for(let shot=0;shot<200;shot++) {
+      stepRecoil(recoil,weapon,1/60,1)
+      assert.ok(recoil.pitch>0 && recoil.pitch<=limit.pitch)
+      assert.ok(Math.abs(recoil.yaw)<=limit.yaw)
+    }
+    assert.ok(recoil.pitch>limit.pitch*.99)
+    assert.deepEqual(aim,{yaw:.7,pitch:.25})
+    for(let frame=0;frame<120;frame++) stepRecoil(recoil,weapon,1/60)
+    assert.equal(recoil.pitch,0);assert.equal(recoil.yaw,0)
+    assert.ok(Math.abs(recoilAim(aim,recoil).yaw-aim.yaw)<1e-12)
+    assert.equal(recoilAim(aim,recoil).pitch,aim.pitch)
+  }
+})
+
+test('spray recovery preserves mouse corrections, stays within view limits and clears on weapon/round resets',()=>{
+  const recoil=createRecoil(),aim={yaw:Math.PI-.001,pitch:ONLINE.maxPitch-.001}
+  stepRecoil(recoil,WEAPONS.striker,.1,3)
+  assert.equal(recoilAim(aim,recoil).pitch,ONLINE.maxPitch)
+  assert.ok(Math.abs(recoilAim(aim,recoil).yaw)<=Math.PI)
+  aim.yaw-=.2;aim.pitch-=.1
+  for(let frame=0;frame<120;frame++) stepRecoil(recoil,WEAPONS.striker,1/60)
+  assert.ok(Math.abs(recoilAim(aim,recoil).yaw-aim.yaw)<1e-12)
+  assert.equal(recoilAim(aim,recoil).pitch,aim.pitch)
+  stepRecoil(recoil,WEAPONS.striker,.1,3)
+  stepRecoil(recoil,WEAPONS.pistol,1/60)
+  assert.equal(recoil.pitch,0);assert.equal(recoil.spray,0)
+  stepRecoil(recoil,WEAPONS.pistol,.1,1);resetRecoil(recoil)
+  assert.equal(recoil.pitch,0);assert.equal(recoil.weapon,null)
+  stepRecoil(recoil,WEAPONS.blade,.1,3)
+  assert.equal(recoil.pitch,0)
+})
+
+test('automatic and burst recoil recover smoothly at different frame rates without cumulative drift',()=>{
+  for(const fps of [30,60,144]) for(const id of ['rifle','astral','striker','omega']) {
+    const recoil=createRecoil(),weapon=WEAPONS[id],dt=1/fps
+    for(let cycle=0;cycle<5;cycle++) {
+      let fired=0,peak=0
+      for(let frame=0;frame<fps*2;frame++) {
+        const time=frame*dt,bursts=Math.floor((time+1e-8)/weapon.cooldown)
+        const shots=weapon.fireMode==='burst' ? bursts*weapon.burst+Math.min(weapon.burst,1+Math.floor((time-bursts*weapon.cooldown+1e-8)/weapon.burstInterval)) : bursts+1
+        stepRecoil(recoil,weapon,dt,shots-fired);fired=shots
+        peak=Math.max(peak,recoil.pitch)
+      }
+      assert.ok(peak<=recoilLimits(weapon).pitch)
+      assert.ok(peak>(weapon.fireMode==='burst' ? weapon.recoil : recoilLimits(weapon).pitch*.95))
+      let previous=recoil.pitch
+      for(let frame=0;frame<fps*2;frame++) {
+        stepRecoil(recoil,weapon,dt)
+        if(frame>fps*.2) assert.ok(recoil.pitch<=previous+1e-12)
+        previous=recoil.pitch
+      }
+      assert.equal(recoil.pitch,0);assert.equal(recoil.yaw,0)
+    }
+  }
+})
 
 function start(id='pistol',character='vex',unique='flashbang') {
   const w=WEAPONS[id]

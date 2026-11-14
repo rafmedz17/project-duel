@@ -16,10 +16,12 @@ import { useAbilityInput } from './abilities/useAbilityInput.js'
 import TacticalEffects from './abilities/TacticalEffects.jsx'
 import { canonicalCode } from '../settings/preferences.js'
 import { lookMultiplier } from '../settings/sensitivity.js'
+import { createRecoil,recoilAim,stepRecoil } from './weapons/recoil.js'
 
 export default function Player() {
   const body = useRef(), collider = useRef(), seenShot=useRef(0),fireInput=useRef(false)
   const keys = useRef(new Set()), look = useRef({ yaw: 0, pitch: 0 }), motion = useRef({ x: 0, z: 0, y: 0, jump: false, crouched:false,dashUses:0, dashRemaining:0 })
+  const aim=useRef({ yaw:0,pitch:0 }),recoil=useRef(createRecoil())
   const { camera, gl, scene } = useThree()
   const { world,rapier } = useRapier()
   const controller = useRef()
@@ -55,8 +57,9 @@ export default function Player() {
     const move = event => {
       if (game.get().mode !== 'playing' || document.pointerLockElement !== gl.domElement) return
       const s=game.get(),sensitivity=PLAYER.sensitivity*lookMultiplier(s.settings,s,game.now(),{aiming:s.aiming,firing:fireInput.current})
-      look.current.yaw -= event.movementX * sensitivity
-      look.current.pitch = Math.max(-1.48, Math.min(1.48, look.current.pitch - event.movementY * sensitivity))
+      aim.current.yaw -= event.movementX * sensitivity
+      aim.current.pitch = Math.max(-1.48, Math.min(1.48, aim.current.pitch - event.movementY * sensitivity))
+      Object.assign(look.current,recoilAim(aim.current,recoil.current))
     }
     const lock = () => {
       keys.current.clear(); motion.current.jump = false
@@ -124,10 +127,10 @@ export default function Player() {
     if (!body.current) return
     const state = game.get(), p = body.current.translation()
     if(state.hp<=0 || state.reloading) fireInput.current=false
-    if (state.shot>seenShot.current && state.lastShot>=0 && state.mode==='playing') {
-      const weapon=WEAPONS[state.weapon],count=Math.min(3,state.shot-seenShot.current)
-      look.current.pitch=Math.min(1.48,look.current.pitch+weapon.recoil*count)
-      look.current.yaw+=Math.sin(state.shot*2.4)*weapon.recoil*0.3
+    if (state.mode==='playing') {
+      const count=state.lastShot>=0 ? Math.max(0,Math.min(3,state.shot-seenShot.current)) : 0
+      stepRecoil(recoil.current,WEAPONS[state.weapon],Math.min(delta,.1),count)
+      Object.assign(look.current,recoilAim(aim.current,recoil.current))
     }
     seenShot.current=state.shot
     camera.position.set(p.x,p.y+eyeHeight(motion.current.crouched),p.z)

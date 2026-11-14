@@ -16,6 +16,7 @@ const network=page=>page.evaluate(async ()=> {
 })
 const self=async page=> { const s=await network(page);return s.room?.players.find(p=>p.id===s.sessionId)?.combat }
 async function openRoom(page,format) {
+  await page.addInitScript(()=>localStorage.setItem('duel-settings',JSON.stringify({quality:'Low'})))
   await page.addInitScript(value=>localStorage.setItem('duel-loadout-bank',JSON.stringify(value)),bank())
   await openGame(page,'/');await openMultiplayer(page,'casual','Preset Pilot');const peer=await new Client('http://127.0.0.1:2567').joinById(await page.getByTestId('invite-code').textContent(),{ name:'Preset Peer',loadout:gear('hyperion') })
   peer.onMessage('shot-trail',()=>{})
@@ -68,13 +69,13 @@ test('five presets automatically save independent choices, survive reload and fi
   expect(errors).toEqual([])
 })
 
-test('Best of Three opens selection before both rounds and deploys the chosen character and weapons',async ({ page })=> {
+for(const blockCapture of [false,true]) test(`Best of Three opens selection before both rounds and deploys the chosen character and weapons${blockCapture ? ' with a compact capture fallback' : ''}`,async ({ page })=> {
   test.setTimeout(90000)
   const errors=[];page.on('pageerror',e=>errors.push(e.message));let peer
   try {
     peer=await openRoom(page,'duel')
     const phase=page.getByRole('dialog',{ name:'LOADOUT PHASE',exact:true })
-    await expect(phase).toBeVisible();await expect(phase.getByRole('button',{ name:/Loadout slot/ })).toHaveCount(5)
+    await expect(phase).toBeVisible({timeout:15000});await expect(phase.getByRole('button',{ name:/Loadout slot/ })).toHaveCount(5)
     await phase.getByRole('button',{ name:'Loadout slot 2',exact:true }).click()
     await expect.poll(async ()=>(await self(page)).activeSlot).toBe(1)
     expect((await self(page)).characterId).toBe('ion')
@@ -91,10 +92,22 @@ test('Best of Three opens selection before both rounds and deploys the chosen ch
     await expect(page.getByTestId('kill-badge')).toHaveCount(0)
     await phase.getByRole('button',{ name:'Loadout slot 2',exact:true }).click()
     await expect.poll(async ()=>(await self(page)).activeSlot).toBe(1)
-    await expect(page.getByRole('button',{ name:'ENTER ARENA',exact:true })).toBeVisible({ timeout:18000 })
-    await page.getByRole('button',{ name:'ENTER ARENA',exact:true }).click()
+    if(blockCapture) await page.evaluate(()=> {
+      const canvas=document.querySelector('canvas'),capture=canvas.requestPointerLock.bind(canvas)
+      let attempts=0
+      canvas.requestPointerLock=()=>attempts++===0 ? Promise.reject(new Error('Automatic capture blocked')) : capture()
+    })
+    await expect.poll(async ()=>(await network(page)).room.matchPhase,{ timeout:18000 }).toBe('live')
+    if(blockCapture) {
+      await expect(page.getByRole('dialog',{name:'SHARED ARENA',exact:true})).toHaveCount(0)
+      await page.getByRole('button',{name:/MATCH LIVE · CLICK TO AIM/}).click()
+    }
+    await expect.poll(()=>page.evaluate(()=>document.pointerLockElement===document.querySelector('canvas'))).toBe(true)
+    await expect(page.getByRole('dialog',{name:'SHARED ARENA',exact:true})).toHaveCount(0)
     expect((await self(page)).weapon).toBe('omega');expect((await self(page)).magazines.omega).toBe(100)
     expect((await self(page)).hp).toBe(100);expect((await self(page)).kills).toBe(1)
+    await page.keyboard.press('Escape');await page.evaluate(()=>document.exitPointerLock())
+    await expect(page.getByRole('dialog',{name:'SHARED ARENA',exact:true})).toBeVisible()
     expect(errors).toEqual([])
   } finally { await peer?.leave() }
 })
@@ -119,7 +132,8 @@ test('Free Play releases the cursor after death, gives five seconds to swap and 
     await expect(picker).toHaveCount(0)
     expect((await self(page)).weapon).toBe('omega');expect((await self(page)).magazines.omega).toBe(100)
     expect((await self(page)).characterId).toBe('ion');expect((await self(page)).deaths).toBe(1)
-    await page.getByRole('button',{ name:'ENTER ARENA',exact:true }).click()
+    await expect.poll(()=>page.evaluate(()=>document.pointerLockElement===document.querySelector('canvas'))).toBe(true)
+    await expect(page.getByRole('dialog',{name:'SHARED ARENA',exact:true})).toHaveCount(0)
     expect(errors).toEqual([])
   } finally { await peer?.leave() }
 })

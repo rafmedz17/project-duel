@@ -32,6 +32,8 @@ ASTRAL and VOLT fire at 900 RPM within each burst. Their trigger cycles are 0.45
 
 NOVA moves 12% faster than standard weapons. TITAN and RAILBREAKER move 15% slower, OMEGA 28% slower and HYPERION 7% slower. Recoil and accuracy differ per weapon. Snipers have a clear right-click scope and slower equip recovery. RAILBREAKER penetrates up to 0.35m of cover with 70% damage; thick cover blocks it. Thin cyan panels in every arena provide a penetration lane.
 
+Spray recoil rises to a weapon-specific ceiling with bounded sideways sway. It smoothly returns to your mouse aim after firing stops; mouse corrections during a spray remain yours. Training and multiplayer use the same recoil for the camera and shot aim, including ADS. Switching weapons, respawning and starting a new round clear recoil. Movement spread and crouch accuracy still apply independently.
+
 Shotgun pellets spread and lose damage with distance: BREACH falls off beyond 5m to a 24m limit; EXECUTOR and RAVAGER fall off beyond 4m to 22m and 20m limits. Their crosshair is a dotted ring. Headshots normally deal 2× damage; RAILBREAKER uses 1.5×. Limbs take 0.75× and feet 0.5×. HUD hit values show actual health removed, so a lethal hit may display less than the weapon's full damage.
 
 Models have animated energy cells, bolts, pump and break-action mechanisms, rotary barrels, capacitors, impact cores and dual blades. Empty firearms reload automatically. Reload progress, spin-up and heavy wind-up appear on the HUD. Character ultimates apply to the selected arsenal: ION supplies unlimited ammunition for ten seconds and RAZE increases attack speed and damage by 50%.

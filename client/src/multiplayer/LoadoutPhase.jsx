@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import LoadoutSlots from '../accounts/LoadoutSlots.jsx'
 import { WEAPONS } from '../../../shared/weapons.js'
 import { getCharacter } from '../../../shared/characters.js'
@@ -7,7 +6,6 @@ import { lobby } from './lobby.js'
 
 export default function LoadoutPhase({ state:s,combat,onLeave }) {
   const duel=s.room.format==='duel',seconds=Math.max(0,Math.ceil(duel ? s.room.phaseRemaining : combat.respawnAt-s.room.time))
-  useEffect(()=> { if(document.pointerLockElement) document.exitPointerLock() },[])
   const selected=s.bank?.slots[combat.activeSlot]
   return <div className="overlay online-overlay loadout-phase"><section className="dialog" role="dialog" aria-modal="true" aria-labelledby="loadout-phase-title">
     <div className="eyebrow">{duel ? `ROUND ${s.room.roundNumber} / BEST OF THREE` : 'SYSTEM OFFLINE / FREE PLAY'}</div>

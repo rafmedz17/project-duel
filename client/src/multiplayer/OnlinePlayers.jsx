@@ -23,6 +23,7 @@ import { onlineWeapon } from './onlineWeapon.js'
 import { game } from '../game/store.js'
 import { lobby, useLobby } from './lobby.js'
 import { arenaView, latestPose, samplePose, subscribePoses } from './poses.js'
+import { createRecoil,recoilAim,resetRecoil,stepRecoil } from '../game/weapons/recoil.js'
 
 function LocalCamera({ id }) {
   const { gl } = useThree()
@@ -30,9 +31,16 @@ function LocalCamera({ id }) {
   const mapId = useLobby(s => s.room?.mapId)
   const prediction = useRef(null), accumulator = useRef(0), correction = useRef([0,0,0])
   const keys = useRef(new Set()), jump = useRef(false), look = useRef(null), initialized = useRef(false)
+  const aim=useRef(null),recoil=useRef(createRecoil())
   const phase = useLobby(s => s.room?.phase), status = useLobby(s => s.status)
   const matchPhase = useLobby(s => s.room?.matchPhase)
   const roundId = useLobby(s => s.room?.roundId)
+  const selecting=useLobby(s=> {
+    if(s.room?.format==='duel') return s.room.matchPhase==='loadout'
+    const self=s.room?.players.find(player=>player.id===s.sessionId)?.combat
+    return self?.hp===0 && s.room.time<self.respawnAt
+  })
+  const resumeAfterLoadout=useRef(false)
   const seenRound = useRef(-1), seenShot=useRef(0),fpsFrames=useRef({ count:0,time:0 })
   const clearInput = useRef(null), held = useRef(false),fireInput=useRef(false),nextFire = useRef(0), wasDead = useRef(false)
   useEffect(() => {
@@ -55,6 +63,7 @@ function LocalCamera({ id }) {
     clearInput.current = clear
     const down = event => {
       if(event.code==='Escape') {
+        resumeAfterLoadout.current=false
         requestedMenu=true;lobby.setBackground(false)
         if(document.pointerLockElement===canvas) document.exitPointerLock()
       }
@@ -88,10 +97,11 @@ function LocalCamera({ id }) {
     }
     const up = event => { const code=canonicalCode(event,game.get().settings);keys.current.delete(code);release(event,code);if (active()) send() }
     const move = event => {
-      if (!active() || !look.current) return
+      if (!active() || !aim.current) return
       const settings=game.get().settings,sensitivity=PLAYER.sensitivity*lookMultiplier(settings,lobby.self(),lobby.get().room.time,{aiming:game.get().aiming,firing:fireInput.current})
-      look.current.yaw = Math.atan2(Math.sin(look.current.yaw-event.movementX*sensitivity),Math.cos(look.current.yaw-event.movementX*sensitivity))
-      look.current.pitch = Math.max(-ONLINE.maxPitch,Math.min(ONLINE.maxPitch,look.current.pitch-event.movementY*sensitivity))
+      aim.current.yaw = Math.atan2(Math.sin(aim.current.yaw-event.movementX*sensitivity),Math.cos(aim.current.yaw-event.movementX*sensitivity))
+      aim.current.pitch = Math.max(-ONLINE.maxPitch,Math.min(ONLINE.maxPitch,aim.current.pitch-event.movementY*sensitivity))
+      look.current=recoilAim(aim.current,recoil.current)
     }
     const fire = (event,code) => {
       if (!active() || lobby.self()?.hp<=0 || lobby.self()?.reloading) return
@@ -113,11 +123,12 @@ function LocalCamera({ id }) {
       const captured=document.pointerLockElement===canvas && lobby.get().room?.phase==='arena'
       if(!captured) clear()
       const live=canPlayArena(lobby.get().room) && lobby.self()?.hp>0
-      lobby.setBackground(!captured && !requestedMenu && live)
+      lobby.setBackground(!captured && !requestedMenu && (live || resumeAfterLoadout.current))
       if(captured) requestedMenu=false
       lobby.setCaptured(captured)
     }
     const blur = () => {
+      resumeAfterLoadout.current=false
       if(lobby.get().captured || document.pointerLockElement===canvas) { requestedMenu=false;lobby.setBackground(true) }
       clear();if(document.pointerLockElement===canvas) document.exitPointerLock()
     }
@@ -131,7 +142,7 @@ function LocalCamera({ id }) {
     window.addEventListener('blur',blur); document.addEventListener('visibilitychange',visibility)
     const interval = setInterval(send,1000/ONLINE.inputRate)
     const pose = latestPose(id)
-    if (pose && !look.current) look.current = { yaw:pose.yaw,pitch:pose.pitch }
+    if (pose && !look.current) { aim.current={ yaw:pose.yaw,pitch:pose.pitch };look.current={ ...aim.current } }
     lobby.setArenaReady(true)
     return () => {
       lobby.setArenaReady(false)
@@ -148,9 +159,22 @@ function LocalCamera({ id }) {
   useEffect(() => {
     clearInput.current?.()
     if (phase !== 'arena' || status !== 'connected' || matchPhase==='finished') {
+      resumeAfterLoadout.current=false
       if (document.pointerLockElement === gl.domElement) document.exitPointerLock()
+    } else if(selecting) {
+      // Release only for the picker, remembering that play was already entered.
+      // A programmatic unlock can be restored without another entry dialog.
+      if(document.pointerLockElement===gl.domElement) {
+        resumeAfterLoadout.current=true
+        lobby.setBackground(true)
+        document.exitPointerLock()
+      }
+    } else if(resumeAfterLoadout.current && canPlayArena(lobby.get().room)) {
+      resumeAfterLoadout.current=false
+      lobby.setBackground(true)
+      if(!document.hidden && document.hasFocus()) void lobby.capture()
     }
-  },[phase,status,matchPhase,roundId,gl])
+  },[phase,status,matchPhase,roundId,selecting,gl])
   useFrame(({ camera },delta) => {
     fpsFrames.current.count++;fpsFrames.current.time+=delta
     if(fpsFrames.current.time>=.5) { game.set({ fps:Math.round(fpsFrames.current.count/fpsFrames.current.time) });fpsFrames.current={ count:0,time:0 } }
@@ -160,7 +184,9 @@ function LocalCamera({ id }) {
     const reset = !initialized.current || (wasDead.current && !dead) || seenRound.current!==roundId
     if (reset) {
       camera.position.set(pose.x,pose.y+eyeHeight(pose.crouched),pose.z)
-      look.current = { yaw:pose.yaw,pitch:pose.pitch }
+      aim.current = { yaw:pose.yaw,pitch:pose.pitch }
+      resetRecoil(recoil.current)
+      look.current = { ...aim.current }
       seenShot.current=lobby.self()?.shot || 0
       initialized.current = true
       seenRound.current = roundId
@@ -168,18 +194,20 @@ function LocalCamera({ id }) {
     if (dead) { held.current = false;fireInput.current=false;keys.current.clear(); jump.current = false }
     if (lobby.self()?.reloading) {held.current=false;fireInput.current=false}
     wasDead.current = dead
+    const self=lobby.self()
+    if (self) {
+      const count=lobby.get().captured && !dead ? Math.max(0,Math.min(3,self.shot-seenShot.current)) : 0
+      if(dead) resetRecoil(recoil.current)
+      else stepRecoil(recoil.current,WEAPONS[self.weapon],Math.min(delta,.1),count)
+      look.current=recoilAim(aim.current,recoil.current)
+      seenShot.current=self.shot
+    }
     if (held.current && document.pointerLockElement===gl.domElement && lobby.get().status==='connected' && canPlayArena(lobby.get().room) && !dead) {
       const self = lobby.self()
       if (WEAPONS[self.weapon].fireMode==='auto' && !self.reloading && performance.now()>=nextFire.current) {
         lobby.combat('hold',look.current)
         nextFire.current = performance.now()+100
       }
-    }
-    const self=lobby.self()
-    if (self && self.shot>seenShot.current) {
-      const weapon=WEAPONS[self.weapon],count=Math.min(3,self.shot-seenShot.current)
-      if (lobby.get().captured) { look.current.pitch=Math.min(1.48,look.current.pitch+weapon.recoil*count); look.current.yaw+=Math.sin(self.shot*2.4)*weapon.recoil*0.3 }
-      seenShot.current=self.shot
     }
     const engine = prediction.current
     if (engine) engine.entry.movement=movementMultiplier(self?.weapon)*ultimateModifiers(self || {},lobby.get().room?.time || 0).movement
