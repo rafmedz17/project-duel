@@ -18,7 +18,7 @@ These are the default bindings. Open **Settings → Controls** to edit them and 
 | Shift | Sprint |
 | Hold Ctrl | Crouch; move slower and tighten grounded firearm spread by 20%. Release to stand when there is headroom |
 | Space | Jump while grounded |
-| B | Open/close the training field armory; edit character, guns, melee and unique skill |
+| B | Open/close the training field armory; reopen the multiplayer preset picker during an active selection window |
 | G | Reset the range, pause/restart moving robots, or start/stop the current challenge |
 | Tap Tab | Open the multiplayer room scoreboard: players, kills, deaths, K/D, ping, status and round wins in Best of Three. Tap again to close |
 | Escape | Release mouse; pause offline training |
@@ -26,6 +26,11 @@ These are the default bindings. Open **Settings → Controls** to edit them and 
 | F | Energy Shield |
 | C | Selected unique skill |
 | X | Character ultimate (10 seconds) |
+
+In Best of Three, clicking a preset closes the selection panel immediately. The
+Shared Arena entry popup does not appear automatically, and the round countdown
+stays in the small top score strip. Escape opens the menu with **Resume**. Use the
+compact **Click to Aim** prompt if the browser blocks automatic mouse capture.
 
 Robot damage is 2× at the head (RAILBREAKER: 1.5×), 1× at the torso, 0.75× at arms/legs, and 0.5× at feet. ECHO-9 deals 56/28/21/14 respectively. Headshots display HEADSHOT and actual HP removed; defeats display ELIMINATED. Cover blocks shots; RAILBREAKER can penetrate thin cover. Stationary and moving robots reset after three seconds. Live-fire robots stay defeated until you restart their course. Reflex spheres reappear at another height after a hit during the 45-second challenge. Robots match the player's 1.7-meter capsule height and stand on the floor in their course firing lanes. Head, body, limb and foot shots are available from the course floor without stepping onto a platform.
 

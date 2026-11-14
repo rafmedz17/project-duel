@@ -7,8 +7,9 @@ import { accounts } from '../accounts/store.js'
 import { readRecovery, saveRecovery, clearRecovery } from './recovery.js'
 import { queueShotTrail,trailScope } from '../game/effects/shotTrails.js'
 import { validateLoadoutBank,validSlot } from '../../../shared/loadoutBank.js'
+import { loadoutWindow } from './loadoutSelection.js'
 
-const empty = { status:'idle',room:null,bank:null,sessionId:'',error:'',notice:'',captured:false,captureError:'',arenaReady:false,background:false }
+const empty = { status:'idle',room:null,bank:null,sessionId:'',error:'',notice:'',captured:false,captureError:'',arenaReady:false,background:false,menuOpen:false,closedLoadout:'' }
 let snapshot = empty
 let activeRoom = null
 let attempt = 0
@@ -56,7 +57,10 @@ function sync(room) {
     player.combat.loadout = { character:source.characterId,primary:[...source.allowedWeapons].find(id => PRIMARY_IDS.includes(id)) || 'rifle',secondary:source.arsenal.secondaryWeapon,melee:source.arsenal.meleeWeapon,unique:source.uniqueSkill,startingWeapon:source.startingWeapon,weapons:[...source.allowedWeapons],abilities:[...source.allowedAbilities] }
   })
   // Positions stay outside React; combat HUD receives authoritative 20 Hz snapshots.
-  if (JSON.stringify(next) !== JSON.stringify(snapshot.room)) update({ room:next })
+  if (JSON.stringify(next) !== JSON.stringify(snapshot.room)) {
+    const entering=next.arenaActive && (!snapshot.room?.arenaActive || snapshot.room.arenaEpoch!==next.arenaEpoch)
+    update({room:next,...(entering ? {menuOpen:false,closedLoadout:'',background:next.format==='duel'} : {})})
+  }
 }
 
 function attach(room,notice = '') {
@@ -81,7 +85,7 @@ function attach(room,notice = '') {
   room.onReconnect(() => {
     if (activeRoom!==room) return
     saveRecovery(endpoint(),room.reconnectionToken)
-    update({ status:'connected',notice:'Connection restored. Select Enter Arena to resume.' })
+    update({ status:'connected',notice:'Connection restored. Click to aim to resume.' })
     sync(room)
     room.send('loadout-bank')
     room.send('latency-ready')
@@ -132,7 +136,7 @@ export const lobby = {
       request.then(room => { if (operationId!==attempt) void room.leave() }).catch(() => {})
       const room = await Promise.race([request,new Promise((_,reject) => { timer = setTimeout(() => reject(new Error('Recovery timed out')),10000); timeoutId = timer })])
       clearTimeout(timer)
-      if (operationId===attempt) attach(room,'Your seat was restored. Select Enter Arena when ready.')
+      if (operationId===attempt) attach(room,'Your seat was restored. Click to aim when ready.')
     } catch {
       clearTimeout(timer)
       if (operationId!==attempt) return
@@ -206,18 +210,26 @@ export const lobby = {
   },
   self() { return snapshot.room?.players.find(player => player.id===snapshot.sessionId)?.combat },
   selectLoadout(slot) {
-    if(!activeRoom || snapshot.status!=='connected' || !validSlot(slot) || !snapshot.room?.arenaActive) return
+    const window=loadoutWindow(snapshot)
+    if(!activeRoom || !window || !validSlot(slot) || !snapshot.bank?.slots[slot]) return
     activeRoom.send('select-loadout',{ slot,epoch:snapshot.room.arenaEpoch,round:snapshot.room.roundId })
+    update({closedLoadout:window,menuOpen:false,background:true})
+    // The preset click supplies the user gesture browsers need for capture.
+    // Dead Free Play players recapture only after the server respawns them.
+    if(lobby.self()?.hp>0) void lobby.capture()
   },
+  openLoadout() { if(loadoutWindow(snapshot)) update({closedLoadout:'',menuOpen:false,background:true}) },
+  openMenu() { update({menuOpen:true,background:false}) },
   setCaptured(captured) { update({ captured,captureError:'' }) },
   setBackground(background) { if(snapshot.background!==background) update({ background }) },
   setArenaReady(arenaReady) { if (snapshot.arenaReady!==arenaReady) update({ arenaReady }) },
   async capture() {
+    update({menuOpen:false,background:true})
     try {
       const canvas = document.querySelector('canvas')
       if (!canvas?.requestPointerLock) throw new Error('Unavailable')
       await canvas.requestPointerLock()
-    } catch { update({ captured:false,captureError:'Mouse capture was blocked. Click Enter Arena to try again.' }) }
+    } catch { update({ captured:false,captureError:'Mouse capture was blocked. Click to aim to try again.' }) }
   },
   leave() {
     attempt++

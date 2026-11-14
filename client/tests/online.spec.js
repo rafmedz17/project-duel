@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import {observeHitFeedback, observedFeedback, openGame,openMultiplayer} from './helpers.js'
+import {observeHitFeedback, observedFeedback, openGame,openMultiplayer,enterOnlineArena} from './helpers.js'
 import { PLAYER } from '../src/game/config.js'
 import { ROBOT_HEAD_Y } from '../../shared/robot.js'
 
@@ -18,6 +18,7 @@ async function open(page,name) {
 }
 async function pair(browser,format = 'freeplay',primary = 'rifle',unique = 'scanner',character = 'vex') {
   const contexts = await Promise.all([browser.newContext(),browser.newContext()])
+  if(format==='duel') await Promise.all(contexts.map(context=>context.addInitScript(()=>localStorage.setItem('duel-settings',JSON.stringify({quality:'Low'})))))
   await Promise.all(contexts.map(context => context.addInitScript(loadout => localStorage.setItem('duel-loadout',JSON.stringify(loadout)),{ character,primary,unique })))
   const [host,guest] = await Promise.all(contexts.map(context => context.newPage()))
   await open(host,'Nova')
@@ -34,9 +35,7 @@ async function pair(browser,format = 'freeplay',primary = 'rifle',unique = 'scan
   return { host,guest,contexts }
 }
 async function enter(page) {
-  await page.bringToFront()
-  await page.getByRole('button',{ name:'ENTER ARENA',exact:true }).click()
-  await expect.poll(async () => (await onlineState(page)).captured).toBe(true)
+  await enterOnlineArena(page)
 }
 
 test('selected online shotgun uses a dotted ring and automatically reloads its empty magazine',async ({ browser }) => {
@@ -347,6 +346,8 @@ test('online shields absorb actual hits and VEX overdrive allows repeated dash w
 async function winRound(shooter,target) {
   await shooter.bringToFront()
   if (!(await onlineState(shooter)).captured) await enter(shooter)
+  await shooter.keyboard.press('Digit2')
+  await expect.poll(async()=>{const s=await onlineState(shooter),c=s.room.players.find(p=>p.id===s.sessionId).combat;return c.weapon==='pistol' && s.room.time>=c.attackReadyAt && s.self.grounded}).toBe(true)
   for (let i=0;i<4;i++) {
     await aimAtPlayer(shooter)
     await fire(shooter)
@@ -354,11 +355,12 @@ async function winRound(shooter,target) {
   }
 }
 async function awaitNextRound(page,number) {
-  await expect(page.getByTestId('round-countdown')).toContainText(`ROUND ${number}`,{ timeout:20000 })
+  await expect(page.getByTestId('match-round')).toContainText(`ROUND ${number}`,{ timeout:20000 })
+  await expect(page.getByTestId('round-countdown')).toHaveCount(0)
   expect((await selfCombat(page)).hp).toBe(100)
   expect((await selfCombat(page)).magazines).toMatchObject({ pistol:15,rifle:30,shotgun:6 })
   expect((await selfCombat(page)).abilities.scanner.readyAt).toBe(0)
-  await expect.poll(async () => (await onlineState(page)).room.matchPhase,{ timeout:6000 }).toBe('live')
+  await expect.poll(async () => (await onlineState(page)).room.matchPhase,{ timeout:18000 }).toBe('live')
 }
 
 test('best of three plays a 2–1 deciding match with shared scoreboard, locked intermissions, fresh rounds and rematch',async ({ browser }) => {
@@ -367,7 +369,8 @@ test('best of three plays a 2–1 deciding match with shared scoreboard, locked 
   for (const page of [host,guest]) page.on('pageerror',error => errors.push(error.message))
   try {
     await expect(guest.getByLabel('Match format')).toBeDisabled()
-    await expect(host.getByRole('dialog',{ name:'SHARED ARENA' })).toBeVisible({ timeout:25000 })
+    await expect.poll(async()=>(await onlineState(host)).room.matchPhase,{timeout:25000}).toBe('live')
+    await expect(host.getByRole('dialog',{name:'SHARED ARENA'})).toHaveCount(0)
     await enter(host)
     await expect.poll(async () => (await onlineState(host)).self.grounded).toBe(true)
     await host.keyboard.press('KeyC')
@@ -401,7 +404,8 @@ test('best of three plays a 2–1 deciding match with shared scoreboard, locked 
     await expect(guest.getByRole('dialog',{ name:'PRIVATE MULTIPLAYER' })).toBeVisible()
     await host.getByRole('button',{ name:'READY UP',exact:true }).click()
     await guest.getByRole('button',{ name:'READY UP',exact:true }).click()
-    await expect(host.getByRole('dialog',{ name:'SHARED ARENA' })).toBeVisible({ timeout:25000 })
+    await expect.poll(async()=>(await onlineState(host)).room.matchPhase,{timeout:25000}).toBe('live')
+    await expect(host.getByRole('dialog',{name:'SHARED ARENA'})).toHaveCount(0)
     expect((await onlineState(host)).room.arenaEpoch).toBe(2)
     expect((await onlineState(host)).room.players.map(p => p.roundWins)).toEqual([0,0])
     expect((await onlineState(host)).room.roundNumber).toBe(1)
@@ -414,7 +418,10 @@ test('forfeiting shows the same winner to both players and keeps departed-player
   const { host,guest,contexts } = await pair(browser,'duel'), errors = []
   for (const page of [host,guest]) page.on('pageerror',error => errors.push(error.message))
   try {
-    await expect(guest.getByRole('dialog',{ name:'SHARED ARENA' })).toBeVisible({ timeout:25000 })
+    await expect.poll(async()=>(await onlineState(guest)).room.matchPhase,{timeout:25000}).toBe('live')
+    await guest.keyboard.press('Escape')
+    await guest.evaluate(()=>document.exitPointerLock())
+    await expect(guest.getByRole('dialog',{ name:'SHARED ARENA' })).toBeVisible()
     await guest.getByRole('button',{ name:'FORFEIT MATCH',exact:true }).click()
     await expect(host.getByRole('dialog',{ name:'VICTORY',exact:true })).toBeVisible()
     await expect(guest.getByRole('dialog',{ name:'DEFEAT',exact:true })).toContainText('Decided by forfeit')

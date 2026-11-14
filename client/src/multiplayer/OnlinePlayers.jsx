@@ -24,6 +24,7 @@ import { game } from '../game/store.js'
 import { lobby, useLobby } from './lobby.js'
 import { arenaView, latestPose, samplePose, subscribePoses } from './poses.js'
 import { createRecoil,recoilAim,resetRecoil,stepRecoil } from '../game/weapons/recoil.js'
+import { loadoutIsOpen,loadoutWindow } from './loadoutSelection.js'
 
 function LocalCamera({ id }) {
   const { gl } = useThree()
@@ -35,12 +36,9 @@ function LocalCamera({ id }) {
   const phase = useLobby(s => s.room?.phase), status = useLobby(s => s.status)
   const matchPhase = useLobby(s => s.room?.matchPhase)
   const roundId = useLobby(s => s.room?.roundId)
-  const selecting=useLobby(s=> {
-    if(s.room?.format==='duel') return s.room.matchPhase==='loadout'
-    const self=s.room?.players.find(player=>player.id===s.sessionId)?.combat
-    return self?.hp===0 && s.room.time<self.respawnAt
-  })
-  const resumeAfterLoadout=useRef(false)
+  const selecting=useLobby(loadoutIsOpen)
+  const alive=useLobby(s=>(s.room?.players.find(player=>player.id===s.sessionId)?.combat.hp || 0)>0)
+  const resumeAfterLoadout=useRef(lobby.get().room?.format==='duel')
   const seenRound = useRef(-1), seenShot=useRef(0),fpsFrames=useRef({ count:0,time:0 })
   const clearInput = useRef(null), held = useRef(false),fireInput=useRef(false),nextFire = useRef(0), wasDead = useRef(false)
   useEffect(() => {
@@ -64,11 +62,14 @@ function LocalCamera({ id }) {
     const down = event => {
       if(event.code==='Escape') {
         resumeAfterLoadout.current=false
-        requestedMenu=true;lobby.setBackground(false)
+        requestedMenu=true;lobby.openMenu()
         if(document.pointerLockElement===canvas) document.exitPointerLock()
       }
-      if (!active() || lobby.self()?.hp<=0) return
       const code=canonicalCode(event,game.get().settings)
+      if(code==='KeyB' && !event.repeat && !event.ctrlKey && !event.metaKey && !event.altKey && !lobby.get().menuOpen && loadoutWindow(lobby.get())) {
+        event.preventDefault();lobby.openLoadout();return
+      }
+      if (!active() || lobby.self()?.hp<=0) return
       if(code==='Mouse0' || code==='Mouse2') { fire(event,code);return }
       if (code==='KeyT' && !event.repeat) { game.set({ inspectAt:lobby.get().room.time }); return }
       const ability = abilityForBinding(lobby.self().loadout,code)
@@ -134,7 +135,10 @@ function LocalCamera({ id }) {
     }
     const visibility = () => { if (document.hidden) blur() }
     const error = () => lobby.setCaptured(false)
-    const recapture=event=> { if(event.target===canvas && !lobby.get().captured && lobby.get().background && !document.hidden) void lobby.capture() }
+    const recapture=event=> {
+      const s=lobby.get(),available=s.background || (s.room?.format==='duel' && !s.menuOpen)
+      if(event.target===canvas && !s.captured && available && !document.hidden) void lobby.capture()
+    }
     document.addEventListener('contextmenu',context)
     document.addEventListener('mousedown',down); document.addEventListener('mouseup',up);canvas.addEventListener('click',recapture)
     document.addEventListener('keydown',down); document.addEventListener('keyup',up); document.addEventListener('mousemove',move)
@@ -144,6 +148,8 @@ function LocalCamera({ id }) {
     const pose = latestPose(id)
     if (pose && !look.current) { aim.current={ yaw:pose.yaw,pitch:pose.pitch };look.current={ ...aim.current } }
     lobby.setArenaReady(true)
+    // A preset can be clicked before the lazy physics/camera finishes mounting.
+    if(document.pointerLockElement===canvas) lock()
     return () => {
       lobby.setArenaReady(false)
       clearInterval(interval); clear()
@@ -169,12 +175,12 @@ function LocalCamera({ id }) {
         lobby.setBackground(true)
         document.exitPointerLock()
       }
-    } else if(resumeAfterLoadout.current && canPlayArena(lobby.get().room)) {
+    } else if(resumeAfterLoadout.current && alive && canPlayArena(lobby.get().room)) {
       resumeAfterLoadout.current=false
       lobby.setBackground(true)
-      if(!document.hidden && document.hasFocus()) void lobby.capture()
+      if(document.pointerLockElement!==gl.domElement && !document.hidden && document.hasFocus()) void lobby.capture()
     }
-  },[phase,status,matchPhase,roundId,selecting,gl])
+  },[phase,status,matchPhase,roundId,selecting,alive,gl])
   useFrame(({ camera },delta) => {
     fpsFrames.current.count++;fpsFrames.current.time+=delta
     if(fpsFrames.current.time>=.5) { game.set({ fps:Math.round(fpsFrames.current.count/fpsFrames.current.time) });fpsFrames.current={ count:0,time:0 } }

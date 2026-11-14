@@ -29,6 +29,24 @@ export async function openMultiplayer(page,mode='casual',name,waitForRoom=true) 
   if(mode==='casual' && waitForRoom) await expect(page.getByTestId('invite-code')).toHaveText(/^[A-HJ-NP-Z2-9]{6}$/,{timeout:15000})
 }
 
+export async function enterOnlineArena(page) {
+  await page.bringToFront()
+  const network=()=>page.evaluate(async()=>{
+    const path='/src/multiplayer/lobby.js',url=performance.getEntriesByType('resource').find(e=>new URL(e.name).pathname===path)?.name || path
+    return (await import(url)).lobby.get()
+  })
+  await expect.poll(async()=>{
+    const s=await network()
+    return s.arenaReady && s.room?.phase==='arena' && (s.room.format!=='duel' || s.room.matchPhase==='live')
+  },{timeout:25000}).toBe(true)
+  if(!(await network()).captured) {
+    const resume=page.getByRole('button',{name:/^(ENTER ARENA|RESUME)$/})
+    if(await resume.isVisible()) await resume.click()
+    else await page.getByRole('button',{name:/MATCH LIVE.*CLICK TO AIM/}).click()
+  }
+  await expect.poll(async()=>(await network()).captured).toBe(true)
+}
+
 export async function editLoadout(page,choices,{wait=true}={}) {
   const labels={character:'character',primary:'primary gun',secondary:'pistol',melee:'melee',unique:'unique skill'}
   for(const [slot,id] of Object.entries(choices)) {

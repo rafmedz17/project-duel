@@ -10,7 +10,7 @@ export default function LoadoutPhase({ state:s,combat,onLeave }) {
   return <div className="overlay online-overlay loadout-phase"><section className="dialog" role="dialog" aria-modal="true" aria-labelledby="loadout-phase-title">
     <div className="eyebrow">{duel ? `ROUND ${s.room.roundNumber} / BEST OF THREE` : 'SYSTEM OFFLINE / FREE PLAY'}</div>
     <div className="loadout-phase-heading"><h2 id="loadout-phase-title">{duel ? 'LOADOUT PHASE' : 'RESPAWN LOADOUT'}</h2><span className="loadout-phase-clock" role="timer" aria-label="Loadout time remaining">{seconds}<small>s</small></span></div>
-    <p>{duel ? 'Choose your preset for this round. Your selected slot deploys automatically when the timer ends.' : 'Choose a preset during your five-second respawn window. Keeping the current slot is automatic.'}</p>
+    <p>{duel ? 'Select a preset to equip it and close this panel. The round starts automatically for both players.' : 'Select a preset to close this panel. You respawn automatically when the five-second window ends.'}</p>
     {s.bank ? <LoadoutSlots slots={s.bank.slots} selected={combat.activeSlot} onSelect={slot=>lobby.selectLoadout(slot)}/> : <p role="status">Loading your saved presets…</p>}
     {selected && <div className="loadout-phase-summary" role="status">SLOT {combat.activeSlot+1} / {getCharacter(selected.character).name}<br/>{WEAPONS[selected.primary].name} · {WEAPONS[selected.secondary].name} · {WEAPONS[selected.melee].name}<br/>{ABILITIES[selected.unique].name} / {getCharacter(selected.character).ultimate}</div>}
     <p className="preset-help">Edit your five presets in Character &amp; Loadout before joining a room.</p>

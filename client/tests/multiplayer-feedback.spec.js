@@ -1,4 +1,4 @@
-import {openGame,openMultiplayer} from './helpers.js'
+import {openGame,openMultiplayer,enterOnlineArena} from './helpers.js'
 import { test,expect } from '@playwright/test'
 import { Client } from '@colyseus/sdk'
 import { PLAYER } from '../src/game/config.js'
@@ -48,11 +48,7 @@ async function setup(page,format) {
   await page.getByLabel('Match format').selectOption(format)
   peer.send('ready',{ready:true})
   await page.getByRole('button',{name:'READY UP',exact:true}).click()
-  const enter=async()=>{
-    await expect(page.getByRole('button',{name:'ENTER ARENA',exact:true})).toBeEnabled({timeout:25000})
-    await page.getByRole('button',{name:'ENTER ARENA',exact:true}).click()
-    await expect.poll(async()=>(await inspect(page)).captured).toBe(true)
-  }
+  const enter=()=>enterOnlineArena(page)
   await enter();await observe(page)
   let sequence=0
   const firePeer=(pitch=1)=>peer.send('combat',{action:'fire',epoch:peer.state.arenaEpoch,round:peer.state.roundId,sequence:sequence++,yaw:Math.PI,pitch})
