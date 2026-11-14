@@ -5,6 +5,7 @@ import { ArenaSimulation } from '../src/arena/ArenaSimulation.js'
 import { Prediction } from '../../client/src/multiplayer/Prediction.js'
 import { ONLINE } from '../../shared/arena.js'
 import { ultimateModifiers } from '../../shared/characters.js'
+import { MAPS } from '../../shared/maps.js'
 
 const command = (sequence,patch = {}) => ({ sequence,x:0,z:0,yaw:0,pitch:0,sprint:false,jump:false,active:true,...patch })
 const pose = p => ({ ...p })
@@ -18,7 +19,7 @@ function setup(t,mapId = 'facility') {
 }
 
 test('prediction matches real server capsule movement, jumps, sprint, cover and walls on all maps',t => {
-  for (const mapId of ['facility','neon','orbital']) {
+  for (const mapId of Object.keys(MAPS)) {
     const { server,prediction,player } = setup(t,mapId)
     for (let tick=0;tick<420;tick++) {
       const input = command(tick,{ x:tick<95 ? 1 : 0,z:tick>=95 ? -1 : 0,sprint:tick>120,jump:tick===90 })

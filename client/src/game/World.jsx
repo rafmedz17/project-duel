@@ -24,7 +24,7 @@ export default function World({ online = false, arenaEpoch = 0,menuAnimated=fals
   const mapId = useLobby(s => s.room?.mapId || 'facility')
   const dpr = { Low: 1, Medium: 1.25, High: 1.75 }[settings.quality]
   const menu=!online && mode==='menu'
-  return <RenderBoundary><Canvas onCreated={onCanvasReady} frameloop={online || mode==='playing' || (menu && menuAnimated) ? 'always' : 'demand'} dpr={[1,dpr]} camera={{ position:[10,4.8,14], fov:70, near:0.05, far:130 }} gl={{ antialias:settings.quality!=='Low', powerPreference:'high-performance' }}>
+  return <RenderBoundary><Canvas shadows={online && mapId==='spire' && settings.quality==='High' ? 'percentage' : false} onCreated={onCanvasReady} frameloop={online || mode==='playing' || (menu && menuAnimated) ? 'always' : 'demand'} dpr={[1,dpr]} camera={{ position:[10,4.8,14], fov:70, near:0.05, far:130 }} gl={{ antialias:settings.quality!=='Low', powerPreference:'high-performance' }}>
     <Suspense fallback={null}>
       {menu ? <MenuCinematic running={menuAnimated} quality={settings.quality}/> : <Physics timeStep={1/60} paused={online || mode !== 'playing'}>
         <Arena key={online ? mapId : 'facility'} training={!online} mapId={online ? mapId : 'facility'} />

@@ -24,6 +24,9 @@ function setup(t,selecting=false) {
     return send(id,'fire',{ yaw:Math.atan2(a.x-b.x,a.z-b.z),pitch:Math.atan2(b.y-0.03-a.y-0.65,Math.hypot(a.x-b.x,a.z-b.z)) })
   }
   const win = id => {
+    // Fresh round spawns start above the floor. Settle before these precision
+    // shots so airborne spread cannot turn a scoring fixture into a miss.
+    if(!state.players.get(id).grounded) advance(.2)
     for (let i=0;i<4;i++) { assert.equal(shoot(id),true); if (i<3) advance(0.24) }
   }
   const nextRound = () => advance(MATCH.resultSeconds+MATCH.loadoutSeconds+MATCH.countdownSeconds+0.02)

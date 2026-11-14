@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto'
 import { PGlite } from '@electric-sql/pglite'
 import { makeLoadoutBank } from '../../shared/loadoutBank.js'
 import { validateLoadout } from '../../shared/loadout.js'
+import { MAPS } from '../../shared/maps.js'
 
 const db = new PGlite()
 const one='11111111-1111-4111-8111-111111111111', two='22222222-2222-4222-8222-222222222222', other='33333333-3333-4333-8333-333333333333'
@@ -27,6 +28,7 @@ before(async () => {
   const expanded=(await db.query('select * from public.loadouts where user_id=$1',[other])).rows[0]
   assert.equal(expanded.secondary_weapon,'pistol');assert.equal(expanded.melee_weapon,'blade')
   await db.exec(await readFile(new URL('../../supabase/migrations/20261113093159_five_loadout_slots.sql',import.meta.url),'utf8'))
+  await db.exec(await readFile(new URL('../../supabase/migrations/20261114190352_aether_spire_map.sql',import.meta.url),'utf8'))
   const migratedSlots=(await db.query('select * from public.loadout_slots where user_id=$1 order by slot_id',[other])).rows
   assert.equal(migratedSlots.length,5);assert.ok(migratedSlots.every(row=>row.primary_weapon==='shotgun'))
   await db.query('insert into public.profiles(user_id,callsign) values ($1,$2),($3,$4),($5,$6)',[one,'Nova',two,'Echo',other,'Other'])
@@ -128,4 +130,17 @@ test('a failed result rolls back stats changes and leaderboard reads expose no p
   const rows=await as('anon',null,() => db.query('select p.callsign,s.rating,s.ranked_games from public.profile_stats s join public.profiles p using (user_id) where ranked_games>0 order by rating desc limit 50'))
   assert.equal(rows.rows.length,2)
   assert.equal(rows.rows[0].callsign,'Nova Prime')
+})
+
+test('every registered arena, including Aether Spire, saves through the result transaction while unknown maps remain rejected',async()=>{
+  for(const map_id of Object.keys(MAPS)) {
+    const match=result({map_id,ranked:false})
+    assert.deepEqual(await record(match),{saved:true,ranked:false,duplicate:false})
+    const row=(await as('authenticated',one,()=>db.query('select map_id from public.duel_matches where id=$1',[match.id]))).rows[0]
+    assert.equal(row.map_id,map_id)
+    assert.deepEqual(await record(match),{saved:true,ranked:false,duplicate:true})
+  }
+  const before=(await db.query('select games from public.profile_stats where user_id=$1',[one])).rows[0].games
+  await assert.rejects(record(result({map_id:'unregistered-arena'})))
+  assert.equal((await db.query('select games from public.profile_stats where user_id=$1',[one])).rows[0].games,before)
 })

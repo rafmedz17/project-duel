@@ -2,10 +2,13 @@ import { PLAYER, ONLINE } from './arena.js'
 import { ABILITIES } from './abilities.js'
 import { CROUCH,updateStance } from './stance.js'
 
+const worldSteps=new WeakMap()
+
 // Both the server and local prediction use the same fixed-step capsule sweep.
 export function createMovementWorld(RAPIER, map) {
   const world = new RAPIER.World({ x:0,y:-PLAYER.gravity,z:0 })
   world.timestep = 1/ONLINE.tickRate
+  if(map.autostep) worldSteps.set(world,map.autostep)
   for (const { position:[x,y,z],size:[w,h,d] } of map.solids) world.createCollider(RAPIER.ColliderDesc.cuboid(w/2,h/2,d/2).setTranslation(x,y,z))
   return world
 }
@@ -18,6 +21,8 @@ export function createCharacter(RAPIER, world, position) {
   controller.setSlideEnabled(true)
   controller.enableSnapToGround(0.15)
   controller.setMaxSlopeClimbAngle(Math.PI/4)
+  const steps=worldSteps.get(world)
+  if(steps) controller.enableAutostep(steps.height,steps.width,false)
   return { world,body,collider,controller,standingShape:new RAPIER.Capsule(ONLINE.capsuleHalfHeight,ONLINE.capsuleRadius),crouched:false,vx:0,vy:0,vz:0,grounded:false,dash:null }
 }
 

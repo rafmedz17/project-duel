@@ -4,7 +4,7 @@ Online movement predicts the local capsule at fixed 60 Hz using the server's sha
 
 Server snapshots include position, velocity, ground contact, remaining acknowledged dash movement, and simulated steps for the acknowledged input. The client restores that state and replays pending steps. Small camera corrections decay; large corrections snap. History is bounded and prediction stops on stale snapshots. Opponents retain 100 ms interpolation. Hits, ammo, damage and abilities remain server validated, without hit rewind. Remote capsules use their latest server poses during local prediction, so close player collisions can require correction.
 
-Tests compare real Rapier client/server movement on all three maps, delayed commands/snapshots, release convergence, and acknowledgements that advance only when simulated.
+Tests compare real Rapier client/server movement across the arena maps, delayed commands/snapshots, release convergence, and acknowledgements that advance only when simulated. [Aether Spire](AETHER_SPIRE.md) adds map-specific walk-up steps and graphics tiers with identical collision.
 
 ## Refresh recovery
 

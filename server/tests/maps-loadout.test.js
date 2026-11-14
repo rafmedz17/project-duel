@@ -16,7 +16,11 @@ for (const [mapId,map] of Object.entries(MAPS)) test(`${mapId} has clear spawns,
   const players=new Map([['a',Object.assign(new LobbyPlayer(),{ slot:0 })],['b',Object.assign(new LobbyPlayer(),{ slot:1 })]])
   const sim=new ArenaSimulation(players,mapId); t.after(() => sim.free())
   for (let i=0;i<30;i++) sim.step()
-  for (const player of players.values()) { assert.ok(player.grounded); assert.ok(player.y>0.8 && player.y<1); assert.ok(Math.abs(player.x)<0.001) }
+  for (const player of players.values()) {
+    const spawn=map.spawns[player.slot].position
+    assert.ok(player.grounded); assert.ok(player.y>0.8 && player.y<1)
+    assert.ok(Math.abs(player.x-spawn[0])<0.001);assert.ok(Math.abs(player.z-spawn[2])<0.001)
+  }
   const [x,y,z,w,h,d]=map.cover[0]
   const body=sim.players.get('a').body
   body.setTranslation({ x,y:0.9,z:z+d/2+2 },true)

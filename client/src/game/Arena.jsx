@@ -3,9 +3,11 @@ import { useGame } from './store.js'
 import { getMap } from '../../../shared/maps.js'
 import Box from './WorldBox.jsx'
 import TrainingGrounds from './training/TrainingGrounds.jsx'
+import SpireArena from './maps/SpireArena.jsx'
 
 const ArenaLayout = memo(function ArenaLayout({ training,mapId,quality }) {
   const map = getMap(mapId)
+  if(mapId==='spire') return <SpireArena quality={quality}/>
   return <>
     <color attach="background" args={[map.background]} />
     <fog attach="fog" args={[map.background, 25, 80]} />
