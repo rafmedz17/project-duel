@@ -25,7 +25,7 @@ function loadSettings() {
   } catch { return cleanPreferences() }
 }
 const fresh = () => ({
-  hp: 100, weapon: DEFAULT_LOADOUT.startingWeapon, loadout:DEFAULT_LOADOUT,
+  hp: 100, previousWeapon:'', weapon: DEFAULT_LOADOUT.startingWeapon, loadout:DEFAULT_LOADOUT,
   magazines: Object.fromEntries(Object.entries(WEAPONS).filter(([,w]) => w.magazine).map(([id,w]) => [id,w.magazine])),
   weaponStats: Object.fromEntries(Object.entries(WEAPONS).filter(([,w]) => w.magazine).map(([id]) => [id,{ shots:0,hits:0 }])),
   spinning:false,spinStarted:-10,windupStart:-10,windupEnd:0,aiming:false,inspectAt:-10,
@@ -73,7 +73,7 @@ export const game = {
     if(!bank || state.mode!=='loadout' || state.hp<=0) return false
     const loadout=bank.slots[bank.activeSlot],clean=fresh()
     pendingAttack=null;resetTrainingAbilities()
-    game.set({ trainingBank:bank,loadout,weapon:loadout.primary,magazines:clean.magazines,abilities:clean.abilities,...clearReload,spinning:false,spinStarted:-10,windupEnd:0,aiming:false,shieldCharge:0,ultimateShield:0,flashUntil:0,rootedUntil:0,lastSwitch:clock,attackReadyAt:clock+equipTime(loadout.primary),lastShot:-10,lastSwing:-10 })
+    game.set({ trainingBank:bank,loadout,previousWeapon:'',weapon:loadout.primary,magazines:clean.magazines,abilities:clean.abilities,...clearReload,spinning:false,spinStarted:-10,windupEnd:0,aiming:false,shieldCharge:0,ultimateShield:0,flashUntil:0,rootedUntil:0,lastSwitch:clock,attackReadyAt:clock+equipTime(loadout.primary),lastShot:-10,lastSwing:-10 })
     return true
   },
   opponentPosition: () => [...opponentPosition],
@@ -153,7 +153,7 @@ export const game = {
     // Complete the visible melee swing before allowing a different weapon.
     if (isMelee(state.weapon) && clock - state.lastSwing < WEAPONS[state.weapon].swing) return false
     game.cancelAttack()
-    game.set({ weapon,...clearReload,lastSwitch:clock,attackReadyAt:Math.max(state.attackReadyAt,clock+equipTime(weapon)),time:clock })
+    game.set({ previousWeapon:state.weapon,weapon,...clearReload,lastSwitch:clock,attackReadyAt:Math.max(state.attackReadyAt,clock+equipTime(weapon)),time:clock })
     return true
   },
   cancelAttack: () => { pendingAttack=null; if (state.spinning || state.windupEnd) game.set({ spinning:false,spinStarted:-10,windupEnd:0 }) },

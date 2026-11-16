@@ -52,6 +52,7 @@ function sync(room) {
     player.ping=player.connected && source.arsenal.pingMs>=0 ? source.arsenal.pingMs : null
     Object.assign(player.combat,{ characterId:source.characterId,spinning:source.arsenal.spinning,spinStarted:source.arsenal.spinStarted,windupStart:source.arsenal.windupStart,windupEnd:source.arsenal.windupEnd,swings:source.arsenal.swings,ultimateShield:source.ultimateShield,flashUntil:source.flashUntil,flashStarted:source.flashStarted,rootedUntil:source.rootedUntil,rooted:source.rooted })
     Object.assign(player.combat,{ killCombo:source.arsenal.killCombo,killAt:source.arsenal.killAt,killBadgeId:source.arsenal.killBadgeId,killHeadshot:source.arsenal.killHeadshot })
+    player.combat.previousWeapon=source.arsenal.previousWeapon
     player.combat.activeSlot=source.arsenal.activeSlot
     source.abilities.forEach((ability,id) => Object.assign(player.combat.abilities[id],{ flying:ability.flying,projectile:[ability.projectileX,ability.projectileY,ability.projectileZ],detonatedAt:ability.detonatedAt }))
     player.combat.loadout = { character:source.characterId,primary:[...source.allowedWeapons].find(id => PRIMARY_IDS.includes(id)) || 'rifle',secondary:source.arsenal.secondaryWeapon,melee:source.arsenal.meleeWeapon,unique:source.uniqueSkill,startingWeapon:source.startingWeapon,weapons:[...source.allowedWeapons],abilities:[...source.allowedAbilities] }

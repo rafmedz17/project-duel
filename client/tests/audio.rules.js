@@ -7,6 +7,18 @@ import { WEAPON_IDS } from '../../shared/weapons.js'
 import { FIREARM_VOICES,soundLayers } from '../src/audio/profiles.js'
 
 const copy=() => structuredClone(game.get())
+
+test('grenade launch and detonation are separate accepted cues and never replay a snapshot',()=>{
+  const previous=structuredClone(game.get()),current=structuredClone(previous)
+  current.abilities.smoke.uses++
+  current.abilities.smoke.flying=true
+  assert.deepEqual(combatCues(previous,current),['smoke'])
+  const burst=structuredClone(current)
+  burst.abilities.smoke.flying=false;burst.abilities.smoke.detonatedAt=1
+  assert.deepEqual(combatCues(current,burst),['smoke-detonate'])
+  assert.deepEqual(combatCues(burst,burst),[])
+  for(const id of ['flashbang-detonate','smoke-detonate','stun-detonate','flash-ring']) assert.ok(soundLayers(id).length>=2)
+})
 function start() { game.reset(); game.set({ mode:'playing' }); return copy() }
 test('audio follows accepted attacks, does not replay rejected inputs or multiply delayed shot counters',() => {
   const previous=start()

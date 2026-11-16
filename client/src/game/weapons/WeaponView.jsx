@@ -12,6 +12,7 @@ import OperativeArms from '../characters/OperativeArms.jsx'
 import {runtime} from '../runtime.js'
 import {arenaView} from '../../multiplayer/poses.js'
 import {modelProfile} from './modelProfiles.js'
+import {throwAim} from '../abilities/throwAim.js'
 
 function WeaponView({ source=game }) {
   const detail=useGame(s=>s.settings.quality!=='Low')
@@ -43,6 +44,10 @@ function WeaponView({ source=game }) {
     group.rotateZ(melee ? -0.28+a.hit*(weapon.model==='fangs' && (s.swings || 0)%2 ? -1.25 : 1.25) : -a.reloadPose*0.65-inspect*0.8*(1-blend))
     group.rotateY(-a.reloadPose*0.35+inspect*0.9*(1-blend))
     group.translateY(stride*.007);group.rotateZ(stride*.008)
+    const dash=s.abilities.dash,dashPose=time<dash.activeUntil ? Math.sin(Math.PI*Math.min(1,(time-dash.startedAt)/.36)) : 0
+    const thrown=s.loadout?.unique && s.abilities[s.loadout.unique],throwPose=thrown && time-thrown.startedAt<.32 ? Math.sin(Math.PI*Math.max(0,(time-thrown.startedAt)/.32)) : 0
+    group.translateY(-dashPose*.16-(throwAim.id ? .22 : throwPose*.22));group.translateZ(dashPose*.12)
+    group.rotateZ(-dashPose*.18);group.rotateX(dashPose*.12+throwPose*.28)
     if(projection.current) { projection.current.visible=optic==='reflex';projection.current.scale.y=.9+blend*.1 }
     if(reticle.current) reticle.current.visible=false
     animateParts(parts,a,weapon,s,time,delta)

@@ -32,6 +32,10 @@ export function migrateLoadout(value) {
   return equipment('vex',primary,value.abilities.includes('scanner') ? 'scanner' : 'flashbang',value.startingWeapon)
 }
 export const weaponSlots=loadout=>[loadout.primary,loadout.secondary || 'pistol',loadout.melee || 'blade']
+export function previousWeapon(loadout,current,previous) {
+  const slots=weaponSlots(loadout)
+  return previous!==current && slots.includes(previous) ? previous : current===slots[0] ? slots[1] : slots[0]
+}
 export function weaponForBinding(loadout,code) {
   return code==='Digit1' ? loadout.primary : code==='Digit2' ? (loadout.secondary || 'pistol') : code==='Digit3' ? (loadout.melee || 'blade') : null
 }

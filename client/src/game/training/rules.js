@@ -1,3 +1,4 @@
+import {ABILITIES} from '../../../../shared/abilities.js'
 import { AIM_SECONDS,TRAINING_TARGETS,TRAINING_SOLIDS,courseAt,targetPosition } from './config.js'
 import { blocked,throughSmoke } from '../../../../shared/tactical.js'
 
@@ -40,7 +41,7 @@ export function stepCourses(s,time,dt,position) {
     if(def.course==='moving' && training.moving && t.hp>0 && time>=(t.rootedUntil || 0)) t.motionTime+=dt
     if(def.course!=='combat') return t
     const origin=targetPosition(i,t).map((v,k)=>v+(k===1 ? 0.4 : 0)),aim=position.map((v,k)=>v+(k===1 ? 0.25 : 0))
-    const smoke=s.abilities.smoke,clouds=time<smoke.activeUntil ? [{ origin:smoke.origin.map((v,k)=>v+(k===1 ? 1 : 0)),radius:4 }] : []
+    const smoke=s.abilities.smoke,clouds=time<smoke.activeUntil ? [{ origin:smoke.origin.map((v,k)=>v+(k===1 ? 1 : 0)),radius:ABILITIES.smoke.radius }] : []
     const sees=training.combat.active && t.hp>0 && time>=(t.flashUntil || 0) && Math.hypot(...origin.map((v,k)=>v-aim[k]))<28 && !blocked(origin,aim,TRAINING_SOLIDS) && !throughSmoke(origin,aim,clouds)
     if(!sees) return { ...t,seenAt:-1,tracking:false }
     if(t.seenAt<0) { t.seenAt=time;t.nextShot=time+0.85+(i%3)*0.12 }

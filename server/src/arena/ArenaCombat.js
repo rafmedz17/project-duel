@@ -36,7 +36,7 @@ export const ammoField = weapon => `${weapon}Ammo`
 const clearReload = { reloading:false,reloadStart:0,reloadEnd:0,reloadReason:'' }
 function resetLoadout(player) {
   Object.assign(player,{ killCombo:0,killAt:-10,killBadgeId:0,killHeadshot:false })
-  Object.assign(player,{ hp:100,weapon:player.startingWeapon || 'pistol',...Object.fromEntries(Object.entries(freshMagazines()).map(([id,ammo])=>[ammoField(id),ammo])),spinning:false,spinStarted:-10,windupStart:-10,windupEnd:0,...clearReload,attackReadyAt:0,lastSwitch:-10,lastShot:-10,lastSwing:-10,swings:0,shot:0,hit:-10,hitDamage:0,hitShieldDamage:0,hitDefeated:0,hitHeadshot:false,hurt:-10,respawnAt:0,shieldCharge:0,ultimateShield:0,shieldHit:-10,disabledUntil:0,flashUntil:0,flashStarted:0,rootedUntil:0,rooted:false })
+  Object.assign(player,{ hp:100,previousWeapon:'',weapon:player.startingWeapon || 'pistol',...Object.fromEntries(Object.entries(freshMagazines()).map(([id,ammo])=>[ammoField(id),ammo])),spinning:false,spinStarted:-10,windupStart:-10,windupEnd:0,...clearReload,attackReadyAt:0,lastSwitch:-10,lastShot:-10,lastSwing:-10,swings:0,shot:0,hit:-10,hitDamage:0,hitShieldDamage:0,hitDefeated:0,hitHeadshot:false,hurt:-10,respawnAt:0,shieldCharge:0,ultimateShield:0,shieldHit:-10,disabledUntil:0,flashUntil:0,flashStarted:0,rootedUntil:0,rooted:false })
 }
 
 export class ArenaCombat {
@@ -137,7 +137,7 @@ export class ArenaCombat {
       if (effect==='ammo') { Object.assign(player,clearReload); for (const weapon of Object.keys(WEAPONS)) if (WEAPONS[weapon].magazine) player[ammoField(weapon)] = WEAPONS[weapon].magazine }
     }
     if (tuning.fuse) {
-      const grenade = launchGrenade([player.x,player.y,player.z],aim.yaw ?? player.yaw,aim.pitch ?? player.pitch,player.crouched)
+      const grenade = launchGrenade([player.x,player.y,player.z],aim.yaw ?? player.yaw,aim.pitch ?? player.pitch,player.crouched,abilityId)
       this.grenades.set(id,{ ...grenade,abilityId })
       Object.assign(ability,{ activeUntil:0,flying:true,projectileX:grenade.position[0],projectileY:grenade.position[1],projectileZ:grenade.position[2] })
     }
@@ -164,7 +164,7 @@ export class ArenaCombat {
     if (intent.action==='switch') {
       if (!(player.allowedWeapons || DEFAULT_LOADOUT.weapons).includes(intent.weapon) || player.weapon===intent.weapon || now-player.lastSwitch<equipTime(player.weapon)-1e-8 || (isMelee(player.weapon) && now-player.lastSwing<WEAPONS[player.weapon].swing)) return false
       this.cancelFiring(id)
-      Object.assign(player,{ weapon:intent.weapon,...clearReload,lastSwitch:now,attackReadyAt:Math.max(player.attackReadyAt,now+equipTime(intent.weapon)) })
+      Object.assign(player,{ previousWeapon:player.weapon,weapon:intent.weapon,...clearReload,lastSwitch:now,attackReadyAt:Math.max(player.attackReadyAt,now+equipTime(intent.weapon)) })
       return true
     }
     const weapon=WEAPONS[player.weapon], modifiers=ultimateModifiers(player,now)
@@ -254,7 +254,7 @@ export class ArenaCombat {
     for (const [id,grenade] of this.grenades) {
       const owner = this.players.get(id), ability = owner?.abilities.get(grenade.abilityId), tuning = ABILITIES[grenade.abilityId]
       if (!owner || owner.hp<=0) { this.grenades.delete(id); if (ability) ability.flying = false; continue }
-      stepGrenade(grenade,1/ONLINE.tickRate,solids)
+      stepGrenade(grenade,Math.min(1/ONLINE.tickRate,Math.max(0,tuning.fuse-grenade.age)),solids)
       Object.assign(ability,{ projectileX:grenade.position[0],projectileY:grenade.position[1],projectileZ:grenade.position[2] })
       if (grenade.age+1e-8<tuning.fuse) continue
       this.grenades.delete(id)

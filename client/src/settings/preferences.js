@@ -5,7 +5,7 @@ export const ACTIONS = [
   ['forward','Move forward','KeyW'],['backward','Move backward','KeyS'],['left','Strafe left','KeyA'],['right','Strafe right','KeyD'],
   ['jump','Jump','Space'],['sprint','Sprint','ShiftLeft'],['crouch','Crouch (hold)','ControlLeft'],['fire','Fire / melee','Mouse0'],['aim','Aim / scope','Mouse2'],
   ['reload','Reload','KeyR'],['primary','Primary weapon','Digit1'],['secondary','Secondary pistol','Digit2'],['melee','Melee weapon','Digit3'],
-  ['cycle','Cycle weapons','KeyQ'],['inspect','Inspect weapon','KeyT'],['dash','Dash','KeyE'],['shield','Shield','KeyF'],
+  ['cycle','Last equipped weapon','KeyQ'],['inspect','Inspect weapon','KeyT'],['dash','Dash','KeyE'],['shield','Shield','KeyF'],
   ['unique','Unique skill','KeyC'],['ultimate','Ultimate','KeyX'],['armory','Training armory','KeyB'],['course','Start / stop training course','KeyG'],
   ['scoreboard','Scoreboard (tap)','Tab'],
 ]

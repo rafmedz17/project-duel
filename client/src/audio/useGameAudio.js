@@ -27,11 +27,17 @@ export function useGameAudio(menuVisible=true) {
             const previous=previousLobby.room?.players.find(p => p.id===player.id)
             const self=player.id===online.sessionId,pose=latestPose(player.id)
             if (!self && !pose) continue
-            if (room.roundId===previousLobby.room?.roundId) for (const cue of combatCues(previous?.combat,player.combat,self)) audio.play(cue,{weapon:player.combat.weapon,...(self ? {} : { position:[pose.x,pose.y,pose.z],gain:0.85 })})
+            if (room.roundId===previousLobby.room?.roundId) for (const cue of combatCues(previous?.combat,player.combat,self)) {
+              const detonation=cue.endsWith('-detonate') && player.combat.abilities[cue.replace('-detonate','')]
+              audio.play(cue,{weapon:player.combat.weapon,...(detonation ? {position:detonation.origin} : self ? {} : {position:[pose.x,pose.y,pose.z],gain:.85})})
+            }
           }
           for (const cue of matchCues(previousLobby.room,room,online.sessionId)) audio.play(cue)
         } else {
-          for (const cue of combatCues(previousGame,local)) audio.play(cue,{weapon:local.weapon})
+          for (const cue of combatCues(previousGame,local)) {
+            const detonation=cue.endsWith('-detonate') && local.abilities[cue.replace('-detonate','')]
+            audio.play(cue,{weapon:local.weapon,...(detonation ? {position:detonation.origin} : {})})
+          }
           local.targets.forEach((target,index)=> { if(target.shots>(previousGame.targets[index]?.shots || 0)) audio.play('rifle',{ position:targetPosition(index,target),gain:0.35 }) })
         }
       }

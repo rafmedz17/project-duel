@@ -1,3 +1,4 @@
+import {ABILITIES} from '../../../../shared/abilities.js'
 import { memo,useEffect,useMemo,useRef } from 'react'
 import { CanvasTexture,Quaternion,Euler,MathUtils } from 'three'
 import { RigidBody,CuboidCollider,useBeforePhysicsStep } from '@react-three/rapier'
@@ -83,11 +84,11 @@ function Robot({ index }) {
   })
   const revealed=()=> {
     const state=game.get(),now=game.now(),origin=runtime.position.map((v,i)=>v+(i===1 ? 0.65 : 0)),p=targetPosition(index,state.targets[index]),smoke=state.abilities.smoke
-    return now<state.abilities.scanner.activeUntil || (now<smoke.activeUntil && throughSmoke(origin,p,[{ origin:smoke.origin.map((v,i)=>v+(i===1 ? 1 : 0)),radius:4 }]) && !blocked(origin,p,TRAINING_SOLIDS))
+    return now<state.abilities.scanner.activeUntil || (now<smoke.activeUntil && throughSmoke(origin,p,[{ origin:smoke.origin.map((v,i)=>v+(i===1 ? 1 : 0)),radius:ABILITIES.smoke.radius }]) && !blocked(origin,p,TRAINING_SOLIDS))
   }
   return <RigidBody ref={body} name={`training-robot-${index}`} type="kinematicPosition" colliders={false} position={def.position} rotation={[0,def.yaw,0]}>
     {ROBOT_PARTS.map(part=><CuboidCollider key={part.id} args={part.size.map(n=>n/2)} position={part.position} enabled={!down}/>)}
-    <RobotModel enemy targetId={index} characterId={CHARACTER_IDS[index%4]} down={down} flash={s.time-target.hit<0.12 || s.time<(target.flashUntil || 0)} reveal={revealed}/>
+    <RobotModel enemy targetId={index} characterId={CHARACTER_IDS[index%4]} down={down} flashed={()=>({time:game.now(),active:game.get().targets[index].hp>0 && game.now()<(game.get().targets[index].flashUntil || 0)})} flash={s.time-target.hit<0.12} reveal={revealed}/>
     {combat && <group position={[0.25,-0.12,-0.35]} scale={0.65}><ArsenalModel weapon={WEAPONS.rifle} parts={{ flash:muzzle }} preview/></group>}
     {s.time<(target.rootedUntil || 0) && <mesh position={[0,-0.7,0]} rotation={[-Math.PI/2,0,0]}><ringGeometry args={[0.45,0.6,6]}/><meshBasicMaterial color="#bd9fff"/></mesh>}
   </RigidBody>

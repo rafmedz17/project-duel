@@ -4,6 +4,9 @@ import { MathUtils, Vector3 } from 'three'
 import { aimFov } from '../game/weapons/optics.js'
 import { game } from '../game/store.js'
 import TacticalVisual from '../game/abilities/TacticalVisual.jsx'
+import ThrowGuide from '../game/abilities/ThrowGuide.jsx'
+import {getMap} from '../../../shared/maps.js'
+import {canPlayArena} from '../../../shared/match.js'
 import { lobby, useLobby } from './lobby.js'
 import { arenaView, latestPose, samplePose } from './poses.js'
 
@@ -27,8 +30,8 @@ export default function OnlineEffects() {
     const fov = MathUtils.damp(camera.fov,aimFov(s,time,game.get().aiming,dashing,game.get().settings.fov),12,Math.min(delta,0.1))
     if (Math.abs(camera.fov-fov)>0.001) { camera.fov = fov; camera.updateProjectionMatrix() }
   },-0.5)
-  return players.map(player => <TacticalVisual key={player.id} read={() => {
+  return <><ThrowGuide read={()=>({state:lobby.self(),time:lobby.get().room?.time || 0,position:arenaView.position,yaw:arenaView.yaw,pitch:arenaView.pitch,crouched:arenaView.motion.crouched,solids:getMap(lobby.get().room?.mapId).solids,active:lobby.get().status==='connected' && lobby.get().captured && canPlayArena(lobby.get().room)})}/>{players.map(player => <TacticalVisual key={player.id} read={() => {
     const pose = player.id===id ? latestPose(id) : samplePose(player.id)
     return pose ? { state:player.combat,time:lobby.get().room.time,position:[pose.x,pose.y,pose.z],local:player.id===id } : null
-  }} />)
+  }} />)}</>
 }

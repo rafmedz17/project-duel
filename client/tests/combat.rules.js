@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { game } from '../src/game/store.js'
 import { WEAPONS,WEAPON_IDS,freshMagazines,equipTime } from '../../shared/weapons.js'
-import { validateLoadout } from '../../shared/loadout.js'
+import { validateLoadout,previousWeapon } from '../../shared/loadout.js'
 import { PISTOL,PLAYER,TARGET } from '../src/game/config.js'
 import { BoxGeometry,Mesh,MeshBasicMaterial,PerspectiveCamera,Scene,Group } from 'three'
 import { ROBOT_PARTS,ROBOT_HEAD_Y,robotParts } from '../../shared/robot.js'
@@ -339,4 +339,20 @@ test('robots match player capsule height and stationary range hit regions are ex
       }
     }
   }
+})
+
+test('training quick swap tracks only accepted switches and clears with a new run',()=>{
+  game.reset();game.set({mode:'playing'})
+  assert.equal(game.get().previousWeapon,'')
+  assert.equal(game.switchWeapon('pistol'),true)
+  assert.equal(game.get().previousWeapon,'rifle')
+  assert.equal(game.switchWeapon('blade'),false)
+  assert.equal(game.get().previousWeapon,'rifle')
+  game.tick(.5);assert.equal(game.switchWeapon('blade'),true)
+  game.tick(.5)
+  let s=game.get();assert.equal(game.switchWeapon(previousWeapon(s.loadout,s.weapon,s.previousWeapon)),true)
+  assert.equal(game.get().weapon,'pistol')
+  game.tick(.5);s=game.get();game.switchWeapon(previousWeapon(s.loadout,s.weapon,s.previousWeapon))
+  assert.equal(game.get().weapon,'blade')
+  game.reset();assert.equal(game.get().previousWeapon,'')
 })

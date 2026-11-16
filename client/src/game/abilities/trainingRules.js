@@ -21,7 +21,7 @@ export function activateTraining(s,time,id,{ position = [0,0,0],direction = [0,-
     if (effect==='ammo') Object.assign(patch,{ reloading:false,reloadWeapon:null,reloadStart:0,reloadEnd:0,reloadReason:null,magazines:Object.fromEntries(Object.entries(WEAPONS).filter(([,weapon]) => weapon.magazine).map(([key,weapon]) => [key,weapon.magazine])) })
   }
   if (tuning.fuse) {
-    const grenade = { ...launchGrenade(position,yaw,pitch,crouched),id }
+    const grenade = { ...launchGrenade(position,yaw,pitch,crouched,id),id }
     grenades.push(grenade)
     Object.assign(ability,{ activeUntil:0,flying:true,projectile:[...grenade.position] })
   }
@@ -32,8 +32,9 @@ export function stepTrainingAbilities(s,time,dt,pose,publish) {
   const abilities = { ...s.abilities }, patch = { abilities }, targets = s.targets.map(target => ({ ...target }))
   let detonated = false
   for (const grenade of grenades) {
-    stepGrenade(grenade,dt,TRAINING_SOLIDS)
-    const tuning = ABILITIES[grenade.id], ability = { ...abilities[grenade.id],projectile:[...grenade.position] }
+    const tuning=ABILITIES[grenade.id]
+    stepGrenade(grenade,Math.min(dt,Math.max(0,tuning.fuse-grenade.age)),TRAINING_SOLIDS)
+    const ability = { ...abilities[grenade.id],projectile:[...grenade.position] }
     abilities[grenade.id] = ability
     if (grenade.age+1e-8<tuning.fuse) continue
     detonated = true; grenade.finished = true

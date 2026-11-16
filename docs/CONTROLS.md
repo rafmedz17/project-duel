@@ -13,7 +13,7 @@ These are the default bindings. Open **Settings → Controls** to edit them and 
 | Hold right click | Activate holographic sights on assault rifles, SMGs and LMGs; precision scope on snipers. Release to return to hip view |
 | T | Inspect equipped weapon |
 | 1 / 2 / 3 | Primary / Pistol / Melee |
-| Q | Cycle the three equipped weapons |
+| Q | Swap to the last equipped weapon (initially toggles primary / pistol) |
 | R | Reload equipped firearm |
 | Shift | Sprint |
 | Hold Ctrl | Crouch; move slower and tighten grounded firearm spread by 20%. Release to stand when there is headroom |

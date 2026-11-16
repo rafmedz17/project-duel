@@ -12,3 +12,16 @@
 
 .flash-screen.black-flash{background:#000}.flash-screen.black-flash span{color:#53606b}
 .ability>span{flex-wrap:wrap;gap:5px}.ability kbd{max-width:100%;white-space:normal;overflow-wrap:anywhere;line-height:1.3}
+
+.flash-screen{background:radial-gradient(ellipse at 45% 40%,#fff 0%,#f5fbff 65%,#dce8f1 100%);animation:flash-impact .18s ease-out both}
+.flash-screen:after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 25%,#bed4e660 100%);animation:flash-afterimage 1.1s ease-out both}
+.flash-screen.black-flash{background:#000;animation:none}.flash-screen.black-flash:after{background:radial-gradient(ellipse at center,#15212c 0%,#000 70%);animation:flash-afterimage 1.1s ease-out both}
+@keyframes flash-impact{from{transform:scale(1.02);filter:brightness(1.2)}to{transform:scale(1);filter:brightness(1)}}
+@keyframes flash-afterimage{from{opacity:.9;transform:scale(.9)}to{opacity:0;transform:scale(1.15)}}
+.dash-slipstream{position:fixed;inset:0;z-index:6;overflow:hidden;pointer-events:none;background:linear-gradient(90deg,#63e9ff1a,transparent 18%,transparent 82%,#63e9ff1a)}
+.dash-slipstream i{position:absolute;width:20vw;height:1px;background:linear-gradient(90deg,transparent,#a3f6ffb3,transparent);box-shadow:0 0 5px #5cdfff66;animation:dash-air .19s linear infinite}
+@keyframes dash-air{from{opacity:0;transform:translateX(0) scaleX(.3)}40%{opacity:.9}to{opacity:0;transform:translateX(var(--air-drift)) scaleX(1.8)}}
+.shield-visor-panels{position:fixed;inset:12% 0;pointer-events:none;z-index:4;opacity:.35;background:linear-gradient(90deg,#74caff26,transparent 8%,transparent 92%,#74caff26);clip-path:polygon(0 0,5% 7%,3% 30%,5% 50%,3% 70%,5% 93%,0 100%,100% 100%,95% 93%,97% 70%,95% 50%,97% 30%,95% 7%,100% 0)}
+.throw-guide-hint{position:absolute;left:50%;bottom:24%;transform:translateX(-50%);padding:9px 16px;border:1px solid #9de7ff55;background:#081723dc;color:#dcf6ff;font:10px/1.5 Consolas,monospace;letter-spacing:1px;text-align:center;pointer-events:none}
+.throw-guide-hint small{display:block;margin-top:3px;color:#87b9cf;font-size:8px;letter-spacing:2px}
+@media(prefers-reduced-motion:reduce){.dash-slipstream i,.flash-screen,.flash-screen:after{animation:none}.dash-slipstream i{opacity:.35}}

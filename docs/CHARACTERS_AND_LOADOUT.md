@@ -13,16 +13,16 @@ Choose **Character & Loadout** before entering training or joining a room. The d
 
 Ultimates have a 45-second cooldown from activation, are available at the start of a run/round, and display a ten-second countdown. Death cancels temporary effects. Free Play respawns preserve cooldowns; a new Best of Three round resets them. Training pause and online connection interruptions freeze the simulation clock.
 
-Every loadout has one primary, one pistol, one melee, Dash, Shield, one freely selected unique skill and the character's fixed ultimate. Choose from all 17 playable weapons in the [arsenal](WEAPONS.md), with a live animated preview and fire/reload/inspect controls. Every preset deploys with its selected primary weapon, including older saved presets. Keys **1 / 2 / 3** always select **Primary / Pistol / Melee** and **Q** cycles those three.
+Every loadout has one primary, one pistol, one melee, Dash, Shield, one freely selected unique skill and the character's fixed ultimate. Choose from all 17 playable weapons in the [arsenal](WEAPONS.md), with a live animated preview and fire/reload/inspect controls. Every preset deploys with its selected primary weapon, including older saved presets. Keys **1 / 2 / 3** always select **Primary / Pistol / Melee** and **Q** swaps back to the last equipped weapon.
 
 | Unique skill (C) | Effect | Cooldown |
 | --- | --- | --- |
-| Flashbang | Thrown grenade with a 0.9-second fuse. Blinds the thrower and enemies within 10 meters and line of sight; teammates are immune. Facing and distance reduce flash duration, up to 3 seconds. | 14s |
-| Spectral Smoke | Thrown grenade with a 0.9-second fuse. Creates a 4-meter-radius cloud for 8 seconds. The thrower sees enemy silhouettes through their cloud; solid cover still blocks this reveal. | 18s |
+| Flashbang | Thrown grenade with a 0.9-second fuse. Blinds the thrower and enemies within 14 meters and line of sight; teammates are immune. Facing and distance reduce flash duration, up to 3 seconds. | 14s |
+| Spectral Smoke | Thrown grenade with a 0.9-second fuse. Creates a 6-meter-radius cloud for 8 seconds. The thrower sees enemy silhouettes through their cloud; solid cover still blocks this reveal. | 18s |
 | Gravity Snare | Thrown stun grenade with a 0.9-second fuse. Roots enemies within 6 meters and line of sight for 3 seconds. Movement, jumping and Dash stop; aiming and firing remain possible. Self and teammates are immune. | 16s |
 | Global Scan | Reveals enemies anywhere in the arena, including through walls, for 5 seconds. No grenade or line of sight is required. | 18s |
 
-Grenades bounce against solid arena geometry. Their trajectories, fuse, effects, enemy filtering and cooldowns are computed by the multiplayer server. Current public matches are 1v1; teammate immunity uses server-controlled team identifiers for future team modes. Grenades do not damage health. The old EMP has been replaced by the selectable unique skills.
+Hold the unique-skill binding to preview a bouncing throw, then release to launch. Grenades bounce against solid arena geometry. Their trajectories, fuse, effects, enemy filtering and cooldowns are computed by the multiplayer server. Current public matches are 1v1; teammate immunity uses server-controlled team identifiers for future team modes. Grenades do not damage health. The old EMP has been replaced by the selectable unique skills.
 
 Dash (E) travels 7.2 meters over 0.36 seconds at 20 m/s, with its existing 3-second cooldown. Solid cover still stops travel. Shield (F) absorbs 50 damage for up to 3.5 seconds with a 9-second cooldown. Both are always equipped on every character. SPECTRA bonus shield absorbs damage before normal Shield, then health. Shield never heals.
 

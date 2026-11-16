@@ -10,8 +10,8 @@ import { eyeHeight } from '../../../shared/stance.js'
 import RobotModel from '../game/characters/RobotModel.jsx'
 import RemoteEquipment from './RemoteEquipment.jsx'
 import WeaponView from '../game/weapons/WeaponView.jsx'
-import { abilityForBinding } from '../../../shared/abilities.js'
-import { weaponForBinding,weaponSlots } from '../../../shared/loadout.js'
+import { ABILITIES,abilityForBinding } from '../../../shared/abilities.js'
+import { weaponForBinding,previousWeapon } from '../../../shared/loadout.js'
 import { movementMultiplier } from '../../../shared/weapons.js'
 import { throughSmoke,blocked } from '../../../shared/tactical.js'
 import { getMap } from '../../../shared/maps.js'
@@ -25,6 +25,7 @@ import { lobby, useLobby } from './lobby.js'
 import { arenaView, latestPose, samplePose, subscribePoses } from './poses.js'
 import { createRecoil,recoilAim,resetRecoil,stepRecoil } from '../game/weapons/recoil.js'
 import { loadoutIsOpen,loadoutWindow } from './loadoutSelection.js'
+import {beginThrow,cancelThrow,throwAim} from '../game/abilities/throwAim.js'
 
 function LocalCamera({ id }) {
   const { gl } = useThree()
@@ -57,7 +58,7 @@ function LocalCamera({ id }) {
       prediction.current?.command(packet)
       jump.current = false
     }
-    const clear = () => { fireInput.current=false;lobby.combat('release'); game.set({ aiming:false }); held.current = false; keys.current.clear(); jump.current = false; send() }
+    const clear = () => { cancelThrow();fireInput.current=false;lobby.combat('release'); game.set({ aiming:false }); held.current = false; keys.current.clear(); jump.current = false; send() }
     clearInput.current = clear
     const down = event => {
       if(event.code==='Escape') {
@@ -75,7 +76,12 @@ function LocalCamera({ id }) {
       const ability = abilityForBinding(lobby.self().loadout,code)
       if (ability) {
         event.preventDefault()
-        if (!event.repeat) { send(); lobby.combat('ability',{ ability,yaw:look.current?.yaw || 0,pitch:look.current?.pitch || 0 }) }
+        if (!event.repeat) {
+          if(ABILITIES[ability].fuse) {
+            if(lobby.get().room.time<lobby.self().abilities[ability].readyAt) return
+            held.current=false;fireInput.current=false;lobby.combat('release');game.set({aiming:false});beginThrow(ability,code,'online')
+          } else {send();lobby.combat('ability',{ability,yaw:look.current?.yaw || 0,pitch:look.current?.pitch || 0})}
+        }
         return
       }
       const weapon = weaponForBinding(lobby.self().loadout,code)
@@ -85,8 +91,8 @@ function LocalCamera({ id }) {
         held.current = false;fireInput.current=false;game.set({ aiming:false }); lobby.combat('release')
         if (code==='KeyR') lobby.combat('reload')
         else {
-          const equipped = weaponSlots(lobby.self().loadout)
-          lobby.combat('switch',{ weapon:weapon || equipped[(equipped.indexOf(lobby.self().weapon)+1)%equipped.length] })
+          const s=lobby.self()
+          lobby.combat('switch',{ weapon:weapon || previousWeapon(s.loadout,s.weapon,s.previousWeapon) })
         }
         return
       }
@@ -96,7 +102,9 @@ function LocalCamera({ id }) {
       if (code === 'Space' && !event.repeat) jump.current = true
       if (!event.repeat) send()
     }
-    const up = event => { const code=canonicalCode(event,game.get().settings);keys.current.delete(code);release(event,code);if (active()) send() }
+    const up = event => { const code=canonicalCode(event,game.get().settings);
+      if(throwAim.scope==='online' && code===throwAim.code) {const ability=throwAim.id;cancelThrow();if(active() && lobby.self()?.hp>0) {send();lobby.combat('ability',{ability,yaw:look.current?.yaw || 0,pitch:look.current?.pitch || 0})}}
+      keys.current.delete(code);release(event,code);if (active()) send() }
     const move = event => {
       if (!active() || !aim.current) return
       const settings=game.get().settings,sensitivity=PLAYER.sensitivity*lookMultiplier(settings,lobby.self(),lobby.get().room.time,{aiming:game.get().aiming,firing:fireInput.current})
@@ -105,7 +113,7 @@ function LocalCamera({ id }) {
       look.current=recoilAim(aim.current,recoil.current)
     }
     const fire = (event,code) => {
-      if (!active() || lobby.self()?.hp<=0 || lobby.self()?.reloading) return
+      if (!active() || lobby.self()?.hp<=0 || lobby.self()?.reloading || throwAim.id) return
       event.preventDefault()
       if (code==='Mouse2') { if(!event.repeat) game.set({ aiming:game.get().settings.scopeMode==='tap' ? !game.get().aiming : true });return }
       if (code!=='Mouse0' || event.repeat || !look.current) return
@@ -258,10 +266,10 @@ function RemotePlayer({ player }) {
     if (!self || self.hp<=0 || !pose) return false
     if (time<self.abilities.scanner.activeUntil) return true
     const smoke = self.abilities.smoke, origin = arenaView.position.map((v,i) => v+(i===1 ? eyeHeight(arenaView.motion.crouched) : 0)), target = [pose.x,pose.y,pose.z]
-    return time<smoke.activeUntil && throughSmoke(origin,target,[{ origin:smoke.origin.map((v,i)=>v+(i===1 ? 1 : 0)),radius:4 }]) && !blocked(origin,target,getMap(lobby.get().room.mapId).solids)
+    return time<smoke.activeUntil && throughSmoke(origin,target,[{ origin:smoke.origin.map((v,i)=>v+(i===1 ? 1 : 0)),radius:ABILITIES.smoke.radius }]) && !blocked(origin,target,getMap(lobby.get().room.mapId).solids)
   }
   return <group ref={root} name={`remote-player-${player.id}`}>
-    <RobotModel enemy equipped headRef={head} stance={()=>samplePose(player.id)?.crouched || false} characterId={player.combat.characterId} color={player.connected ? undefined : '#728599'} reveal={reveal} />
+    <RobotModel enemy equipped flashed={()=>({time:lobby.get().room?.time || 0,active:player.combat.hp>0 && player.connected && (lobby.get().room?.time || 0)<player.combat.flashUntil})} headRef={head} stance={()=>samplePose(player.id)?.crouched || false} characterId={player.combat.characterId} color={player.connected ? undefined : '#728599'} reveal={reveal} />
     <RemoteEquipment player={player}/>
   </group>
 }

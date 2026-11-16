@@ -36,7 +36,7 @@ test('blade switching, range, melee damage, ammo preservation, pause and restart
   expect((await state(page)).reloading).toBe(false)
   await page.waitForTimeout(850)
   await page.keyboard.press('KeyQ')
-  expect((await state(page)).weapon).toBe('rifle')
+  expect((await state(page)).weapon).toBe('pistol')
   await page.waitForTimeout(300)
   await page.keyboard.press('Digit3')
   await lookAt(page,0,0)

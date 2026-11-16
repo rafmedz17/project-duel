@@ -1,8 +1,9 @@
+import {throwAim} from '../abilities/throwAim.js'
 import { useEffect } from 'react'
 import { Euler } from 'three'
 import { createWeaponTracer } from './traceWeapon.js'
 import { WEAPONS } from '../config.js'
-import { weaponForBinding,weaponSlots } from '../../../../shared/loadout.js'
+import { weaponForBinding,previousWeapon } from '../../../../shared/loadout.js'
 import { game } from '../store.js'
 import { canonicalCode } from '../../settings/preferences.js'
 import { trainingShotMotion } from './accuracy.js'
@@ -20,14 +21,14 @@ export function useCombatInput(camera,canvas,scene,look,fireInput) {
     const key=event=> {
       if (!active() || event.repeat) return
       const code=canonicalCode(event,game.get().settings)
-      if(code==='Mouse0') { event.preventDefault();fireInput.current=true;game.trigger(readTrace,WEAPONS[game.get().weapon].fireMode==='auto');return }
+      if(code==='Mouse0' && !throwAim.id) { event.preventDefault();fireInput.current=true;game.trigger(readTrace,WEAPONS[game.get().weapon].fireMode==='auto');return }
       if(code==='Mouse2') { event.preventDefault();game.set({ aiming:game.get().settings.scopeMode==='tap' ? !game.get().aiming : true });return }
       if (code==='KeyT') { event.preventDefault();game.set({ inspectAt:game.now() }); return }
       const selection=weaponForBinding(game.get().loadout,code)
       if (code!=='KeyR' && code!=='KeyQ' && !selection) return
       event.preventDefault(); interrupt()
       if (code==='KeyR') game.reload()
-      else { const slots=weaponSlots(game.get().loadout); game.switchWeapon(selection || slots[(slots.indexOf(game.get().weapon)+1)%slots.length]) }
+      else { const s=game.get();game.switchWeapon(selection || previousWeapon(s.loadout,s.weapon,s.previousWeapon)) }
     }
     const up=event=> { const code=canonicalCode(event,game.get().settings);if (code==='Mouse0') {fireInput.current=false;game.releaseTrigger()}if (code==='Mouse2' && game.get().settings.scopeMode==='hold') game.set({ aiming:false }) }
     const context=event=> { if (active()) event.preventDefault() }

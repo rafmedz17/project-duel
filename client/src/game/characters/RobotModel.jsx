@@ -5,10 +5,11 @@ import { useFrame } from '@react-three/fiber'
 import { BackSide,MeshBasicMaterial,MeshStandardMaterial } from 'three'
 import { useGame } from '../store.js'
 import { armorGeometry } from './armorGeometry.js'
+import FlashedHeadEffect from '../abilities/FlashedHeadEffect.jsx'
 
 const noRaycast=()=>null
 
-export default function RobotModel({ targetId,characterId='vex',color,flash=false,down=false,headRef,revealed=false,reveal,enemy=false,stance,equipped=false }) {
+export default function RobotModel({ targetId,characterId='vex',color,flash=false,down=false,headRef,revealed=false,reveal,enemy=false,stance,equipped=false,flashed }) {
   const settings=useGame(s=>s.settings),aura=enemy && settings.enemyAura && !down
   const character=getCharacter(characterId),accent=color || character.color
   const root=useRef(),parts=useRef({}),lastStance=useRef(false)
@@ -42,7 +43,7 @@ export default function RobotModel({ targetId,characterId='vex',color,flash=fals
     armor.emissive.set(flash ? '#ffffff' : visible ? accent : aura ? settings.enemyColor : '#000000')
     armor.emissiveIntensity=flash ? .8 : visible ? 1.25 : aura ? .09 : 0
     light.color.set(down ? '#34404c' : flash ? '#ffffff' : accent)
-    // Subtle reactor breathing; no flashing skills or extra combat effects.
+    // Subtle reactor breathing stays separate from the blind-status indicator.
     light.color.multiplyScalar(down ? 1 : .9+Math.sin(clock.elapsedTime*1.7+Number(character.number))*.1)
     root.current.traverse(mesh=>{if(mesh.userData.characterArmor) mesh.renderOrder=visible ? 100 : 0})
   })
@@ -54,6 +55,7 @@ export default function RobotModel({ targetId,characterId='vex',color,flash=fals
       <mesh name={`armor-${part.id}`} geometry={geometry[index].armor} material={materials.armor} dispose={null} raycast={noRaycast} userData={{characterArmor:true}}/>
       {geometry[index].lights.attributes.position && <mesh name={`armor-lights-${part.id}`} geometry={geometry[index].lights} material={materials.light} dispose={null} raycast={noRaycast} userData={{characterArmor:true}}/>}
       {aura && <mesh name="enemy-aura" scale={[1.035,1.035,1.035]} geometry={geometry[index].armor} material={materials.outline} dispose={null} raycast={noRaycast}/>}
+      {part.id==='head' && flashed && <FlashedHeadEffect read={()=>{const state=flashed();return {...state,active:!down && state?.active}}}/>}
     </group>)}
   </group>
 }

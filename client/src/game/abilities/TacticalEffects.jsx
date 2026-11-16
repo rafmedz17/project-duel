@@ -7,6 +7,8 @@ import { targetEnabled } from '../training/rules.js'
 import { aimFov } from '../weapons/optics.js'
 import { game } from '../store.js'
 import { runtime } from '../runtime.js'
+import ThrowGuide from './ThrowGuide.jsx'
+import {TRAINING_SOLIDS} from '../training/config.js'
 
 export default function TacticalEffects() {
   const point = useRef(new Vector3())
@@ -28,5 +30,5 @@ export default function TacticalEffects() {
     const fov = MathUtils.damp(camera.fov,aimFov(s,time,s.aiming,dashing,s.settings.fov),12,Math.min(delta,0.1))
     if (Math.abs(camera.fov-fov)>0.001) { camera.fov = fov; camera.updateProjectionMatrix() }
   },-0.5)
-  return <TacticalVisual read={() => ({ state:game.get(),time:game.now(),position:runtime.position,local:true })} />
+  return <><ThrowGuide read={()=>({state:game.get(),time:game.now(),position:runtime.position,yaw:runtime.yaw,pitch:runtime.pitch,crouched:runtime.crouched,solids:TRAINING_SOLIDS,active:game.get().mode==='playing'})}/><TacticalVisual read={() => ({ state:game.get(),time:game.now(),position:runtime.position,local:true })} /></>
 }

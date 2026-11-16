@@ -127,3 +127,17 @@ test('death cancels effects but preserves cooldowns through respawn; a new arena
   assert.equal(b.abilities.get('scanner').readyAt,0)
   assert.equal(b.disabledUntil,0)
 })
+
+test('weapon history changes only on an accepted switch and resets with the new life',t=>{
+  const {a,send,advance,combat}=setup(t)
+  assert.equal(a.previousWeapon,'')
+  assert.equal(send('a','switch',{weapon:'rifle'}),true)
+  assert.equal(a.previousWeapon,'pistol')
+  assert.equal(send('a','switch',{weapon:'blade'}),false)
+  assert.equal(a.previousWeapon,'pistol')
+  advance(.4)
+  assert.equal(send('a','switch',{weapon:'pistol'}),true)
+  assert.equal(a.previousWeapon,'rifle')
+  combat.resetRound(2)
+  assert.equal(a.previousWeapon,'')
+})
