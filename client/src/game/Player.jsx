@@ -89,12 +89,13 @@ export default function Player() {
     Object.assign(m,{body:body.current,collider:collider.current})
     updateStance(m,pressed.has('ControlLeft') || pressed.has('ControlRight'))
     runtime.crouched=m.crouched
+    runtime.slowWalking=pressed.has('ShiftLeft') || pressed.has('ShiftRight')
     let x = Number(pressed.has('KeyD')) - Number(pressed.has('KeyA'))
     let z = Number(pressed.has('KeyS')) - Number(pressed.has('KeyW'))
     if (game.now()<game.get().rootedUntil) { x=0; z=0; m.x=0; m.z=0; m.jump=false; m.dashRemaining=0 }
     const length = Math.hypot(x,z) || 1
     x /= length; z /= length
-    const speed = (m.crouched ? PLAYER.speed*CROUCH.speed : pressed.has('ShiftLeft') || pressed.has('ShiftRight') ? PLAYER.sprint : PLAYER.speed)*movementMultiplier(game.get().weapon)*ultimateModifiers(game.get(),game.now()).movement
+    const speed = (PLAYER.speed * Math.min(m.crouched ? CROUCH.speed : 1, runtime.slowWalking ? PLAYER.slowWalk : 1))*movementMultiplier(game.get().weapon)*ultimateModifiers(game.get(),game.now()).movement
     const yaw = look.current.yaw, smooth = 1-Math.exp(-14*dt)
     m.x += ((x*Math.cos(yaw)+z*Math.sin(yaw))*speed-m.x)*smooth
     m.z += ((z*Math.cos(yaw)-x*Math.sin(yaw))*speed-m.z)*smooth

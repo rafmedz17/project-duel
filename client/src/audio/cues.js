@@ -35,7 +35,7 @@ export function matchCues(previous,current,selfId) {
 export class Footsteps {
   samples = new Map()
   clear() { this.samples.clear() }
-  update(id,position,grounded,now,{speed=0,verticalSpeed=0,enabled=true}={}) {
+  update(id,position,grounded,now,{speed=0,verticalSpeed=0,enabled=true,silent=false}={}) {
     const previous=this.samples.get(id)
     const sample={ position:[...position],grounded,time:now,enabled,distance:0,last:previous?.last ?? now,side:previous?.side ?? -1,airTime:0,peak:position[1] }
     this.samples.set(id,sample)
@@ -52,6 +52,7 @@ export class Footsteps {
       const drop=previous.peak-position[1]
       return previous.airTime>.1 && drop>.15 ? [{name:'land',impact:Math.min(1.8,.8+drop*.3)}] : []
     }
+    if(silent) return []
     const pace=speed>6.3 ? 'sprint' : 'walk',stride=pace==='sprint' ? 2.05 : 1.65
     sample.distance=previous.distance+distance
     if(sample.distance<stride || now-sample.last<.17) return []

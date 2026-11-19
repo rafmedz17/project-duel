@@ -56,11 +56,11 @@ export function useGameAudio(menuVisible=true) {
             if (!pose) continue
             const self=player.id===online.sessionId,p=[pose.x,pose.y,pose.z]
             const enabled=live && player.combat.hp>0 && online.room.time>=player.combat.abilities.dash.activeUntil
-            for(const {name,...options} of steps.update(player.id,p,pose.grounded,now,{enabled,speed:Math.hypot(pose.vx,pose.vz),verticalSpeed:pose.vy})) audio.play(name,{...options,surface:online.room.mapId==='neon' ? 'concrete' : 'metal',...(self ? {gain:.55} : {position:p,gain:.8})})
+            for(const {name,...options} of steps.update(player.id,p,pose.grounded,now,{enabled,silent:pose.slowWalking,speed:Math.hypot(pose.vx,pose.vz),verticalSpeed:pose.vy})) audio.play(name,{...options,surface:online.room.mapId==='neon' ? 'concrete' : 'metal',...(self ? {gain:.55} : {position:p,gain:.8})})
           }
         } else {
           const enabled=local.hp>0 && local.time>=local.abilities.dash.activeUntil
-          for(const {name,...options} of steps.update('self',position,runtime.grounded,now,{enabled,speed:Math.hypot(runtime.velocity[0],runtime.velocity[2]),verticalSpeed:runtime.velocity[1]})) audio.play(name,{...options,surface:'metal',gain:.55})
+          for(const {name,...options} of steps.update('self',position,runtime.grounded,now,{enabled,silent:runtime.slowWalking,speed:Math.hypot(runtime.velocity[0],runtime.velocity[2]),verticalSpeed:runtime.velocity[1]})) audio.play(name,{...options,surface:'metal',gain:.55})
         }
         audio.diagnostics()
       }

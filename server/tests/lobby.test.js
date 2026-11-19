@@ -531,3 +531,12 @@ test('disconnect freezes round intermission; reconnect preserves score; permanen
   await join(t,host.roomId,'Replacement')
   await until(() => host.state.players.size===2)
 })
+
+test('slow-walk state is synchronized to the other player and clears on release',async t => {
+  const {host,guest}=await pair(t)
+  await launch(host,guest)
+  host.send('move',movement(0,{x:1,sprint:true}))
+  await until(()=>guest.state.players.get(host.sessionId).arsenal.slowWalking===true)
+  host.send('move',movement(1,{x:1}))
+  await until(()=>guest.state.players.get(host.sessionId).arsenal.slowWalking===false)
+})

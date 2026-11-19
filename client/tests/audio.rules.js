@@ -121,3 +121,13 @@ test('sound settings clamp unsafe values, preserve silence at zero and survive t
   assert.equal(game.get().settings.volume,0.3); assert.equal(game.get().settings.muted,true)
   game.settings({ volume:0.55,muted:false })
 })
+
+test('slow walking suppresses steps but preserves jump and landing sounds and resumes steps afterward',()=>{
+  const steps=new Footsteps()
+  steps.update('p',[0,1,0],true,0)
+  assert.deepEqual(steps.update('p',[0,1,2],true,.4,{speed:2.25,silent:true}),[])
+  assert.deepEqual(steps.update('p',[0,1.1,2],false,.45,{silent:true,verticalSpeed:6}),[{name:'jump'}])
+  steps.update('p',[0,2,2],false,.65,{silent:true})
+  assert.equal(steps.update('p',[0,1,2],true,.85,{silent:true})[0].name,'land')
+  assert.deepEqual(steps.update('p',[0,1,4],true,1.2,{speed:5}),[{name:'step',pace:'walk',pan:.12}])
+})

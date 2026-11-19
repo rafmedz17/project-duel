@@ -1,0 +1,22 @@
+# This is a clothes file for MakeHuman Community, exported by MakeClothes 2
+#
+# author: MatCreator
+# license: CC0
+#
+name MC-SciFi-Armor_Jupiter7 material
+
+// Color shading attributes
+diffuseColor  1.0000 1.0000 1.0000
+specularColor  0.3333 0.3333 0.3333
+shininess 0.3333
+opacity 1
+
+// Textures
+
+diffuseTexture SciFi-Armor_Jupiter7_MAT_color.jpg
+// Settings
+
+transparent False
+alphaToCoverage True
+backfaceCull False
+depthless False

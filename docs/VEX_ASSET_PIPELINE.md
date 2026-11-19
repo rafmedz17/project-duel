@@ -1,7 +1,32 @@
 # VEX prototype: zero-budget asset plan
 
-Status: preparation only. No external character asset has been downloaded, built,
-or integrated. The game still uses its existing character models.
+Status: the project owner created `vex_base.blend` in MPFB. An early unrigged
+art study using CC0 armor and hood assets is saved at
+`assets-source/characters/vex/vex_prototype_draft.blend`. A second visual study,
+`vex_visual_study.blend`, adds cyan accents and a split cape; front, side and
+back preview images and an asset license record are alongside it. An MPFB
+game-engine rig study and a reduced-mesh copy are saved as `vex_rig_study.blend`
+and `vex_low_rig_study.blend`. Both contain a temporary test-step animation,
+not a finished movement set. The reduced copy has 11,336 source triangles and
+at most four deform influences per vertex, but retains many separate objects
+and has not been measured in game. It shows some armor clipping in the test
+pose. Separate `vex_idle_study.blend` and `vex_walk_study.blend` files contain
+early in-place keyframed blocking cycles; they are not polished gameplay clips.
+`vex_mixamo_compatibility_test.fbx` is a neutral 53-bone, five-mesh export,
+without cape or accent meshes. The user uploaded it to Mixamo and downloaded
+`Walking.fbx`. `vex_mixamo_walk_study.blend` applies a copied version of that
+clip to the original low-detail rig, cape and accents. Source and target bone
+rest matrices and sampled bone-local poses were checked; object-level motion
+was removed for an in-place study. Its endpoints nearly match, and the rig
+remains fixed in the scene. `vex_walk_refined_study.blend` preserves those body
+poses, adds a four-bone cape sway without cloth simulation, and makes a small
+rest-pose armor clearance adjustment. A nearest-surface diagnostic across all
+42 frames found fewer penetrating armor vertices in every frame, although
+intersections and visible deformation artifacts remain. The result needs
+animation and deformation review and has not been tested in game.
+The study is not game-ready: the design, deformation, animation, draw calls
+and performance still require substantial work.
+The game still uses its existing character models.
 
 ## First milestone
 
@@ -133,3 +158,39 @@ messages, or hit validation for this prototype.
 
 Only proceed to SPECTRA, ZERO, or AXIOM after VEX passes visual and performance
 review. No smoothness claim can be made until the prototype is measured.
+
+## Rifle walk fitting study
+
+`vxr9_game_reference.glb` is a Blender reference exported from the project's
+existing VXR-9 weapon model. `vex_rifle_walk_study.blend` fits it to the VEX
+walk using Blender hand anchors and constraints, without changing the walk.
+Across the 42-frame loop, the weapon's grip landmarks stay within 1 mm of
+those anchors. This does not verify finger placement or prevent mesh clipping.
+The Blender constraints do not implement runtime weapon attachment.
+
+The reference imports as 87 mesh objects and approximately 10,194 triangles,
+in addition to the character. It is not optimized or tested in the game. Review
+the grip and armor deformation, optimize the asset and draw calls, implement
+runtime attachment, and measure performance on the target PC before use.
+
+A close-up grip review at frame 10 is available in `vex_grip_check_front.png`
+and `vex_grip_check_above.png`. The weapon aligns to hand-bone landmarks, but
+this does not establish exact finger-to-grip contact. The body has finger-bone
+weights; the bodysuit has few finger-group weights, which alone does not prove
+an issue without checking which vertices it contains. Further manual posing and
+animation-frame inspection are required before claiming a finished grip.
+
+A standalone production-build browser preview is available at
+`/vex-preview.html`. It uses `client/public/vex-preview/vex-walk.glb`, exported
+from the rifle walk study with sampled animation, and plays the character and
+rifle animation tracks together. It is a review page, not a playable character.
+Its approximately 1.2 MB GLB and many meshes have not been optimized or
+profiled on the target computer. Publishing the preview requires a deployment.
+
+`vex_rifle_idle_study.blend` applies the downloaded Mixamo rifle idle to the
+same VEX rig and retains the original study separately. Its 53 body rest bones
+match; the VEX rig also has four cape bones. The support-hand attachment differs
+from its rifle socket by up to approximately 3.8 cm during this idle, so the
+grip needs adjustment. The standalone browser preview can switch between the
+walk and idle studies. They are separate prototype exports, not blended game
+movement, and neither has been tested on the target machine.

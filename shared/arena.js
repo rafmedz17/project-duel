@@ -1,5 +1,5 @@
 // Shared by the rendered facility and the authoritative server collision world.
-export const PLAYER = { height:1.7,radius:0.35,speed:5,sprint:8.5,jump:7,gravity:21,eye:0.65,spawn:[0,1,15],sensitivity:0.002 }
+export const PLAYER = { height:1.7,radius:0.35,speed:5,sprint:8.5,slowWalk:0.45,jump:7,gravity:21,eye:0.65,spawn:[0,1,15],sensitivity:0.002 }
 export const COVER = [[-8,1.25,-5,3,2.5,2],[8,1.25,-5,3,2.5,2],[-8,1.25,6,3,2.5,2],[8,1.25,6,3,2.5,2],[-3,0.65,0,3,1.3,2],[3,0.65,0,3,1.3,2]]
 const box = (position,size,color = '#263849') => ({ position,size,color })
 export const ARENA_SOLIDS = [

@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+﻿import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { ArenaSimulation } from '../src/arena/ArenaSimulation.js'
 import { PLAYER, ONLINE } from '../../shared/arena.js'
@@ -30,22 +30,24 @@ test('server owns time, rejects position/time/identity spoofing, malformed value
   assert.ok(p.x>0 && p.x<PLAYER.speed/ONLINE.tickRate)
 })
 
-test('walk/sprint speeds are bounded and diagonal movement is normalized',t => {
+test('normal and slow-walk speeds are bounded and diagonal movement is normalized',t => {
   const a = create(t), b = create(t), c = create(t)
   advance(a.sim,60,{ x:1 }); advance(b.sim,60,{ x:1,z:-1 }); advance(c.sim,60,{ x:1,sprint:true })
   const straight = a.players.get('0').x, diagonal = b.players.get('0')
   assert.ok(Math.abs(Math.hypot(diagonal.x,diagonal.z-15)-straight)<0.01)
   assert.ok(straight>4 && straight<=PLAYER.speed)
-  assert.ok(c.players.get('0').x>straight && c.players.get('0').x<=PLAYER.sprint)
+  assert.ok(c.players.get('0').x>0 && c.players.get('0').x<straight)
+  assert.ok(c.players.get('0').x<=PLAYER.speed*PLAYER.slowWalk)
+  assert.equal(c.players.get('0').slowWalking,true)
 })
 
 test('actual Rapier walls, pillars and cover stop movement without tunnelling',t => {
   const wall = create(t)
-  advance(wall.sim,480,{ z:-1,sprint:true })
+  advance(wall.sim,480,{ z:-1 })
   assert.ok(wall.players.get('0').z > -18.5 && wall.players.get('0').z < -18.3)
   const cover = create(t)
   advance(cover.sim,100,{ x:1 }) // x approximately 8, facing the south-east cover.
-  advance(cover.sim,180,{ z:-1,sprint:true },100)
+  advance(cover.sim,180,{ z:-1 },100)
   const p = cover.players.get('0')
   assert.ok(p.x>7.5 && p.x<8.5)
   assert.ok(p.z>7.3 && p.z<7.5)
@@ -96,4 +98,18 @@ test('the two server-owned capsules cannot pass through each other',t => {
     minimumSeparation = Math.min(minimumSeparation,Math.hypot(a.x-b.x,a.z-b.z))
   }
   assert.ok(minimumSeparation>=ONLINE.capsuleRadius*2-0.01,`Closest capsule separation: ${minimumSeparation}`)
+})
+
+
+test('slow-walk state clears on release, input timeout and respawn',t => {
+  const {sim,players}=create(t), player=players.get('0')
+  sim.receive('0',input(0,{x:1,sprint:true}),0);sim.step(0)
+  assert.equal(player.slowWalking,true)
+  sim.receive('0',input(1,{x:1}),20);sim.step(20)
+  assert.equal(player.slowWalking,false)
+  sim.receive('0',input(2,{x:1,sprint:true}),40);sim.step(40)
+  sim.step(40+ONLINE.inputTimeoutMs+1)
+  assert.equal(player.slowWalking,false)
+  sim.receive('0',input(3,{x:1,sprint:true}),4000);sim.step(4000)
+  sim.respawn('0');assert.equal(player.slowWalking,false)
 })

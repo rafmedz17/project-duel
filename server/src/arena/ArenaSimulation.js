@@ -32,7 +32,7 @@ export class ArenaSimulation {
       const spawn = this.spawnFor(id,player,true)
       const [x,y,z] = spawn.position
       this.players.set(id,{ ...createCharacter(RAPIER,this.world,spawn.position),player,input:null,lastSequence:-1,jumpHeld:false,jumpPending:false })
-      Object.assign(player,{ x,y,z,yaw:spawn.yaw,pitch:0,crouched:false,grounded:false,active:false,inputSequence:-1,inputSteps:0,vx:0,vy:0,vz:0,dashRemaining:0,dashX:0,dashZ:0 })
+      Object.assign(player,{ x,y,z,yaw:spawn.yaw,pitch:0,crouched:false,slowWalking:false,grounded:false,active:false,inputSequence:-1,inputSteps:0,vx:0,vy:0,vz:0,dashRemaining:0,dashX:0,dashZ:0 })
     }
     this.world.step()
   }
@@ -64,7 +64,7 @@ export class ArenaSimulation {
     const entry = this.players.get(id)
     if (!entry) return
     entry.input = null; entry.vx = 0; entry.vz = 0; entry.jumpPending = false; entry.jumpHeld = false
-    entry.player.active = false
+    entry.player.active = false; entry.player.slowWalking = false
     this.cancelDash(id)
   }
 
@@ -121,7 +121,7 @@ export class ArenaSimulation {
     entry.knockX=0; entry.knockZ=0
     entry.grounded = false
     entry.shotVelocity=[0,0,0];entry.shotGrounded=true
-    Object.assign(entry.player,{ x,y,z,yaw:spawn.yaw,pitch:0,crouched:false,grounded:false,vx:0,vy:0,vz:0,dashRemaining:0 })
+    Object.assign(entry.player,{ x,y,z,yaw:spawn.yaw,pitch:0,crouched:false,slowWalking:false,grounded:false,vx:0,vy:0,vz:0,dashRemaining:0 })
   }
 
   step(now = performance.now()) {
@@ -140,6 +140,7 @@ export class ArenaSimulation {
       player.yaw = yaw; player.pitch = input?.pitch ?? player.pitch; player.active = active
       player.grounded = entry.grounded
       player.crouched = entry.crouched
+      player.slowWalking = Boolean(active && input?.sprint && !player.rooted)
       if (player.inputSequence!==entry.lastSequence) { player.inputSequence = entry.lastSequence; player.inputSteps = 0 }
       player.inputSteps++
     }

@@ -32,7 +32,7 @@ export function stepCharacter(entry, input, jump = false) {
   let x = input?.active ? input.x : 0, z = input?.active ? input.z : 0
   const length = Math.max(1,Math.hypot(x,z))
   x /= length; z /= length
-  const speed = (entry.crouched ? PLAYER.speed*CROUCH.speed : input?.sprint ? PLAYER.sprint : PLAYER.speed)*(entry.movement || 1), yaw = input?.yaw || 0
+  const speed = (PLAYER.speed * Math.min(entry.crouched ? CROUCH.speed : 1, input?.active && input.sprint ? PLAYER.slowWalk : 1))*(entry.movement || 1), yaw = input?.yaw || 0
   const smooth = 1-Math.exp(-14*dt)
   entry.vx += ((x*Math.cos(yaw)+z*Math.sin(yaw))*speed-entry.vx)*smooth
   entry.vz += ((z*Math.cos(yaw)-x*Math.sin(yaw))*speed-entry.vz)*smooth
