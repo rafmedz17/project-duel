@@ -8,8 +8,9 @@ import { readRecovery, saveRecovery, clearRecovery } from './recovery.js'
 import { queueShotTrail,trailScope } from '../game/effects/shotTrails.js'
 import { validateLoadoutBank,validSlot } from '../../../shared/loadoutBank.js'
 import { loadoutWindow } from './loadoutSelection.js'
+import {appendKill} from './killFeed.js'
 
-const empty = { status:'idle',room:null,bank:null,sessionId:'',error:'',notice:'',captured:false,captureError:'',arenaReady:false,background:false,menuOpen:false,closedLoadout:'' }
+const empty = { status:'idle',room:null,bank:null,sessionId:'',error:'',notice:'',captured:false,captureError:'',arenaReady:false,background:false,menuOpen:false,closedLoadout:'',killFeed:[] }
 let snapshot = empty
 let activeRoom = null
 let attempt = 0
@@ -17,8 +18,17 @@ let timeoutId
 let sequence = 0
 let combatSequence = 0
 let lastTicketWrite = 0
+let feedTimer
 const listeners = new Set()
 function update(patch) { snapshot = { ...snapshot,...patch }; listeners.forEach(listener => listener()) }
+function scheduleFeedExpiry() {
+  clearTimeout(feedTimer)
+  if(!snapshot.killFeed.length) return
+  feedTimer=setTimeout(()=>{
+    update({killFeed:snapshot.killFeed.filter(row=>row.expiresAt>performance.now())})
+    scheduleFeedExpiry()
+  },Math.max(1,Math.min(...snapshot.killFeed.map(row=>row.expiresAt))-performance.now()))
+}
 function endpoint() {
   if (import.meta.env.VITE_MULTIPLAYER_URL) return import.meta.env.VITE_MULTIPLAYER_URL
   const url = new URL(location.origin)
@@ -60,11 +70,13 @@ function sync(room) {
   // Positions stay outside React; combat HUD receives authoritative 20 Hz snapshots.
   if (JSON.stringify(next) !== JSON.stringify(snapshot.room)) {
     const entering=next.arenaActive && (!snapshot.room?.arenaActive || snapshot.room.arenaEpoch!==next.arenaEpoch)
-    update({room:next,...(entering ? {menuOpen:false,closedLoadout:'',background:next.format!=='freeplay'} : {})})
+    if(entering || !next.arenaActive) clearTimeout(feedTimer)
+    update({room:next,...(entering || !next.arenaActive ? {killFeed:[]} : {}),...(entering ? {menuOpen:false,closedLoadout:'',background:next.format!=='freeplay'} : {})})
   }
 }
 
 function attach(room,notice = '') {
+  clearTimeout(feedTimer)
   activeRoom = room
   sequence = 0; combatSequence = 0
   Object.assign(room.reconnection,{ minUptime:0,maxRetries:10,minDelay:250,maxDelay:2000,maxEnqueuedMessages:0 })
@@ -82,6 +94,13 @@ function attach(room,notice = '') {
     if(activeRoom!==room || snapshot.status!=='connected' || !current?.arenaActive || current.phase!=='arena' || event?.epoch!==current.arenaEpoch || event.round!==current.roundId || !current.players.has(event.id)) return
     queueShotTrail({ ...event,scope:trailScope(current) })
   })
+  room.onMessage('elimination',event=>{
+    const current=room.state
+    if(activeRoom!==room || snapshot.status!=='connected' || !current?.arenaActive || event?.epoch!==current.arenaEpoch || event.round!==current.roundId) return
+    const killFeed=appendKill(snapshot.killFeed,event,performance.now())
+    if(killFeed===snapshot.killFeed) return
+    update({killFeed});scheduleFeedExpiry()
+  })
   room.onDrop(() => { if (activeRoom===room) update({ status:'reconnecting',captured:false,notice:'Connection interrupted. Reconnecting…' }) })
   room.onReconnect(() => {
     if (activeRoom!==room) return
@@ -98,7 +117,7 @@ function attach(room,notice = '') {
     clearRecovery(); clearPoses(); document.exitPointerLock?.()
     update({ ...empty,status:'error',error:'You were disconnected from the room. Create or join a room to try again.' })
   })
-  update({ status:'connected',sessionId:room.sessionId,error:'',notice })
+  update({ status:'connected',sessionId:room.sessionId,error:'',notice,killFeed:[] })
   room.send('loadout-bank')
   room.send('latency-ready')
   sync(room)
@@ -233,6 +252,7 @@ export const lobby = {
     } catch { update({ captured:false,captureError:'Mouse capture was blocked. Click to aim to try again.' }) }
   },
   leave() {
+    clearTimeout(feedTimer)
     attempt++
     clearRecovery()
     clearTimeout(timeoutId)

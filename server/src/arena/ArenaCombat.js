@@ -54,7 +54,7 @@ export class ArenaCombat {
     this.attacks = new Map()
     this.held = new Map()
     this.trailSequences = new Map()
-    this.onShot = () => {};this.onKill=()=>{};this.ended=false
+    this.onShot = () => {};this.onKill=()=>{};this.onElimination=()=>{};this.eliminationSequence=0;this.ended=false
     for (const player of players.values()) {
       if (!player.startingWeapon) {
         player.startingWeapon = DEFAULT_LOADOUT.startingWeapon
@@ -93,7 +93,7 @@ export class ArenaCombat {
     this.grenades.delete(id)
     this.simulation.cancelDash(id)
   }
-  applyDamage(attackerId,targetId,amount) {
+  applyDamage(attackerId,targetId,amount,headshot=false) {
     const player = this.players.get(attackerId), other = this.players.get(targetId)
     if (this.ended || !other?.connected || other.hp<=0 || amount<=0) return { damage:0,absorbed:0,defeated:0 }
     const bonus = ultimateModifiers(other,this.time).effect==='shield' ? Math.min(other.ultimateShield,amount) : 0
@@ -111,6 +111,7 @@ export class ArenaCombat {
       Object.assign(other,{ ...clearReload,respawnAt:this.allowRespawn ? this.time+RESPAWN_SECONDS : 0 })
       this.cancelEffects(targetId)
       this.simulation.setAlive(targetId,false)
+      this.onElimination({epoch:this.epoch,round:this.round,sequence:++this.eliminationSequence,attackerId,targetId,attacker:player.name || 'Player',target:other.name || 'Player',weapon:player.weapon,headshot})
       this.onKill(attackerId)
     }
     return { damage,absorbed,defeated }
@@ -219,7 +220,7 @@ export class ArenaCombat {
     }
     let actual = 0, absorbed = 0, defeated = 0, headshot = false
     for (const [otherId,result] of damage) {
-      const resolved = this.applyDamage(id,otherId,result.amount)
+      const resolved = this.applyDamage(id,otherId,result.amount,result.headshot)
       actual += resolved.damage; absorbed += resolved.absorbed; defeated += resolved.defeated
       if (resolved.damage+resolved.absorbed>0) {
         headshot ||= result.headshot

@@ -1,7 +1,7 @@
 import { useGame } from '../store.js'
 import { WEAPONS, ABILITIES } from '../config.js'
 import { equipTime } from '../../../../shared/weapons.js'
-import WeaponStatus from './WeaponStatus.jsx'
+import WeaponStatus,{WeaponAimHint} from './WeaponStatus.jsx'
 import AbilityHud, { TacticalStatus } from './AbilityHud.jsx'
 import { weaponSlots } from '../../../../shared/loadout.js'
 import ScannerMarkers from './ScannerMarkers.jsx'
@@ -31,13 +31,14 @@ export default function Hud() {
     {s.mode === 'playing' && <Crosshair dynamic weaponId={s.weapon} shotgun={Boolean(weapon.pellets)} melee={melee}/>}
     <CombatFeedback state={s} />
     <KillBadge state={s} />
-    <WeaponStatus state={s} />
+    <WeaponStatus state={s} showHint={false}/>
     <div className="hud-bottom">
       <div className="health"><span className="eyebrow">VITAL SYSTEMS / {s.hp > 30 ? 'STABLE' : 'CRITICAL'}</span><strong>{s.hp}<small> / 100 HP</small></strong><div className="health-track"><i style={{ width:`${s.hp}%` }} /></div>{shield && <div className="shield-charge" data-testid="shield-charge">SHIELD {s.shieldCharge} / {ABILITIES.shield.capacity}<i style={{ width:`${s.shieldCharge/ABILITIES.shield.capacity*100}%` }} /></div>}</div>
       <div className={`ammo ${melee ? 'blade-status' : s.weapon === 'rifle' ? 'rifle-status' : weapon.pellets ? 'shotgun-status' : ''}`}>
         <div className="weapon-slots" aria-label="Weapon selection">
           {weaponSlots(s.loadout).map((id,index) => <span key={id} className={s.weapon === id ? 'selected' : ''}>{bindingLabel(s.settings.bindings[['primary','secondary','melee'][index]])} {WEAPONS[id].shortName}</span>)}
         </div>
+        <WeaponAimHint state={s}/>
         <span className="eyebrow">{weaponSlots(s.loadout).indexOf(s.weapon)+1} / {weapon.name}</span>
         {melee ? <><strong>{status}</strong><div className="blade-cooldown"><i style={{ width:`${Math.max(0,1-remaining/weapon.cooldown)*100}%` }} /></div><span>{weapon.range} M REACH · {weapon.damage} DAMAGE · NO AMMO</span></> : <><strong>{trainingNoReload(s,s.time) ? '?' : String(ammo).padStart(2,'0')}<small> / {weapon.magazine}</small></strong><span>{equipping ? 'EQUIPPING…' : trainingNoReload(s,s.time) ? 'UNLIMITED AMMO / NO RELOAD' : s.reloading ? 'RELOADING ENERGY CELL…' : ammo === 0 ? 'AUTO RELOAD PENDING…' : weapon.fireMode === 'auto' ? 'FULL AUTO · HOLD LEFT CLICK' : 'SEMI AUTO · UNLIMITED RESERVE'}</span></>}
       </div>

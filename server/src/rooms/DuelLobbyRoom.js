@@ -155,6 +155,7 @@ export class DuelLobbyRoom extends Room {
           this.state.matchPhase = 'freeplay'
         }
         this.combat.onShot=event => this.broadcast('shot-trail',event)
+        this.combat.onElimination=event => this.broadcast('elimination',event)
         this.state.tick = 0
         this.refreshPhase()
         this.setFixedTimestep(() => {

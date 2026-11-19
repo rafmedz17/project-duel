@@ -25,6 +25,22 @@ function setup(t) {
   return { players,simulation,combat,a,b,send,advance,fire }
 }
 
+test('elimination events describe each confirmed kill once, including its weapon and headshot',t=>{
+  const {a,b,combat,fire,advance}=setup(t),events=[]
+  a.name='raf1';b.name='raf2';combat.onElimination=event=>events.push(event)
+  assert.equal(fire(b.y+ROBOT_HEAD_Y),true)
+  assert.equal(events.length,0)
+  advance(.24);fire(b.y+ROBOT_HEAD_Y)
+  assert.deepEqual(events,[{epoch:1,round:0,sequence:1,attackerId:'a',targetId:'b',attacker:'raf1',target:'raf2',weapon:'pistol',headshot:true}])
+  combat.applyDamage('a','b',100)
+  assert.equal(events.length,1)
+  advance(5.1);assert.equal(b.hp,100)
+  a.weapon='blade';combat.applyDamage('a','b',100)
+  assert.equal(events.length,2);assert.equal(events[1].sequence,2);assert.equal(events[1].weapon,'blade');assert.equal(events[1].headshot,false)
+  assert.equal(combat.receive('a',{action:'elimination',epoch:1,sequence:99,targetId:'b'}),false)
+  assert.equal(events.length,2)
+})
+
 test('authoritative robot hits distinguish head, torso, arms and feet with actual removed health',t => {
   const { a,b,fire,advance } = setup(t)
   for (const [height,x,damage,headshot] of [[b.y+ROBOT_HEAD_Y,0,56,true],[0.84,0,28,false],[0.77,0.3,21,false],[0.08,0.13,14,false]]) {

@@ -1,3 +1,4 @@
+import {appendKill,KILL_FEED_LIFETIME,KILL_FEED_LIMIT} from '../src/multiplayer/killFeed.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { awardKill,killTier } from '../../shared/killCombo.js'
@@ -67,4 +68,16 @@ test('multiplayer trail IDs accept a respawned first shot once without replaying
   assert.equal(queueShotTrail(shot),false)
   assert.equal(takeShotTrails(shot.scope).length,1)
   assert.equal(queueShotTrail({...shot,trailId:NaN}),false)
+})
+
+test('kill feed preserves simultaneous eliminations, rejects duplicates, expires rows and bounds its stack',()=>{
+  const event={epoch:2,round:1,sequence:1,attackerId:'a',targetId:'b',attacker:'raf1',target:'raf2',weapon:'rifle',headshot:false}
+  let feed=appendKill([],event,100)
+  assert.equal(feed.length,1);assert.equal(feed[0].expiresAt,100+KILL_FEED_LIFETIME)
+  assert.equal(appendKill(feed,event,200),feed)
+  assert.equal(appendKill(feed,{...event,weapon:'invalid'},200),feed)
+  for(let sequence=2;sequence<=10;sequence++) feed=appendKill(feed,{...event,sequence},200)
+  assert.equal(feed.length,KILL_FEED_LIMIT);assert.equal(feed.at(-1).sequence,10)
+  feed=appendKill(feed,{...event,sequence:11},200+KILL_FEED_LIFETIME)
+  assert.equal(feed.length,1);assert.equal(feed[0].sequence,11)
 })

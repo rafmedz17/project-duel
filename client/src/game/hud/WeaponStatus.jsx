@@ -4,8 +4,13 @@ import { WEAPONS } from '../../../../shared/weapons.js'
 import { activeOptic,reflexProfile } from '../weapons/optics.js'
 import { sightAccent } from '../weapons/weaponFinish.js'
 import './weaponStatus.css'
-export default function WeaponStatus({ state:s }) {
+export function WeaponAimHint({state:s}) {
   const settings=useGame(s=>s.settings)
+  const aiming=useGame(s=>s.aiming),weapon=WEAPONS[s.weapon],reflex=reflexProfile(weapon)
+  if(!(weapon.scope || reflex) || activeOptic(s,s.time,aiming)) return null
+  return <div className="scope-hint">{settings.scopeMode==='tap' ? 'TAP' : 'HOLD'} {bindingLabel(settings.bindings.aim)} / {reflex ? 'HOLOGRAPHIC SIGHT' : 'PRECISION SCOPE'}</div>
+}
+export default function WeaponStatus({ state:s,showHint=true }) {
   const aiming=useGame(s=>s.aiming),weapon=WEAPONS[s.weapon]
   const optic=activeOptic(s,s.time,aiming),reflex=reflexProfile(weapon)
   const charging=s.windupEnd>s.time && s.hp>0
@@ -18,6 +23,6 @@ export default function WeaponStatus({ state:s }) {
       </svg>
     </div>}
     {charging && <div className="weapon-charge" role="status" style={{ '--weapon-color':weapon.color }}><span>{weapon.spinUp ? 'ROTARY SYSTEM SPINNING UP' : 'GRAVITY CORE CHARGING'}</span><strong>{Math.max(0,s.windupEnd-s.time).toFixed(1)}s</strong><i style={{ width:`${Math.min(1,(s.time-s.windupStart)/(s.windupEnd-s.windupStart))*100}%` }}/></div>}
-    {(weapon.scope || reflex) && !optic && <div className="scope-hint">{settings.scopeMode==='tap' ? 'TAP' : 'HOLD'} {bindingLabel(settings.bindings.aim)} / {reflex ? 'HOLOGRAPHIC SIGHT' : 'PRECISION SCOPE'}</div>}
+    {showHint && <WeaponAimHint state={s}/>}
   </>
 }
