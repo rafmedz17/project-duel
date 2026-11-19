@@ -60,7 +60,7 @@ function sync(room) {
   // Positions stay outside React; combat HUD receives authoritative 20 Hz snapshots.
   if (JSON.stringify(next) !== JSON.stringify(snapshot.room)) {
     const entering=next.arenaActive && (!snapshot.room?.arenaActive || snapshot.room.arenaEpoch!==next.arenaEpoch)
-    update({room:next,...(entering ? {menuOpen:false,closedLoadout:'',background:next.format==='duel'} : {})})
+    update({room:next,...(entering ? {menuOpen:false,closedLoadout:'',background:next.format!=='freeplay'} : {})})
   }
 }
 
@@ -79,7 +79,7 @@ function attach(room,notice = '') {
   })
   room.onMessage('shot-trail',event => {
     const current=room.state
-    if(activeRoom!==room || snapshot.status!=='connected' || !current?.arenaActive || current.phase!=='arena' || event?.epoch!==current.arenaEpoch || event.round!==(current.format==='duel' ? current.roundId : 0) || !current.players.has(event.id)) return
+    if(activeRoom!==room || snapshot.status!=='connected' || !current?.arenaActive || current.phase!=='arena' || event?.epoch!==current.arenaEpoch || event.round!==current.roundId || !current.players.has(event.id)) return
     queueShotTrail({ ...event,scope:trailScope(current) })
   })
   room.onDrop(() => { if (activeRoom===room) update({ status:'reconnecting',captured:false,notice:'Connection interrupted. Reconnecting…' }) })

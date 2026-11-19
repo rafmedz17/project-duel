@@ -7,7 +7,8 @@ export class Prediction {
   constructor(RAPIER,mapId) {
     this.world = createMovementWorld(RAPIER,getMap(mapId))
     this.entry = createCharacter(RAPIER,this.world,[0,1,15])
-    this.other = createCharacter(RAPIER,this.world,[0,1,-15])
+    this.others=Array.from({length:4},()=>createCharacter(RAPIER,this.world,[0,1,-15]))
+    this.others.forEach(entry=>entry.collider.setEnabled(false))
     this.world.step()
     this.frames = []
     this.commands = new Map()
@@ -46,12 +47,15 @@ export class Prediction {
   reconcile(pose,other) {
     if (pose===this.pose) return [0,0,0]
     const before = this.entry.body.translation()
-    if (other) {
-      restoreStance(this.other,other.crouched)
-      this.other.collider.setEnabled(other.hp!==0)
-      this.other.body.setTranslation({ x:other.x,y:other.y,z:other.z },true)
-      this.other.body.setNextKinematicTranslation({ x:other.x,y:other.y,z:other.z })
-    }
+    const opponents=Array.isArray(other) ? other : other ? [other] : []
+    this.others.forEach((entry,index)=>{
+      const pose=opponents[index]
+      entry.collider.setEnabled(Boolean(pose && pose.hp!==0 && pose.connected!==false))
+      if(!pose) return
+      restoreStance(entry,pose.crouched)
+      entry.body.setTranslation({x:pose.x,y:pose.y,z:pose.z},true)
+      entry.body.setNextKinematicTranslation({x:pose.x,y:pose.y,z:pose.z})
+    })
     this.restore(pose)
     const start = this.commands.get(pose.inputSequence)
     // Acknowledgements describe simulated ticks, never merely received packets.

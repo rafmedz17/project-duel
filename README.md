@@ -1,6 +1,6 @@
 ﻿# PROJECT DUEL
 
-A playable FPS training facility and private two-player arena built with React, Three.js, React Three Fiber, Rapier, and Colyseus. Training has four connected courses, 21 character robots, a reflex challenge, an in-session armory, 17 weapons, four selectable unique skills, four character ultimates, scoring and saved settings. Multiplayer has server-owned combat, best-of-three matches, three selectable maps and customizable loadouts. Optional Supabase accounts add saved profiles, cross-device equipment, match history, statistics, Elo rankings and a leaderboard. Training and guest play work without cloud accounts.
+A playable FPS training facility and private multiplayer arena built with React, Three.js, React Three Fiber, Rapier, and Colyseus. Training has four connected courses, 21 character robots, a reflex challenge, an in-session armory, 17 weapons, four selectable unique skills, four character ultimates, scoring and saved settings. Multiplayer has server-owned combat, Best of Three and Free Play duels, Free for All for 1-5 players, four selectable maps and customizable loadouts. Optional Supabase accounts add saved profiles, cross-device equipment, match history, statistics, Elo rankings and a leaderboard. Training and guest play work without cloud accounts.
 
 ## Launch
 

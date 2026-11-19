@@ -1,4 +1,5 @@
 import { useEffect,useState } from 'react'
+import {FORMATS} from '../../../shared/match.js'
 import { getCharacter } from '../../../shared/characters.js'
 import { getMap } from '../../../shared/maps.js'
 import { game,useGame } from '../game/store.js'
@@ -42,7 +43,7 @@ export default function RoomScoreboard() {
   const duel=room.format==='duel'
   const players=[...room.players].sort((a,b)=>(duel ? b.roundWins-a.roundWins : 0) || b.combat.kills-a.combat.kills || a.combat.deaths-b.combat.deaths || a.slot-b.slot)
   return <div className="room-scoreboard" data-testid="room-scoreboard"><section className="roster-panel" role="region" aria-label="Room scoreboard">
-    <header><div><span className="eyebrow">LIVE ROOM ROSTER / {room.code}</span><h2>SCOREBOARD</h2></div><div className="roster-meta"><strong>{duel ? 'BEST OF THREE' : 'FREE PLAY'}</strong><span>{getMap(room.mapId).name} · {room.ranked ? 'RANKED' : 'CASUAL'}<br/>{players.length} PLAYERS</span></div></header>
+    <header><div><span className="eyebrow">LIVE ROOM ROSTER / {room.code}</span><h2>SCOREBOARD</h2></div><div className="roster-meta"><strong>{FORMATS[room.format]}</strong><span>{getMap(room.mapId).name} · {room.ranked ? 'RANKED' : 'CASUAL'}<br/>{players.length} PLAYERS</span></div></header>
     <table aria-label="Room player statistics"><thead><tr><th scope="col">PLAYER</th><th scope="col">KILLS</th><th scope="col">DEATHS</th><th scope="col">K/D</th>{duel && <th scope="col">ROUNDS</th>}<th scope="col">PING</th><th scope="col">STATUS</th></tr></thead><tbody>{players.map(player=> {
       const self=player.id===s.sessionId,c=player.combat,character=getCharacter(c.characterId),ping=player.connected ? player.ping : null
       const status=!player.connected ? 'RECONNECTING' : c.hp<=0 ? 'ELIMINATED' : room.matchPhase==='finished' ? 'FINISHED' : 'IN MATCH'

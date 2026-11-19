@@ -8,7 +8,7 @@ export default function LoadoutPhase({ state:s,combat,onLeave }) {
   const duel=s.room.format==='duel',seconds=Math.max(0,Math.ceil(duel ? s.room.phaseRemaining : combat.respawnAt-s.room.time))
   const selected=s.bank?.slots[combat.activeSlot]
   return <div className="overlay online-overlay loadout-phase"><section className="dialog" role="dialog" aria-modal="true" aria-labelledby="loadout-phase-title">
-    <div className="eyebrow">{duel ? `ROUND ${s.room.roundNumber} / BEST OF THREE` : 'SYSTEM OFFLINE / FREE PLAY'}</div>
+    <div className="eyebrow">{duel ? `ROUND ${s.room.roundNumber} / BEST OF THREE` : s.room.format==='ffa' ? 'SYSTEM OFFLINE / FREE FOR ALL' : 'SYSTEM OFFLINE / FREE PLAY'}</div>
     <div className="loadout-phase-heading"><h2 id="loadout-phase-title">{duel ? 'LOADOUT PHASE' : 'RESPAWN LOADOUT'}</h2><span className="loadout-phase-clock" role="timer" aria-label="Loadout time remaining">{seconds}<small>s</small></span></div>
     <p>{duel ? 'Select a preset to equip it and close this panel. The round starts automatically for both players.' : 'Select a preset to close this panel. You respawn automatically when the five-second window ends.'}</p>
     {s.bank ? <LoadoutSlots slots={s.bank.slots} selected={combat.activeSlot} onSelect={slot=>lobby.selectLoadout(slot)}/> : <p role="status">Loading your saved presets…</p>}

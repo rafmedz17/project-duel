@@ -1,5 +1,15 @@
 # Shared online arena and validated combat
 
+## Free for All
+
+Choose **Casual → Match Format → Free for All** before inviting more than one friend. This format supports **1–5 players**. Every connected player must ready up; solo starts are allowed for exploring the map. The lobby displays five slots, and the five-second ready countdown launches the match. Best of Three and Free Play retain their two-player limits. With three or more occupants, those formats cannot be selected until the room has two or fewer players.
+
+Everyone is an opponent, and the first player to **15 confirmed kills** wins. The server freezes further attacks, damage, movement and respawns at the winning kill, then publishes final standings for all participants. There is no match time limit. Free for All is casual and its results remain in the room; the existing account statistics and Elo flow applies to Best of Three.
+
+Initial positions and respawns are randomized among collision-checked positions on all four maps. Respawns avoid the last location, prefer at least six meters from living opponents, and prefer locations hidden by cover when available. Eliminated players retain the five-second respawn/loadout selection window. Tab displays every player's kills, deaths, K/D and ping; Global Scan handles every opponent.
+
+A disconnect holds that player's seat for the usual reconnect window while other connected players continue. Leaving removes the player's collision body and does not award an automatic win; remaining players may continue even when only one remains. The host can end an unfinished match from the Escape menu. After a winner is declared, any participant can return the room to the lobby for a rematch.
+
 Two players share the same facility. The Node/Colyseus server owns movement, collision, weapon state, shot validation, damage, kills, death, respawn, all four abilities, and Best of Three matches. Local training uses the same weapon values and robot geometry, with four stationary robot targets and no drone.
 
 ## Play

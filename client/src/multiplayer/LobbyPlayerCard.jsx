@@ -5,7 +5,7 @@ export default function LobbyPlayerCard({slot,player,selfId,hostId,preview,chara
   const character=getCharacter(player?.combat.characterId || characterId)
   const occupied=Boolean(player || preview)
   return <article className={`lobby-player ${player?.ready ? 'is-ready' : ''} ${!occupied ? 'open-player-slot' : ''}`} style={{'--operative-color':character.color}} data-testid={`lobby-slot-${slot}`}>
-    <div className="player-card-top"><span>{slot===0 ? '01 / ALPHA' : '02 / OMEGA'}</span><span>{player?.id===selfId || preview ? 'YOU' : occupied ? 'OPPONENT' : 'OPEN SLOT'}</span></div>
+    <div className="player-card-top"><span>{`${String(slot+1).padStart(2,'0')} / ${['ALPHA','OMEGA','GAMMA','DELTA','SIGMA'][slot]}`}</span><span>{player?.id===selfId || preview ? 'YOU' : occupied ? 'OPPONENT' : 'OPEN SLOT'}</span></div>
     <div className="player-portrait-stage">{occupied ? <CharacterPortrait characterId={player?.combat.characterId || characterId}/> : <div className="empty-operative" aria-hidden="true"><span>+</span><i/><small>AWAITING UPLINK</small></div>}<div className="portrait-platform"/></div>
     <div className="player-card-details">{children || <><strong>{player?.name || 'WAITING FOR PLAYER'}</strong><span>{player ? `${player.id===hostId ? 'ROOM HOST' : 'CHALLENGER'} · ${player.authenticated ? 'SIGNED IN' : 'GUEST'}` : 'Share your invite code to begin'}</span></>}
       {occupied && <small className="operative-name">{character.name} / {character.role}</small>}

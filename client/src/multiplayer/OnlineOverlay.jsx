@@ -9,6 +9,7 @@ import { arenaView } from './poses.js'
 import { ABILITIES } from '../../../shared/abilities.js'
 import OnlineScannerMarker from './OnlineScannerMarker.jsx'
 import MatchHud from './MatchHud.jsx'
+import FreeForAllHud from './FreeForAllHud.jsx'
 import LoadoutPhase from './LoadoutPhase.jsx'
 import { canPlayArena } from '../../../shared/match.js'
 import { lobby, useLobby } from './lobby.js'
@@ -22,7 +23,7 @@ export default function OnlineOverlay({ onLeave,onSettings }) {
   const s = useLobby()
   const settings=useGame(s=>s.settings),fps=useGame(s=>s.fps)
   const interrupted = s.status!=='connected' || s.room.phase!=='arena'
-  const duel = s.room.format==='duel', finished = s.room.matchPhase==='finished', live = canPlayArena(s.room)
+  const duel = s.room.format==='duel',ffa=s.room.format==='ffa',manualMenu=duel || ffa, finished = s.room.matchPhase==='finished', live = canPlayArena(s.room)
   const self = s.room.players.find(player => player.id===s.sessionId)
   const other = s.room.players.find(player => player.id!==s.sessionId)
   const combat = self?.combat
@@ -34,36 +35,37 @@ export default function OnlineOverlay({ onLeave,onSettings }) {
   const obscured = s.room.players.some(player => player.id!==s.sessionId && s.room.time<player.combat.abilities.smoke.activeUntil && Math.hypot(...arenaView.position.map((v,i) => v-player.combat.abilities.smoke.origin[i]-(i===1 ? 1 : 0)))<ABILITIES.smoke.radius)
   return <>
     <div className={`online-hud ${s.room.time-combat.hurt<0.3 ? 'damage' : ''} ${shield ? 'shield-active' : ''} ${s.room.time<combat.abilities.dash.activeUntil ? 'dash-active' : ''}`}>
-      <div className="online-top"><span className="eyebrow">PRIVATE ARENA / {s.room.code}</span><strong>{getMap(s.room.mapId).name}<small>{s.room.ranked ? 'RANKED' : 'CASUAL'} · SERVER VALIDATED COMBAT</small></strong><span className="online-link">{settings.fps && `${fps} FPS / `}{interrupted ? 'LINK INTERRUPTED' : 'CONNECTED · 2 PLAYERS'}</span></div>
-      <div className="online-names"><span>{self.name} <small>YOU · {combat.kills} KILLS / {combat.deaths} DEATHS</small></span><span>{other?.name || 'OPEN SLOT'} <small>{other?.connected ? `CHALLENGER · ${other.combat.kills} KILLS` : 'RECONNECTING'}</small></span></div>
+      <div className="online-top"><span className="eyebrow">PRIVATE ARENA / {s.room.code}</span><strong>{getMap(s.room.mapId).name}<small>{s.room.ranked ? 'RANKED' : 'CASUAL'} · SERVER VALIDATED COMBAT</small></strong><span className="online-link">{settings.fps && `${fps} FPS / `}{interrupted ? 'LINK INTERRUPTED' : `CONNECTED · ${s.room.players.length} PLAYERS`}</span></div>
+      <div className="online-names"><span>{self.name} <small>YOU · {combat.kills} KILLS / {combat.deaths} DEATHS</small></span><span>{ffa ? `${s.room.players.length} COMPETITORS` : other?.name || 'OPEN SLOT'} <small>{ffa ? 'EVERY PLAYER FOR THEMSELVES' : other?.connected ? `CHALLENGER · ${other.combat.kills} KILLS` : 'RECONNECTING'}</small></span></div>
       {s.captured && !dead && live && <Crosshair dynamic weaponId={combat.weapon} shotgun={Boolean(weapon.pellets)} melee={melee}/>}
       <CombatFeedback state={feedback} />
       <KillBadge state={feedback} visible={!interrupted && ((s.captured && live) || (duel && s.room.matchPhase==='roundOver'))} />
       <WeaponStatus state={feedback} />
       <AbilityBar state={feedback} />
-      <OnlineScannerMarker other={other} />
+      {s.room.players.filter(p=>p.id!==s.sessionId).map(player=><OnlineScannerMarker key={player.id} other={player}/>)}
       {s.room.time<combat.abilities.scanner.activeUntil && !dead && <div className="scan-status">GLOBAL SCAN / ENEMY REVEALED</div>}
       <TacticalStatus state={feedback} obscured={obscured} />
-      {dead && !duel && !pickerOpen && !s.menuOpen && <div className="online-respawn" role="status"><strong>SYSTEM OFFLINE</strong><span>RESPAWNING IN {Math.max(0,combat.respawnAt-s.room.time).toFixed(1)}s</span></div>}
+      {dead && !duel && !finished && !pickerOpen && !s.menuOpen && <div className="online-respawn" role="status"><strong>SYSTEM OFFLINE</strong><span>RESPAWNING IN {Math.max(0,combat.respawnAt-s.room.time).toFixed(1)}s</span></div>}
       <div className="online-vitals"><div className="health"><span className="eyebrow">VITAL SYSTEMS</span><strong data-testid="online-health">{combat.hp}<small> / 100 HP</small></strong><div className="health-track"><i style={{ width:`${combat.hp}%` }} /></div>{shield && <div className="shield-charge" data-testid="online-shield-charge">SHIELD {combat.shieldCharge} / {ABILITIES.shield.capacity}<i style={{ width:`${combat.shieldCharge/ABILITIES.shield.capacity*100}%` }} /></div>}</div>
         <div className="ammo"><div className="weapon-slots" aria-label="Weapon selection">{weaponSlots(combat.loadout).map((id,index) => <span key={id} className={id===combat.weapon ? 'selected' : ''}>{index+1} {WEAPONS[id].shortName}</span>)}</div><span className="eyebrow">{weaponSlots(combat.loadout).indexOf(combat.weapon)+1} / {weapon.name}</span><strong data-testid="online-ammo">{melee ? 'BLADE' : String(combat.magazines[combat.weapon]).padStart(2,'0')}{!melee && <small> / {weapon.magazine}</small>}</strong><span>{dead ? duel ? 'ROUND ENDED' : 'RESPAWNING' : combat.reloading ? 'RELOADING ENERGY CELL' : s.room.time<combat.attackReadyAt ? 'RECOVERING' : melee ? 'LEFT CLICK TO SWING' : weapon.fireMode==='auto' ? 'HOLD LEFT CLICK · FULL AUTO' : 'LEFT CLICK TO FIRE'}</span></div>
       </div>
     </div>
     <MatchHud state={s} feedback={feedback} onLeave={onLeave} interrupted={interrupted} />
-    {!s.captured && !s.menuOpen && (duel || s.background) && live && !dead && !interrupted && <div className="recapture-actions"><button className="recapture-hint" onClick={()=>lobby.capture()}>MATCH LIVE · CLICK TO AIM <small>ESC FOR MENU</small></button><button className="arena-menu-button" onClick={()=>lobby.openMenu()}>MENU / SETTINGS</button></div>}
+    {ffa && <FreeForAllHud state={s} feedback={feedback} onLeave={onLeave} interrupted={interrupted}/>}
+    {!s.captured && !s.menuOpen && (manualMenu || s.background) && live && !dead && !interrupted && <div className="recapture-actions"><button className="recapture-hint" onClick={()=>lobby.capture()}>MATCH LIVE · CLICK TO AIM <small>ESC FOR MENU</small></button><button className="arena-menu-button" onClick={()=>lobby.openMenu()}>MENU / SETTINGS</button></div>}
     {selecting && !pickerOpen && !s.menuOpen && <button className="loadout-reopen" onClick={()=>lobby.openLoadout()}>{bindingLabel(settings.bindings.armory)} · CHANGE LOADOUT</button>}
     {pickerOpen && <LoadoutPhase state={s} combat={combat} onLeave={onLeave}/>}
-    {!pickerOpen && ((!s.captured && !finished && (duel ? s.menuOpen : !s.background)) || interrupted) && <div className="overlay online-overlay"><section className="dialog" role="dialog" aria-modal="true" aria-labelledby="online-title">
+    {!pickerOpen && ((!s.captured && !finished && (manualMenu ? s.menuOpen : !s.background)) || interrupted) && <div className="overlay online-overlay"><section className="dialog" role="dialog" aria-modal="true" aria-labelledby="online-title">
       <div className="eyebrow">ROOM {s.room.code} / CONNECTED ARENA</div>
       <h2 id="online-title">{interrupted ? 'CONNECTION INTERRUPTED' : 'SHARED ARENA'}</h2>
-      <p>{interrupted ? 'Combat and movement are paused while the connection recovers.' : duel ? 'First to two round wins. Each elimination ends the round. Fresh spawns and loadouts follow the countdown. Higher health wins at the 90-second limit; equal health replays the round.' : 'Capture your mouse to move, aim and fire. Headshots deal double damage; foot hits deal half. Eliminated players have five seconds to select a respawn loadout.'}</p>
+      <p>{interrupted ? 'Combat and movement are paused while the connection recovers.' : duel ? 'First to two round wins. Each elimination ends the round. Fresh spawns and loadouts follow the countdown. Higher health wins at the 90-second limit; equal health replays the round.' : ffa ? 'First to 15 kills wins. Everyone is an enemy. Respawn after five seconds at a randomized safe location.' : 'Capture your mouse to move, aim and fire. Headshots deal double damage; foot hits deal half. Eliminated players have five seconds to select a respawn loadout.'}</p>
       {s.captureError && <p className="error" role="alert">{s.captureError}</p>}
-      {!finished && <button className="primary" disabled={interrupted || !live || !s.arenaReady} onClick={() => lobby.capture()}>{duel ? 'RESUME' : 'ENTER ARENA'}</button>}
+      {!finished && <button className="primary" disabled={interrupted || !live || !s.arenaReady} onClick={() => lobby.capture()}>{manualMenu ? 'RESUME' : 'ENTER ARENA'}</button>}
       {!s.arenaReady && <p role="status">Loading arena controls…</p>}
       <button onClick={onSettings}>SETTINGS</button>
-      <button disabled={s.status!=='connected'} onClick={() => duel && !finished ? lobby.forfeit() : lobby.backToLobby()}>{duel && !finished ? 'FORFEIT MATCH' : 'RETURN TO LOBBY'}</button>
+      {(!ffa || finished || s.room.hostId===s.sessionId) && <button disabled={s.status!=='connected'} onClick={() => duel && !finished ? lobby.forfeit() : lobby.backToLobby()}>{duel && !finished ? 'FORFEIT MATCH' : ffa && !finished ? 'END MATCH / RETURN TO LOBBY' : 'RETURN TO LOBBY'}</button>}
       <button onClick={onLeave}>LEAVE ROOM</button>
-      <p className="muted">{bindingLabel(settings.bindings.dash)} Dash · {bindingLabel(settings.bindings.shield)} Shield · {bindingLabel(settings.bindings.unique)} Unique Skill / {bindingLabel(settings.bindings.ultimate)} Ultimate · {duel ? 'Forfeiting awards the match to your opponent.' : 'Free Play · Unlimited practice.'} The match keeps running while you switch tabs or open settings.</p>
+      <p className="muted">{bindingLabel(settings.bindings.dash)} Dash · {bindingLabel(settings.bindings.shield)} Shield · {bindingLabel(settings.bindings.unique)} Unique Skill / {bindingLabel(settings.bindings.ultimate)} Ultimate · {duel ? 'Forfeiting awards the match to your opponent.' : ffa ? 'Free for All / First to 15 kills. Randomized respawns.' : 'Free Play · Unlimited practice.'} The match keeps running while you switch tabs or open settings.</p>
     </section></div>}
   </>
 }

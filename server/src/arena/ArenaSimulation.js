@@ -1,4 +1,6 @@
 import RAPIER from '@dimforge/rapier3d-compat'
+import {randomInt} from 'node:crypto'
+import {spawnCandidates,chooseSpawn} from './ffaSpawns.js'
 import { getMap } from '../../../shared/maps.js'
 import { ONLINE } from '../../../shared/arena.js'
 import { movementMultiplier } from '../../../shared/weapons.js'
@@ -21,17 +23,30 @@ export function validateInput(value) {
 }
 
 export class ArenaSimulation {
-  constructor(players,mapId = 'facility') {
+  constructor(players,mapId = 'facility',{randomSpawns=false,random=()=>randomInt(0x1000000)/0x1000000}={}) {
     this.map = getMap(mapId)
+    this.randomSpawns=randomSpawns;this.random=random;this.spawnPoints=randomSpawns ? spawnCandidates(this.map) : [];this.lastSpawns=new Map()
     this.world = createMovementWorld(RAPIER,this.map)
     this.players = new Map()
     for (const [id,player] of players) {
-      const spawn = this.map.spawns[player.slot]
+      const spawn = this.spawnFor(id,player,true)
       const [x,y,z] = spawn.position
       this.players.set(id,{ ...createCharacter(RAPIER,this.world,spawn.position),player,input:null,lastSequence:-1,jumpHeld:false,jumpPending:false })
       Object.assign(player,{ x,y,z,yaw:spawn.yaw,pitch:0,crouched:false,grounded:false,active:false,inputSequence:-1,inputSteps:0,vx:0,vy:0,vz:0,dashRemaining:0,dashX:0,dashZ:0 })
     }
     this.world.step()
+  }
+
+  spawnFor(id,player,initial=false) {
+    if(!this.randomSpawns) return this.map.spawns[player.slot]
+    // A new match revives everyone after this world is built. Reserve space for
+    // all initial bodies, including players who died in the previous match.
+    const spawn=chooseSpawn(this.spawnPoints,[...this.players.entries()].filter(([other])=>other!==id).map(([,e])=>initial ? {x:e.player.x,y:e.player.y,z:e.player.z,hp:100,connected:true} : e.player),this.lastSpawns.get(id),this.map.solids,this.random)
+    this.lastSpawns.set(id,spawn.position);return spawn
+  }
+  removePlayer(id) {
+    const entry=this.players.get(id);if(!entry) return
+    this.world.removeCharacterController(entry.controller);this.world.removeRigidBody(entry.body);this.players.delete(id);this.lastSpawns.delete(id)
   }
 
   receive(id, payload, now = performance.now()) {
@@ -98,7 +113,7 @@ export class ArenaSimulation {
   respawn(id) {
     const entry = this.players.get(id)
     if (!entry) return
-    const spawn = this.map.spawns[entry.player.slot], [x,y,z] = spawn.position
+    const spawn = this.spawnFor(id,entry.player), [x,y,z] = spawn.position
     this.setAlive(id,true)
     restoreStance(entry,false)
     entry.body.setTranslation({ x,y,z },true)
@@ -113,7 +128,7 @@ export class ArenaSimulation {
     const proposals = []
     for (const [id,entry] of this.players) {
       const { player } = entry
-      if (player.hp===0) continue
+      if (player.hp===0 || player.connected===false) continue
       let input = entry.input
       if (input && now-input.receivedAt > ONLINE.inputTimeoutMs) { this.stop(id); input = null }
       entry.movement=movementMultiplier(player.weapon)*ultimateModifiers(player,this.combatTime?.() ?? 0).movement

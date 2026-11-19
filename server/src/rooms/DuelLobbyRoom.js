@@ -5,7 +5,8 @@ import { LobbyPlayer, LobbyState } from './LobbyState.js'
 import { ArenaCombat } from '../arena/ArenaCombat.js'
 import { ArenaSimulation } from '../arena/ArenaSimulation.js'
 import { ONLINE } from '../../../shared/arena.js'
-import { FORMATS } from '../../../shared/match.js'
+import {FreeForAllMatch} from '../arena/FreeForAllMatch.js'
+import { FORMATS,playerLimit,minimumPlayers } from '../../../shared/match.js'
 import { DuelMatch } from '../arena/DuelMatch.js'
 import { MAPS } from '../../../shared/maps.js'
 import { DEFAULT_LOADOUT, validateLoadout } from '../../../shared/loadout.js'
@@ -73,14 +74,16 @@ export class DuelLobbyRoom extends Room {
       if (client.sessionId!==this.state.hostId || this.state.arenaActive || this.state.phase==='countdown') return
       if (!payload || Object.keys(payload).length!==1 || typeof payload.format!=='string' || !Object.hasOwn(FORMATS,payload.format)) return
       if (payload.format===this.state.format) return
+      if(this.state.players.size>playerLimit(payload.format)) {this.state.note='This format supports two players. Reduce the room to two before changing it.';return}
       this.state.format = payload.format
+      this.maxClients=playerLimit(payload.format)
       if (payload.format!=='duel') this.state.ranked = false
       this.resetReady()
     })
     this.onMessage('ready',(client,payload) => {
       const player = this.state.players.get(client.sessionId)
       if (!player || this.state.arenaActive || typeof payload?.ready !== 'boolean') return
-      if (this.state.players.size !== LOBBY.maxPlayers || [...this.state.players.values()].some(p => !p.connected)) return
+      if (this.state.players.size<minimumPlayers(this.state.format) || this.state.players.size>playerLimit(this.state.format) || [...this.state.players.values()].some(p => !p.connected)) return
       player.ready = payload.ready
       if (!payload.ready) this.cancelCountdown()
       this.refreshPhase()
@@ -106,17 +109,18 @@ export class DuelLobbyRoom extends Room {
     this.onMessage('select-loadout',(client,payload) => {
       const player=this.state.players.get(client.sessionId),bank=this.loadoutBanks.get(client.sessionId)
       if(!player?.connected || !bank || this.state.phase!=='arena' || !payload || Object.keys(payload).length!==3 || payload.epoch!==this.state.arenaEpoch || payload.round!==this.state.roundId || !validSlot(payload.slot)) return
-      const allowed=this.match ? this.state.matchPhase==='loadout' : player.hp<=0 && this.combat.time<player.respawnAt
+      const allowed=this.state.format==='duel' ? this.state.matchPhase==='loadout' : this.state.matchPhase!=='finished' && player.hp<=0 && this.combat.time<player.respawnAt
       if(!allowed) return
       this.combat.equipLoadout(client.sessionId,bank.slots[payload.slot])
       bank.activeSlot=payload.slot;player.arsenal.activeSlot=payload.slot
     })
     this.onMessage('forfeit',client => {
-      if (this.state.arenaActive && this.match) this.match.forfeit(client.sessionId)
+      if (this.state.arenaActive && this.state.format==='duel') this.match.forfeit(client.sessionId)
     })
     this.onMessage('backToLobby',client => {
       if (this.state.arenaActive && this.state.players.has(client.sessionId)) {
-        if (this.match && this.state.matchPhase!=='finished') { this.match.forfeit(client.sessionId); return }
+        if (this.state.format==='duel' && this.state.matchPhase!=='finished') { this.match.forfeit(client.sessionId); return }
+        if(this.state.format==='ffa' && this.state.matchPhase!=='finished' && client.sessionId!==this.state.hostId) return
         this.endArena(`${this.state.players.get(client.sessionId).name} returned to the lobby.`)
         this.resetReady()
       }
@@ -134,7 +138,7 @@ export class DuelLobbyRoom extends Room {
       if (this.state.countdown > 0) this.countdownTimer = this.clock.setTimeout(advance,1000)
       else {
         this.countdownTimer = null
-        this.simulation = new ArenaSimulation(this.state.players,this.state.mapId)
+        this.simulation = new ArenaSimulation(this.state.players,this.state.mapId,{randomSpawns:this.state.format==='ffa'})
         this.matchId = randomUUID()
         this.startedAt = new Date().toISOString()
         this.matchIdentities = new Map(this.identities)
@@ -144,6 +148,8 @@ export class DuelLobbyRoom extends Room {
         if (this.state.format==='duel') {
           this.match = new DuelMatch(this.state,this.simulation,() => { void this.saveMatch() })
           this.combat = this.match.combat
+        } else if(this.state.format==='ffa') {
+          this.match=new FreeForAllMatch(this.state,this.simulation);this.combat=this.match.combat
         } else {
           this.combat = new ArenaCombat(this.state.players,this.simulation,this.state.arenaEpoch)
           this.state.matchPhase = 'freeplay'
@@ -182,6 +188,9 @@ export class DuelLobbyRoom extends Room {
   }
 
   onJoin(client) {
+    // Authentication and seat reservation can outlive a format change or start.
+    if(this.state.arenaActive) throw new ServerError(4401,'This arena is already in progress.')
+    if(this.state.players.size>=playerLimit(this.state.format)) throw new ServerError(4401,'This room is full.')
     if (client.auth.userId && [...this.identities.values()].some(other => other.userId===client.auth.userId)) throw new ServerError(4402,'This account is already in the room.')
     const occupied = new Set([...this.state.players.values()].map(player => player.slot))
     const player = new LobbyPlayer()
@@ -198,7 +207,7 @@ export class DuelLobbyRoom extends Room {
     player.allowedWeapons = [...client.auth.loadout.weapons]
     player.allowedAbilities = [...client.auth.loadout.abilities]
     this.identities.set(client.sessionId,client.auth)
-    player.slot = occupied.has(0) ? 1 : 0
+    player.slot=Array.from({length:playerLimit(this.state.format)},(_,i)=>i).find(slot=>!occupied.has(slot))
     this.state.players.set(client.sessionId,player)
     if (!this.state.hostId) this.state.hostId = client.sessionId
     this.resetReady()
@@ -208,7 +217,8 @@ export class DuelLobbyRoom extends Room {
     const player = this.state.players.get(client.sessionId)
     if (player) { player.connected = false;player.arsenal.pingMs=-1 }
     this.latency.drop(client.sessionId)
-    this.simulation?.stopAll()
+    if(this.state.arenaActive && this.state.format==='ffa') this.simulation?.setAlive(client.sessionId,false)
+    else this.simulation?.stopAll()
     this.resetReady()
     try { await this.allowReconnection(client,LOBBY.reconnectSeconds) }
     catch { /* Colyseus calls onLeave when the reservation expires. */ }
@@ -216,14 +226,16 @@ export class DuelLobbyRoom extends Room {
 
   onReconnect(client) {
     const player = this.state.players.get(client.sessionId)
-    if (player) player.connected = true
+    if (player) {player.connected=true;if(this.state.format==='ffa' && player.hp>0) this.simulation?.setAlive(client.sessionId,true)}
     this.resetReady()
   }
 
   onLeave(client) {
     this.latency.drop(client.sessionId)
+    if(!this.state.players.has(client.sessionId)) return
     if (this.state.arenaActive) {
-      if (this.match) this.match.forfeit(client.sessionId)
+      if(this.state.format==='ffa') this.match.removePlayer(client.sessionId)
+      else if (this.match) this.match.forfeit(client.sessionId)
       else this.endArena('Your opponent left the arena. Invite a challenger to start again.')
     }
     this.state.players.delete(client.sessionId)
@@ -271,13 +283,14 @@ export class DuelLobbyRoom extends Room {
   refreshPhase() {
     const players = [...this.state.players.values()]
     if (this.state.arenaActive) {
-      const required = this.state.matchPhase==='finished' ? players.length>0 : players.length===LOBBY.maxPlayers
-      this.state.phase = required && players.every(player => player.connected) ? 'arena' : 'interrupted'
+      const ffa=this.state.format==='ffa'
+      const required = this.state.matchPhase==='finished' || ffa ? players.length>0 : players.length===LOBBY.maxPlayers
+      this.state.phase = required && (ffa ? players.some(player=>player.connected) : players.every(player => player.connected)) ? 'arena' : 'interrupted'
       return
     }
     if (this.state.countdown > 0) return
     this.state.phase = players.some(player => !player.connected) ? 'reconnecting'
-      : players.length < LOBBY.maxPlayers ? 'waiting'
+      : players.length < minimumPlayers(this.state.format) ? 'waiting'
       : players.every(player => player.ready) ? 'ready' : 'forming'
   }
 

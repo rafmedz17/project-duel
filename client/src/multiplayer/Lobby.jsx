@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from 'react'
-import {FORMATS} from '../../../shared/match.js'
+import {FORMATS,minimumPlayers,playerLimit} from '../../../shared/match.js'
 import {MAPS} from '../../../shared/maps.js'
 import {useAccount} from '../accounts/store.js'
 import {lobby,useLobby} from './lobby.js'
@@ -37,9 +37,10 @@ export default function Lobby({onClose,onProfile,returnFocusRef,mode='casual'}) 
   const room=s.room,players=room?.players || [],self=players.find(player=>player.id===s.sessionId)
   const busy=s.status==='connecting',connected=Boolean(room) && ['connected','reconnecting','connecting'].includes(s.status)
   const host=connected && room.hostId===s.sessionId
+  const ffa=room?.format==='ffa'
   const eligible=room?.format==='duel' && players.length===2 && players.every(player=>player.authenticated && player.connected)
   const seekingRanked=host && requestedRanked
-  const canReady=s.status==='connected' && players.length===2 && players.every(player=>player.connected) && (!seekingRanked || room.ranked)
+  const canReady=s.status==='connected' && players.length>=minimumPlayers(room?.format) && players.length<=playerLimit(room?.format) && players.every(player=>player.connected) && (!seekingRanked || room.ranked)
   const locked=!host || s.status!=='connected' || room.phase==='countdown'
   const rankedLocked=!connected && mode==='ranked' && !account.user
   const callsign=account.profile?.callsign || name
@@ -83,7 +84,7 @@ export default function Lobby({onClose,onProfile,returnFocusRef,mode='casual'}) 
     setCopyStatus({code,message:copied ? 'CODE COPIED' : 'Select the code and copy it manually.'})
   }
   function changeType(value) {setRequestedRanked(value==='ranked');lobby.ranked(value==='ranked')}
-  const status=s.status==='reconnecting' ? 'RESTORING CONNECTION' : room?.phase==='countdown' ? `BOTH PLAYERS READY / STARTING IN ${room.countdown}` : room?.phase==='ready' ? 'BOTH PLAYERS READY' : room?.phase==='reconnecting' ? 'HOLDING YOUR FRIEND’S SEAT' : players.length<2 ? 'WAITING FOR A CHALLENGER' : 'WAITING FOR READY CHECKS'
+  const status=s.status==='reconnecting' ? 'RESTORING CONNECTION' : room?.phase==='countdown' ? `${ffa ? 'ALL PLAYERS' : 'BOTH PLAYERS'} READY / STARTING IN ${room.countdown}` : room?.phase==='ready' ? ffa ? 'ALL PLAYERS READY' : 'BOTH PLAYERS READY' : room?.phase==='reconnecting' ? 'HOLDING YOUR FRIEND’S SEAT' : players.length<minimumPlayers(room?.format) ? 'WAITING FOR A CHALLENGER' : 'WAITING FOR READY CHECKS'
 
   if(room?.arenaActive) return null
   return <div className="overlay modal lobby-overlay" onKeyDown={trapFocus}>
@@ -91,27 +92,28 @@ export default function Lobby({onClose,onProfile,returnFocusRef,mode='casual'}) 
       <header className="lobby-topbar"><div className="lobby-title-block"><div className="eyebrow">PROJECT DUEL / PRIVATE LINK</div><h2 id="lobby-title">PRIVATE MULTIPLAYER</h2></div>
         <div className={`room-invite ${copyFeedback==='CODE COPIED' ? 'code-copied' : ''}`}><span>INVITE CODE</span><div className="invite-code" data-testid={connected ? 'invite-code' : undefined}>{connected ? room.code : busy ? '......' : '------'}</div><button ref={copyButton} type="button" onClick={copyCode} disabled={!connected || busy} aria-label="COPY CODE" title={copyFeedback==='CODE COPIED' ? 'Copied!' : 'Copy invite code'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">{copyFeedback==='CODE COPIED' ? <path d="m5 12 4 4L20 5"/> : <path d="M8 8h12v13H8zM16 8V3H3v13h5"/>}</svg></button><output className={`invite-copy-feedback ${copyFeedback && copyFeedback!=='CODE COPIED' ? 'copy-failed' : ''}`} role="status" aria-live="polite">{copyFeedback==='CODE COPIED' ? '✓ COPIED!' : copyFeedback}</output></div>
         <form className="lobby-join" onSubmit={event=>{event.preventDefault();connect('join')}}><label className="lobby-label">ENTER CODE<input className="code-input" aria-label="INVITE CODE" value={code} maxLength={6} disabled={busy || rankedLocked || s.status==='reconnecting' || room?.phase==='countdown'} onChange={event=>setCode(event.target.value.toUpperCase())} autoComplete="off" spellCheck={false} placeholder="ABC234"/></label><button type="submit" disabled={busy || account.loading || rankedLocked || s.status==='reconnecting' || room?.phase==='countdown'} aria-label="JOIN ROOM">JOIN</button></form>
-        <div className={`lobby-mode-badge ${room?.ranked || seekingRanked || !connected && mode==='ranked' ? 'ranked' : ''}`}><span>{title}</span><small>{connected ? s.status==='reconnecting' ? 'RECONNECTING' : 'PRIVATE / 1 VS 1' : 'INVITE A FRIEND'}</small></div>
+        <div className={`lobby-mode-badge ${room?.ranked || seekingRanked || !connected && mode==='ranked' ? 'ranked' : ''}`}><span>{title}</span><small>{connected ? s.status==='reconnecting' ? 'RECONNECTING' : ffa ? `PRIVATE / ${players.length} OF 5 PLAYERS` : 'PRIVATE / 1 VS 1' : 'INVITE A FRIEND'}</small></div>
         <button ref={closeButton} type="button" className="lobby-close" onClick={close} aria-label="Close multiplayer lobby">×</button>
       </header>
       <p id="lobby-description" className="lobby-intro">{connected ? 'Your arena. Your rival. Ready up and make it count.' : 'Create a private room or enter a friend’s invite code to join their lobby.'}</p>
       {s.error && <p className="lobby-error" role="alert">{s.error}</p>}
       {rankedLocked && <div className="lobby-ranked-notice"><div><strong>SIGN IN TO PLAY RANKED</strong><span>Ranked duels require two different signed-in accounts and Best of Three.</span></div><button type="button" onClick={onProfile}>SIGN IN / PROFILE</button></div>}
       {seekingRanked && !room.ranked && <p className="lobby-ranked-notice" role="status">{eligible ? 'CONFIRMING RANKED MODE…' : 'RANKED SETUP · Invite a second signed-in player. Ready checks unlock after ranked mode is confirmed.'}</p>}
-      <div className="lobby-roster" aria-label="Room players">
+      <div className={`lobby-roster ${ffa ? 'ffa-roster' : ''}`} aria-label="Room players">
         <LobbyPlayerCard slot={0} player={players.find(player=>player.slot===0)} selfId={s.sessionId} hostId={room?.hostId} preview={!connected} characterId={account.loadout.character}>
           {!connected && <label className="lobby-label callsign-label">YOUR CALLSIGN<input ref={nameInput} value={callsign} maxLength={18} disabled={busy || Boolean(account.user)} onChange={event=>setName(event.target.value)} autoComplete="nickname" placeholder="e.g. Nova"/></label>}
         </LobbyPlayerCard>
-        <div className="lobby-match-center"><div className="lobby-versus" aria-hidden="true"><span/>VS<span/></div><span className="versus-caption">ONE ARENA. TWO OPERATIVES.</span>
-          <label className="lobby-label format-select-label">MATCH FORMAT<select aria-label="Match format" value={room?.format || 'duel'} disabled={locked || seekingRanked || room?.ranked} onChange={event=>lobby.format(event.target.value)}>{Object.entries(FORMATS).map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label>
+        <div className="lobby-match-center"><div className="lobby-versus" aria-hidden="true"><span/>{ffa ? 'FFA' : 'VS'}<span/></div><span className="versus-caption">{ffa ? '1-5 PLAYERS. FIRST TO 15 KILLS.' : 'ONE ARENA. TWO OPERATIVES.'}</span>
+          <label className="lobby-label format-select-label">MATCH FORMAT<select aria-label="Match format" value={room?.format || 'duel'} disabled={locked || seekingRanked || room?.ranked} onChange={event=>lobby.format(event.target.value)}>{Object.entries(FORMATS).map(([id,name])=><option key={id} value={id} disabled={players.length>playerLimit(id)}>{name}</option>)}</select></label>
           <LobbyMapCard mapId={room?.mapId || 'facility'} disabled={locked} onChange={value=>lobby.map(value)}/>
           <p className="map-description">{MAPS[room?.mapId || 'facility'].description}</p>
         </div>
         <LobbyPlayerCard slot={1} player={players.find(player=>player.slot===1)} selfId={s.sessionId} hostId={room?.hostId}/>
+        {ffa && [2,3,4].map(slot=><LobbyPlayerCard key={slot} slot={slot} player={players.find(player=>player.slot===slot)} selfId={s.sessionId} hostId={room?.hostId}/>)}
       </div>
       {connected ? <>
-        <div className="lobby-room-options"><label className="lobby-label">MATCH TYPE<select aria-label="Match type" value={room.ranked || seekingRanked ? 'ranked' : 'casual'} disabled={locked} onChange={event=>changeType(event.target.value)}><option value="casual">CASUAL</option><option value="ranked" disabled={!eligible}>RANKED</option></select></label><p>{room.ranked ? 'RANKED / BEST OF THREE · Verified accounts. Elo eligibility is checked when results are saved.' : seekingRanked ? 'Waiting for a verified rival. This room cannot launch as casual while ranked is requested.' : room.format==='duel' ? 'FIRST TO TWO WINS · 90-second rounds. Draws replay. Changing settings resets readiness.' : 'FREE PLAY · Five-second respawns. Change your preset between lives.'}</p></div>
-        <div className={`lobby-state ${room.phase==='ready' ? 'all-ready' : ''}`} role="status"><i/><div><strong>{status}</strong><span>{room.phase==='countdown' ? 'Cancel readiness to stop the countdown.' : room.phase==='ready' ? 'Both players are ready to enter the arena.' : room.phase==='reconnecting' ? 'Their seat is held for 15 seconds. Readiness resets after a disconnect.' : 'Both players must be connected to ready up.'}</span></div></div>
+        <div className="lobby-room-options"><label className="lobby-label">MATCH TYPE<select aria-label="Match type" value={room.ranked || seekingRanked ? 'ranked' : 'casual'} disabled={locked} onChange={event=>changeType(event.target.value)}><option value="casual">CASUAL</option><option value="ranked" disabled={!eligible}>RANKED</option></select></label><p>{room.ranked ? 'RANKED / BEST OF THREE · Verified accounts. Elo eligibility is checked when results are saved.' : seekingRanked ? 'Waiting for a verified rival. This room cannot launch as casual while ranked is requested.' : room.format==='duel' ? 'FIRST TO TWO WINS · 90-second rounds. Draws replay. Changing settings resets readiness.' : ffa ? 'FREE FOR ALL / 1-5 players. First to 15 kills. Five-second randomized respawns.' : 'FREE PLAY · Five-second respawns. Change your preset between lives.'}</p></div>
+        <div className={`lobby-state ${room.phase==='ready' ? 'all-ready' : ''}`} role="status"><i/><div><strong>{status}</strong><span>{room.phase==='countdown' ? 'Cancel readiness to stop the countdown.' : room.phase==='ready' ? ffa ? 'All players are ready to enter the arena.' : 'Both players are ready to enter the arena.' : room.phase==='reconnecting' ? 'Their seat is held for 15 seconds. Readiness resets after a disconnect.' : ffa ? 'Everyone in the room must ready up. You can start solo or invite up to four friends.' : 'Both players must be connected to ready up.'}</span></div></div>
         <div className="lobby-actions"><button type="button" className="lobby-back" onClick={close}>LEAVE ROOM</button><span className="invite-copy-status">Copy the code above to invite your rival.</span><button type="button" className="primary" disabled={!canReady} onClick={()=>lobby.ready(!self?.ready)}>{self?.ready ? 'CANCEL READY' : 'READY UP'}</button>{host && !room.autoStart && room.phase==='ready' && (!seekingRanked || room.ranked) && <button type="button" className="primary start-arena" onClick={()=>lobby.start()}>START SHARED ARENA</button>}</div>
         {s.notice && <p className="lobby-message" role="status">{s.notice}</p>}{room.note && <p className="lobby-message" role="status">{room.note}</p>}
       </> : <>

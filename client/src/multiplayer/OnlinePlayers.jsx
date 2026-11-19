@@ -39,7 +39,7 @@ function LocalCamera({ id }) {
   const roundId = useLobby(s => s.room?.roundId)
   const selecting=useLobby(loadoutIsOpen)
   const alive=useLobby(s=>(s.room?.players.find(player=>player.id===s.sessionId)?.combat.hp || 0)>0)
-  const resumeAfterLoadout=useRef(lobby.get().room?.format==='duel')
+  const resumeAfterLoadout=useRef(lobby.get().room?.format!=='freeplay')
   const seenRound = useRef(-1), seenShot=useRef(0),fpsFrames=useRef({ count:0,time:0 })
   const clearInput = useRef(null), held = useRef(false),fireInput=useRef(false),nextFire = useRef(0), wasDead = useRef(false)
   useEffect(() => {
@@ -144,7 +144,7 @@ function LocalCamera({ id }) {
     const visibility = () => { if (document.hidden) blur() }
     const error = () => lobby.setCaptured(false)
     const recapture=event=> {
-      const s=lobby.get(),available=s.background || (s.room?.format==='duel' && !s.menuOpen)
+      const s=lobby.get(),available=s.background || (s.room?.format!=='freeplay' && !s.menuOpen)
       if(event.target===canvas && !s.captured && available && !document.hidden) void lobby.capture()
     }
     document.addEventListener('contextmenu',context)
@@ -230,8 +230,8 @@ function LocalCamera({ id }) {
       if (reset || !predicting) {
         engine.reset(pose); accumulator.current = 0; correction.current = [0,0,0]
       } else {
-        const other = lobby.get().room.players.find(player => player.id!==id)
-        const difference = engine.reconcile(pose,other ? { ...latestPose(other.id),hp:other.combat.hp } : null)
+        const others=lobby.get().room.players.filter(player=>player.id!==id).map(player=>{const pose=latestPose(player.id);return pose ? {...pose,hp:player.combat.hp,connected:player.connected} : null}).filter(Boolean)
+        const difference = engine.reconcile(pose,others)
         if (Math.hypot(...difference)>1.5) correction.current = [0,0,0]
         else correction.current = correction.current.map((value,index) => value+difference[index])
         accumulator.current += Math.min(delta,0.1)

@@ -1,5 +1,7 @@
 # Private multiplayer lobbies
 
+For **Free for All**, enter **Casual**, select **Free for All** in **Match Format**, then share the invite code with up to four friends. Everyone readies up to start; solo starts are supported. First to 15 kills wins, with five-second respawns at randomized safe positions. The five-player lobby, live scoreboard and final standings show every participant. See [Free for All rules](ONLINE_ARENA.md#free-for-all). The two-player instructions below still apply to Best of Three and Free Play.
+
 Milestone 3 includes private lobbies and a shared combat arena. Two browsers connect to Node.js/Colyseus, share an invite code, ready up, and enter the same facility after an automatic five-second countdown. See the [online arena guide](ONLINE_ARENA.md) for controls, authority, and connection behavior. Online weapons, regional damage, abilities and Best of Three matches are server validated. The host can choose Free Play instead. Local robot training works without a server.
 
 ## Launch on your PC

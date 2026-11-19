@@ -2,7 +2,7 @@
 // or another death. Derive it from snapshots rather than running a second timer.
 export function loadoutWindow(state) {
   const room=state.room
-  if(state.status!=='connected' || !room?.arenaActive || room.phase!=='arena') return ''
+  if(state.status!=='connected' || !room?.arenaActive || room.phase!=='arena' || room.matchPhase==='finished') return ''
   const prefix=`${room.code}:${room.arenaEpoch}`
   if(room.format==='duel') return room.matchPhase==='loadout' ? `${prefix}:round:${room.roundId}` : ''
   const combat=room.players.find(player=>player.id===state.sessionId)?.combat

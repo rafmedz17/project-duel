@@ -54,7 +54,7 @@ export class ArenaCombat {
     this.attacks = new Map()
     this.held = new Map()
     this.trailSequences = new Map()
-    this.onShot = () => {}
+    this.onShot = () => {};this.onKill=()=>{};this.ended=false
     for (const player of players.values()) {
       if (!player.startingWeapon) {
         player.startingWeapon = DEFAULT_LOADOUT.startingWeapon
@@ -95,7 +95,7 @@ export class ArenaCombat {
   }
   applyDamage(attackerId,targetId,amount) {
     const player = this.players.get(attackerId), other = this.players.get(targetId)
-    if (!other?.connected || other.hp<=0 || amount<=0) return { damage:0,absorbed:0,defeated:0 }
+    if (this.ended || !other?.connected || other.hp<=0 || amount<=0) return { damage:0,absorbed:0,defeated:0 }
     const bonus = ultimateModifiers(other,this.time).effect==='shield' ? Math.min(other.ultimateShield,amount) : 0
     const normal = this.time<other.abilities.get('shield').activeUntil ? Math.min(other.shieldCharge,amount-bonus) : 0
     const absorbed = bonus+normal
@@ -111,6 +111,7 @@ export class ArenaCombat {
       Object.assign(other,{ ...clearReload,respawnAt:this.allowRespawn ? this.time+RESPAWN_SECONDS : 0 })
       this.cancelEffects(targetId)
       this.simulation.setAlive(targetId,false)
+      this.onKill(attackerId)
     }
     return { damage,absorbed,defeated }
   }
@@ -152,7 +153,7 @@ export class ArenaCombat {
   }
   receive(id,payload) {
     const intent = validateCombat(payload), player = this.players.get(id)
-    if (!player || !intent || intent.epoch!==this.epoch || intent.sequence<=(this.sequences.get(id) ?? -1)) return false
+    if (this.ended || !player || !intent || intent.epoch!==this.epoch || intent.sequence<=(this.sequences.get(id) ?? -1)) return false
     if (this.round>0 ? intent.round!==this.round : intent.round!==undefined && intent.round!==0) return false
     this.sequences.set(id,intent.sequence)
     player.combatSequence = intent.sequence
@@ -185,7 +186,7 @@ export class ArenaCombat {
     if (weapon.windup) Object.assign(player,{ windupStart:now,windupEnd:times[0] })
     if (times[0]<=now) { times.shift(); this.fireShot(id,intent) }
     if (automatic && !times.length) times.push(player.attackReadyAt)
-    if (times.length && !player.reloading) this.attacks.set(id,{ weapon:player.weapon,times,auto:automatic })
+    if (times.length && !player.reloading && !this.ended) this.attacks.set(id,{ weapon:player.weapon,times,auto:automatic })
     return true
   }
   fireShot(id,aim) {
@@ -237,12 +238,14 @@ export class ArenaCombat {
   }
   step() {
     this.time += 1/ONLINE.tickRate
+    if(this.ended) return
     for (const [id,attack] of this.attacks) {
       const player=this.players.get(id)
       if (!player?.connected || player.hp<=0 || player.weapon!==attack.weapon || player.reloading) { this.cancelFiring(id); continue }
       if (attack.auto && performance.now()-(this.held.get(id) ?? -Infinity)>300) { this.cancelFiring(id); continue }
       if (attack.times[0]<=this.time+1e-8) {
         const scheduled=attack.times.shift(); this.fireShot(id)
+        if(this.ended) return
         if (attack.auto && !player.reloading) {
           const next=scheduled+WEAPONS[player.weapon].cooldown/ultimateModifiers(player,this.time).fireRate
           attack.times.push(next); player.attackReadyAt=next
@@ -276,7 +279,7 @@ export class ArenaCombat {
     }
     for (const [id,player] of this.players) {
       if (player.hp<=0) {
-        if (this.allowRespawn && this.time+1e-8>=player.respawnAt) {
+        if (this.allowRespawn && player.connected && this.time+1e-8>=player.respawnAt) {
           resetLoadout(player)
           this.simulation.respawn(id)
         }

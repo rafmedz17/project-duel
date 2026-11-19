@@ -17,7 +17,10 @@ export default function OnlineEffects() {
     const s = lobby.self(), state = lobby.get()
     if (!s || !state.room?.arenaActive) { arenaView.scanMarker = { visible:false }; return }
     const time = state.room.time
-    const other = state.room.players.find(player => player.id!==id), pose = other && samplePose(other.id), selfPose = latestPose(id)
+    const selfPose=latestPose(id),markers={}
+    camera.updateMatrixWorld()
+    for(const other of state.room.players.filter(p=>p.id!==id)) {
+    const pose=samplePose(other.id)
     let marker = { visible:false }
     if (pose && selfPose && s.hp>0 && other.combat.hp>0 && state.status==='connected' && state.room.phase==='arena' && time>=s.disabledUntil && time<s.abilities.scanner.activeUntil) {
       const distance = Math.hypot(pose.x-selfPose.x,pose.y-selfPose.y,pose.z-selfPose.z)
@@ -25,7 +28,10 @@ export default function OnlineEffects() {
       point.current.set(pose.x,pose.y+0.95,pose.z).project(camera)
       marker = { visible:Math.abs(point.current.x)<1 && Math.abs(point.current.y)<1 && Math.abs(point.current.z)<1,x:(point.current.x*0.5+0.5)*size.width,y:(-point.current.y*0.5+0.5)*size.height,distance:Math.round(distance) }
     }
-    arenaView.scanMarker = marker
+    markers[other.id]=marker
+    }
+    arenaView.scanMarkers=markers
+    arenaView.scanMarker=Object.values(markers)[0] || {visible:false}
     const dashing = time<s.abilities.dash.activeUntil && time>=s.disabledUntil && s.hp>0
     const fov = MathUtils.damp(camera.fov,aimFov(s,time,game.get().aiming,dashing,game.get().settings.fov),12,Math.min(delta,0.1))
     if (Math.abs(camera.fov-fov)>0.001) { camera.fov = fov; camera.updateProjectionMatrix() }

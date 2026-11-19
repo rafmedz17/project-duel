@@ -6,7 +6,7 @@ export default function OnlineScannerMarker({ other }) {
   useEffect(() => {
     let frame
     const update = () => {
-      const marker = arenaView.scanMarker
+      const marker = arenaView.scanMarkers?.[other?.id]
       element.current.style.opacity = marker?.visible ? '1' : '0'
       if (marker?.visible) {
         element.current.style.transform = `translate(${marker.x}px,${marker.y}px) translate(-50%,-100%)`
@@ -16,6 +16,6 @@ export default function OnlineScannerMarker({ other }) {
     }
     update()
     return () => cancelAnimationFrame(frame)
-  },[])
+  },[other?.id])
   return <div className="scan-markers" aria-hidden="true"><div ref={element} className="scan-marker" data-testid="online-scan-opponent"><b>{other?.name}</b><small /></div></div>
 }

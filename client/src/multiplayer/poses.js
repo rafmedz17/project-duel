@@ -5,7 +5,7 @@ const listeners = new Set()
 export function subscribePoses(listener) { listeners.add(listener); return () => listeners.delete(listener) }
 let epoch = -1, tick = -1, round = -1
 export const arenaView = { position:[0,1,15],yaw:0,pitch:0,remotes:{},motion:{velocity:[0,0,0],grounded:true,dashing:false,crouched:false} }
-export function clearPoses() { history.clear(); epoch = -1; tick = -1; round = -1; arenaView.remotes = {} }
+export function clearPoses() { history.clear(); epoch = -1; tick = -1; round = -1; arenaView.remotes = {};arenaView.scanMarkers={};arenaView.scanMarker={visible:false} }
 export function recordPoses(state, now = performance.now()) {
   if (!state.arenaActive) { clearPoses(); return }
   if (epoch !== state.arenaEpoch || round !== state.roundId) { clearPoses(); epoch = state.arenaEpoch; round = state.roundId }
